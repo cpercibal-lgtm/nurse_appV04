@@ -10,7 +10,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = join(__dirname, '..');
-const source = readFileSync(join(__dirname, 'i18n.ts'), 'utf8');
+// The English table is in i18n.en.ts and the Arabic one in i18n.ar.ts (loaded on demand).
+const source = ['i18n.en.ts', 'i18n.ar.ts'].map((f) => readFileSync(join(__dirname, f), 'utf8')).join('\n');
 
 function table(name: string) {
   const start = source.indexOf(name);

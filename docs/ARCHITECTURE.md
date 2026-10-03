@@ -110,7 +110,7 @@ The scheduler ticks every minute. Each period has a unique run key in `job_runs`
 
 - **Page registry** (`app/modules.tsx`): each page's path, menu label, icon, required roles and lazy import. The menu shows only permitted pages; the server still enforces everything.
 - **HTTP client and session cache** (`services/http.ts`, `services/queryClient.ts`, `hooks/useAuth.ts`): keep the access token in memory, send the CSRF header, refresh once for concurrent requests, and attach idempotency keys. Protected React Query results are discarded on expiry, logout, login, restore and privilege reload.
-- **Language**: every label is a key in `lib/i18n.ts` with English and Arabic text; Arabic switches the layout to right-to-left. `i18n.test.ts` fails on a missing or empty translation.
+- **Language**: every label is a key with an English text in `lib/i18n.en.ts` and an Arabic one in `lib/i18n.ar.ts`; Arabic switches the layout to right-to-left. English is in the main bundle; the Arabic table is a separate chunk that `lib/i18n.ts` loads only when Arabic is used, and the app renders once the chosen language is in. `i18n.test.ts` fails on a missing or empty translation.
 - **Dates**: Gregorian dates are authoritative; the Umm al-Qura Hijri date is shown beside them (`lib/hijri.ts`, display only — the server converts and stores Hijri dates itself).
 - **Bundle budget**: the build fails if the initial download exceeds 200 KB gzipped or any chunk exceeds 150 KB.
 
