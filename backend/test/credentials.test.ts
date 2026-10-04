@@ -698,6 +698,35 @@ describeDb('credentials and eligibility', () => {
         { code: 'PASSPORT', rule: 'EXCEPT', codes: ['SAU'], fields: expect.any(Array) },
       ]);
     });
+
+    it('the matrix migration sets grace days and SCFHS checks on the SCFHS licence only (rolled back here)', async () => {
+      const sql = readFileSync(resolve(__dirname, '../prisma/migrations/20261023090000_credential_type_settings/migration.sql'), 'utf8');
+      const steps = sql.split(/;\s*\n/).map((s) => s.replace(/^(--[^\n]*\n)+/, '').trim()).filter(Boolean);
+      const seen = await db.$transaction(async (tx) => {
+        await tx.credentialCategory.upsert({ where: { code: 'LICENSURE' }, update: {}, create: { code: 'LICENSURE', name: 'Licensure' } });
+        const reset = { gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false };
+        for (const code of ['SCFHS', 'PROF_LICENSE', 'BLS', 'NATIONAL_ID']) {
+          await tx.credentialTemplate.upsert({ where: { code }, update: reset, create: { code, name: code, categoryCode: 'LICENSURE' } });
+        }
+        const scfhs = await tx.credentialTemplate.findUniqueOrThrow({ where: { code: 'SCFHS' }, include: { fields: true } });
+        if (!scfhs.fields.some((f) => f.pdplCategory === 'SCFHS_REG')) {
+          await tx.credentialTemplateField.create({ data: { templateId: scfhs.id, ordinal: 99, key: `scfhs_reg_${Date.now()}`, label: 'SCFHS number', type: 'text', required: true, pdplCategory: 'SCFHS_REG' } });
+        }
+        for (const s of steps) await tx.$executeRawUnsafe(s);
+        for (const s of steps) await tx.$executeRawUnsafe(s); // a second run changes nothing
+        const rows = await tx.credentialTemplate.findMany({ where: { code: { in: ['SCFHS', 'PROF_LICENSE', 'BLS', 'NATIONAL_ID'] } }, orderBy: { code: 'asc' }, select: { code: true, gracePeriodDays: true, scfhsEnabled: true, scfhsAutoSuspend: true } });
+        throw Object.assign(new Error('rollback'), { result: rows });
+      }).catch((e: unknown) => {
+        if (e instanceof Error && 'result' in e) return e.result;
+        throw e;
+      });
+      expect(seen).toEqual([
+        { code: 'BLS', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
+        { code: 'NATIONAL_ID', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false }, // not in the matrix
+        { code: 'PROF_LICENSE', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
+        { code: 'SCFHS', gracePeriodDays: 60, scfhsEnabled: true, scfhsAutoSuspend: true },
+      ]);
+    });
   });
 
   it('leaves the audit chain intact', async () => {

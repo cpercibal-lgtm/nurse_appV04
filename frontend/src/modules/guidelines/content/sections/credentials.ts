@@ -281,7 +281,7 @@ export const CREDENTIALS: GuideSection[] = [
         approval: 'Four-eyes: a different hospital-wide administrator approves in Approvals; refused if the type changed after the request.',
         next: 'Approvals; then Requirements can use the type.',
         problems: [
-          { problem: 'Grace days', fix: 'Grace days are hospital policy (0 until set). Grace applies only when a renewal is in progress.' },
+          { problem: 'Grace days', fix: 'Grace days are hospital policy, set from the credential requirements matrix: Passport 90; Iqama and Hospital ID 30; Employment Contract, Staff Clearance and National ID 0; every other type 60. Grace applies only when a renewal is in progress.' },
           { problem: '"Choose at least one nationality"', fix: 'Only and Except need one nationality or more; choose Every nationality to remove the limit.' },
         ],
         related: ['approvals', 'eligibility'],

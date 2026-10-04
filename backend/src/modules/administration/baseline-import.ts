@@ -50,6 +50,8 @@ const TemplateRow = z.strictObject({
   displayOrder: Order.default(0), isActive: z.boolean().default(true), fields: FieldDefs,
   // Owner decision 2026-10-04: who the type applies to; left out = every nationality (and not compared).
   nationalityRule: NationalityRuleSchema.optional(), nationalityCodes: NationalityCodesSchema.optional(),
+  // D-64: checked with SCFHS, and suspended at once on an adverse answer; left out = off (and not compared).
+  scfhsEnabled: z.boolean().optional(), scfhsAutoSuspend: z.boolean().optional(),
 });
 
 export const BaselineFile = z.strictObject({
@@ -189,12 +191,16 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
     if ((rule === 'ALL') !== (codes.length === 0)) { push('credentialTemplates', r.code, 'REJECTED', [rule === 'ALL' ? 'nationalityCodes must be empty for nationalityRule ALL' : `nationalityRule ${rule} needs at least one nationality code`]); continue; }
     const unknownCodes = codes.filter((c) => !nationalityCodes.has(c));
     if (unknownCodes.length) { push('credentialTemplates', r.code, 'REJECTED', [`not on the nationality list: ${unknownCodes.join(', ')}`]); continue; }
+    if (r.scfhsAutoSuspend && !r.scfhsEnabled) { push('credentialTemplates', r.code, 'REJECTED', ['scfhsAutoSuspend needs scfhsEnabled']); continue; }
+    if (r.scfhsEnabled && !r.fields.some((f) => f.pdplCategory === 'SCFHS_REG')) { push('credentialTemplates', r.code, 'REJECTED', ['scfhsEnabled needs a field with pdplCategory SCFHS_REG']); continue; }
     const s = dbTpl.get(r.code);
     if (!s) { push('credentialTemplates', r.code, 'CREATE'); continue; }
     const diff = differences(
       {
         name: r.name, categoryCode: r.categoryCode, description: orNull(r.description), hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive, fields: r.fields.map(canonicalField),
         ...(r.nationalityRule !== undefined ? { nationalityRule: rule, nationalityCodes: codes } : {}),
+        ...(r.scfhsEnabled !== undefined ? { scfhsEnabled: r.scfhsEnabled } : {}),
+        ...(r.scfhsAutoSuspend !== undefined ? { scfhsAutoSuspend: r.scfhsAutoSuspend } : {}),
       },
       { ...s, fields: toFieldDefs(s.fields) },
     );
@@ -244,6 +250,7 @@ export async function applyBaseline(tx: DbClient, actorUserId: number, file: Bas
       data: {
         code: r.code, name: r.name, categoryCode: r.categoryCode, description: r.description ?? null, hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive,
         nationalityRule: r.nationalityRule ?? 'ALL', nationalityCodes: r.nationalityCodes ?? [],
+        scfhsEnabled: r.scfhsEnabled ?? false, scfhsAutoSuspend: r.scfhsAutoSuspend ?? false,
       },
     });
     await tx.credentialTemplateField.createMany({ data: fieldRows(t.id, r.fields) });

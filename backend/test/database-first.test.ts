@@ -112,9 +112,15 @@ describeDb('B. the hospital baseline import (P7)', () => {
     const bad = clone(BASELINE);
     bad.units[0].departmentCode = 'NOWHERE';
     bad.positions.push({ ...bad.positions[0] }); // duplicate code
+    bad.credentialTemplates.find((t: { code: string }) => t.code === 'BLS').scfhsEnabled = true; // no SCFHS number to check
+    bad.credentialTemplates.find((t: { code: string }) => t.code === 'HOSPITAL_ID').scfhsAutoSuspend = true; // suspension without checks
     const preview = await hr.post('/admin/baseline-import/preview', { file: bad });
     expect(preview.body.canImport).toBe(false);
-    expect(preview.body.totals.REJECTED).toBe(3); // the unit, and both copies of the duplicated position
+    expect(preview.body.totals.REJECTED).toBe(5); // the unit, both copies of the duplicated position, BLS and Hospital ID
+    expect(preview.body.rows.filter((r: { status: string; section: string }) => r.status === 'REJECTED' && r.section === 'credentialTemplates').map((r: { code: string; issues: string[] }) => [r.code, r.issues])).toEqual([
+      ['HOSPITAL_ID', ['scfhsAutoSuspend needs scfhsEnabled']],
+      ['BLS', ['scfhsEnabled needs a field with pdplCategory SCFHS_REG']],
+    ]);
     expect((await hr.post('/admin/baseline-import', { file: bad, reason: 'Initial hospital configuration' })).body.error.code).toBe('BASELINE_NOT_IMPORTABLE');
     expect(await db.unit.count()).toBe(0);
     expect(await db.approvalRequest.count()).toBe(0);
@@ -161,6 +167,15 @@ describeDb('B. the hospital baseline import (P7)', () => {
       { code: 'IQAMA', nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'] },
       { code: 'NATIONAL_ID', nationalityRule: 'ONLY', nationalityCodes: ['SAU'] },
       { code: 'PASSPORT', nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'] },
+    ]);
+    // The credential requirements matrix (owner, 2026-10-04): grace days, and SCFHS checks on the SCFHS licence only.
+    expect(await db.credentialTemplate.findMany({ where: { code: { in: ['PASSPORT', 'IQAMA', 'NATIONAL_ID', 'SCFHS', 'EMP_CONTRACT', 'BLS'] } }, orderBy: { code: 'asc' }, select: { code: true, gracePeriodDays: true, scfhsEnabled: true, scfhsAutoSuspend: true } })).toEqual([
+      { code: 'BLS', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'EMP_CONTRACT', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'IQAMA', gracePeriodDays: 30, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'NATIONAL_ID', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'PASSPORT', gracePeriodDays: 90, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'SCFHS', gracePeriodDays: 60, scfhsEnabled: true, scfhsAutoSuspend: true },
     ]);
     expect(await db.unit.count({ where: { criticalArea: { not: null } } })).toBe(11);
     expect(await db.auditEntry.count({ where: { action: 'BASELINE_IMPORTED' } })).toBe(1);

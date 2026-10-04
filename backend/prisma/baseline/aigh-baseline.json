@@ -559,7 +559,7 @@
       "description": "International passport",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 90,
       "displayOrder": 1,
       "isActive": true,
       "fields": [
@@ -607,7 +607,7 @@
       "description": "Saudi residency permit",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 30,
       "displayOrder": 2,
       "isActive": true,
       "fields": [
@@ -703,7 +703,7 @@
       "description": "Hospital ID card",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 30,
       "displayOrder": 3,
       "isActive": true,
       "fields": [
@@ -746,7 +746,7 @@
       "description": "Professional practice license",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 4,
       "isActive": true,
       "fields": [
@@ -796,7 +796,9 @@
       "description": "Saudi Commission for Health Specialties registration",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
+      "scfhsEnabled": true,
+      "scfhsAutoSuspend": true,
       "displayOrder": 5,
       "isActive": true,
       "fields": [
@@ -883,7 +885,7 @@
       "description": "Professional liability insurance",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 7,
       "isActive": true,
       "fields": [
@@ -968,7 +970,7 @@
       "description": "Core competency assessment (expiry = next reassessment)",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 9,
       "isActive": true,
       "fields": [
@@ -1011,7 +1013,7 @@
       "description": "Unit competency assessment (expiry = next reassessment)",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 10,
       "isActive": true,
       "fields": [
@@ -1061,7 +1063,7 @@
       "description": "Conscious sedation certification",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 11,
       "isActive": true,
       "fields": [
@@ -1111,7 +1113,7 @@
       "description": "CPR and airway basics",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 12,
       "isActive": true,
       "fields": [
@@ -1154,7 +1156,7 @@
       "description": "Adult cardiac emergencies",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 13,
       "isActive": true,
       "fields": [
@@ -1197,7 +1199,7 @@
       "description": "Pediatric emergencies",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 14,
       "isActive": true,
       "fields": [
@@ -1240,7 +1242,7 @@
       "description": "Newborn resuscitation",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 15,
       "isActive": true,
       "fields": [
@@ -1283,7 +1285,7 @@
       "description": "Basic infection control",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 60,
       "displayOrder": 16,
       "isActive": true,
       "fields": [
