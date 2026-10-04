@@ -9,10 +9,12 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { describeApiError } from '../../lib/errors';
 import { useUnits } from '../administration/api';
 import { usePositions } from '../workforce/api';
-import { FIELD_TYPES, PDPL_CATEGORIES, useCategories, useCredentialAction, useCredentials, useRequirements, useTemplates, type Category, type CredentialRow, type Requirement, type Template } from './api';
+import { FIELD_TYPES, NATIONALITY_RULES, PDPL_CATEGORIES, useCategories, useCredentialAction, useCredentials, useRequirements, useTemplates, type Category, type CredentialRow, type Requirement, type Template } from './api';
 import { CredentialStatusTag, DocumentsDrawer, LifecycleTag, normaliseTracking, TrackingFields } from './components';
 import { useEmployees } from '../nurses/api';
 import { ScfhsDrawer } from './ScfhsDrawer';
+import { NationalityRuleTag, useNationalityRuleText } from './NationalityRuleTag';
+import { NationalitySelect } from '../../components/NationalitySelect';
 import { changeBody, createBody, fieldProblems, isDateType, toFormValues, type FieldRowValue, type TemplateFormValues } from './catalogForm';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
@@ -45,6 +47,7 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
   const [recordForm] = Form.useForm();
   const recordTemplateId = Form.useWatch('templateId', recordForm) as number | undefined;
   const recordTemplate = templates.data?.items.find((x) => x.id === recordTemplateId);
+  const ruleText = useNationalityRuleText();
   async function submitRecord(v: { employeeId: number; templateId: number; trackingData?: Record<string, unknown> }) {
     try {
       const created = await action.mutateAsync({ kind: 'record', self: false, body: { employeeId: v.employeeId, templateId: v.templateId, trackingData: normaliseTracking(v) } }) as { id: number };
@@ -72,7 +75,10 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
               options={nurses.data?.items.map((e) => ({ value: e.id, label: `${e.jobNumber} — ${e.fullName}${e.unit ? ` (${e.unit.code})` : ''}` }))} />
           </Form.Item>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` }))} />
+            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => {
+              const rule = ruleText(x.nationalityRule, x.nationalityCodes);
+              return { value: x.id, label: `${x.code} — ${x.name}${rule ? ` · ${rule}` : ''}` };
+            })} />
           </Form.Item>
           {recordTemplate && <TrackingFields defs={recordTemplate.fieldDefs} />}
         </Form>
@@ -260,6 +266,7 @@ function CatalogTab() {
   const [form] = Form.useForm<TemplateFormValues>();
   const rows = Form.useWatch('fields', form);
   const scfhsOn = Form.useWatch('scfhsEnabled', form) === true;
+  const nationalityRule = Form.useWatch('nationalityRule', form) ?? 'ALL';
 
   function open(x: Template | 'new') {
     form.resetFields();
@@ -295,14 +302,14 @@ function CatalogTab() {
           { title: t('category'), dataIndex: 'categoryCode' },
           { title: t('fields'), render: (_, x) => x.fieldDefs.map((f) => f.label).join(', ') || '—', ellipsis: true },
           { title: t('graceDays'), dataIndex: 'gracePeriodDays' },
-          { title: t('status'), render: (_, x) => <Space size={4} wrap><Tag color={x.isActive ? 'green' : 'default'}>{x.isActive ? t('active') : t('inactive')}</Tag>{x.scfhsEnabled && <Tag color="blue">{x.scfhsAutoSuspend ? t('scfhsCheckedAutoTag') : t('scfhsCheckedTag')}</Tag>}</Space> },
+          { title: t('status'), render: (_, x) => <Space size={4} wrap><Tag color={x.isActive ? 'green' : 'default'}>{x.isActive ? t('active') : t('inactive')}</Tag>{x.scfhsEnabled && <Tag color="blue">{x.scfhsAutoSuspend ? t('scfhsCheckedAutoTag') : t('scfhsCheckedTag')}</Tag>}<NationalityRuleTag rule={x.nationalityRule} codes={x.nationalityCodes} /></Space> },
           ...(hr ? [{ title: '', render: (_: unknown, x: Template) => <Button size="small" onClick={() => open(x)}>{t('edit')}</Button> }] : []),
         ]}
       />
       <Modal title={editing === 'new' ? t('addCredentialType') : editing ? `${t('edit')}: ${editing.code}` : ''} open={editing !== null} onCancel={() => setEditing(null)}
         onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={action.isPending} width={900} forceRender>
         <Form form={form} layout="vertical" onFinish={submit}
-          initialValues={{ hasExpiry: true, requiresUpload: true, gracePeriodDays: 0, displayOrder: 0, isActive: true, fields: [], scfhsEnabled: false, scfhsAutoSuspend: false }}>
+          initialValues={{ hasExpiry: true, requiresUpload: true, gracePeriodDays: 0, displayOrder: 0, isActive: true, fields: [], scfhsEnabled: false, scfhsAutoSuspend: false, nationalityRule: 'ALL', nationalityCodes: [] }}>
           <Flex gap={12} wrap>
             {editing === 'new' && <Form.Item name="code" label={t('code')} style={{ minWidth: 180 }} rules={[{ required: true, pattern: /^[A-Z][A-Z0-9_]{1,39}$/ }]}><Input maxLength={40} /></Form.Item>}
             <Form.Item name="name" label={t('name')} style={{ flex: 1, minWidth: 220 }} rules={[{ required: true, whitespace: true }]}><Input maxLength={120} /></Form.Item>
@@ -321,6 +328,17 @@ function CatalogTab() {
           <Flex gap={16} wrap>
             <Form.Item name="scfhsEnabled" label={t('scfhsEnabled')} valuePropName="checked" tooltip={t('scfhsEnabledHint')}><Switch /></Form.Item>
             <Form.Item name="scfhsAutoSuspend" label={t('scfhsAutoSuspend')} valuePropName="checked" tooltip={t('scfhsAutoSuspendHint')}><Switch disabled={!scfhsOn} /></Form.Item>
+          </Flex>
+          <Flex gap={16} wrap>
+            <Form.Item name="nationalityRule" label={t('nationalityRule')} tooltip={t('nationalityRuleHint')} style={{ minWidth: 280 }}>
+              <Select options={NATIONALITY_RULES.map((r) => ({ value: r, label: t(`nationalityRule_${r}`) }))} />
+            </Form.Item>
+            {nationalityRule !== 'ALL' && (
+              <Form.Item name="nationalityCodes" label={t('nationalityCodes')} style={{ flex: 1, minWidth: 260 }}
+                rules={[{ required: true, type: 'array', min: 1, message: t('nationalityCodesRequired') }]}>
+                <NationalitySelect<string[]> mode="multiple" allowClear />
+              </Form.Item>
+            )}
           </Flex>
           <Form.List
             name="fields"

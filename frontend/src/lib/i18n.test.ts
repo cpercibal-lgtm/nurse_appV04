@@ -42,7 +42,7 @@ const FAMILIES: Record<string, string[]> = {
   scfhsTrigger_: ['MANUAL', 'ON_SUBMIT', 'SCHEDULED'],
   scfhsAction_: ['HR_NOTIFIED', 'SUSPENDED'],
   scfhsResult_: ['NONE', 'HR_NOTIFIED', 'SUSPENDED', 'KNOWN', 'ERROR'],
-  pdpl_: ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'IDENTITY_SCAN'], // D-54 sensitive data categories
+  pdpl_: ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID', 'IDENTITY_SCAN'], // D-54 sensitive data categories
   dsr_: ['ACCESS', 'PORTABILITY', 'RECTIFICATION', 'ERASURE'], // D-55 data-subject requests
   dsrHint_: ['ACCESS', 'PORTABILITY', 'RECTIFICATION', 'ERASURE'],
   dsrStatus_: ['RECEIVED', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'COMPLETED'],
@@ -64,6 +64,7 @@ const FAMILIES: Record<string, string[]> = {
   baselineStatus_: ['CREATE', 'UNCHANGED', 'CONFLICT', 'REJECTED'],
   approvalStatus_: ['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'WITHDRAWN'],
   fieldType_: ['text', 'date', 'date_hijri', 'select', 'number', 'country', 'reference'],
+  nationalityRule_: ['ALL', 'ONLY', 'EXCEPT'], // credential types by nationality (owner decision 2026-10-04)
 };
 
 describe('translations', () => {

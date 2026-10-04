@@ -20,8 +20,8 @@ export function nationalityLabel(n: Pick<Nationality, 'name' | 'nameAr'>, ar: bo
   return ar && n.nameAr ? n.nameAr : n.name;
 }
 
-/** Form control: value is the code. Searches the nationality, the country and the code. */
-export function NationalitySelect(props: Omit<SelectProps<string>, 'options' | 'showSearch'>) {
+/** Form control: value is the code (several codes with mode="multiple"). Searches the nationality, the country and the code. */
+export function NationalitySelect<V extends string | string[] = string>(props: Omit<SelectProps<V>, 'options' | 'showSearch'>) {
   const { t, i18n } = useTranslation();
   const ar = i18n.language === 'ar';
   const list = useNationalities();
@@ -29,7 +29,7 @@ export function NationalitySelect(props: Omit<SelectProps<string>, 'options' | '
     .map((n) => ({ value: n.code, label: nationalityLabel(n, ar), search: `${n.name} ${n.nameAr ?? ''} ${n.countryName} ${n.code}`.toLowerCase() }))
     .sort((a, b) => a.label.localeCompare(b.label, ar ? 'ar' : 'en')), [list.data, ar]);
   return (
-    <Select<string> placeholder={t('nationalitySelect')} loading={list.isLoading} options={options}
+    <Select<V> placeholder={t('nationalitySelect')} loading={list.isLoading} options={options}
       showSearch={{ filterOption: (input, o) => (o?.search ?? '').includes(input.trim().toLowerCase()) }} {...props} />
   );
 }

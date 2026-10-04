@@ -16,7 +16,7 @@ import { authOf, authorize } from '../../middleware/authorize.js';
 const Basis = z.enum(['EMPLOYMENT_CONTRACT', 'LEGAL_OBLIGATION', 'CONSENT', 'VITAL_INTEREST', 'PUBLIC_INTEREST']);
 const Reason = z.string().trim().min(10, 'Give a reason of at least 10 characters').max(1000);
 export const RegisterCreateBody = z.strictObject({
-  dataCategory: z.enum(['IQAMA', 'PASSPORT', 'SCFHS_REG', 'IDENTITY_SCAN']),
+  dataCategory: z.enum(['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID', 'IDENTITY_SCAN']),
   lawfulBasis: Basis,
   purpose: z.string().trim().min(10).max(1000),
   retentionRule: z.string().trim().min(5).max(500),

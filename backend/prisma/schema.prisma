@@ -586,6 +586,12 @@ enum CredentialStatus {
   Revoked
 }
 
+enum NationalityRule {
+  ALL
+  ONLY
+  EXCEPT
+}
+
 enum PolicyStatus {
   MANDATORY
   TRANSITION
@@ -626,6 +632,10 @@ model CredentialTemplate {
   scfhsEnabled     Boolean  @default(false) @map("scfhs_enabled")
   /// SCFHS reporting SUSPENDED or REVOKED suspends the credential at once (otherwise HR is told).
   scfhsAutoSuspend Boolean  @default(false) @map("scfhs_auto_suspend")
+  /// Owner decision 2026-10-04: who the type applies to. ALL; ONLY the listed nationalities; or EXCEPT them.
+  /// For an employee it does not apply to, a requirement of the type counts as OPTIONAL (never blocks).
+  nationalityRule  NationalityRule @default(ALL) @map("nationality_rule")
+  nationalityCodes String[]        @default([]) @map("nationality_codes") @db.VarChar(3)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   category     CredentialCategory        @relation(fields: [categoryCode], references: [code])

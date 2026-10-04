@@ -2,7 +2,7 @@
 // "send only what changed" rule is testable: the approver of a catalog change
 // (D-24) sees exactly what the requester changed, nothing else.
 
-import type { FieldDef, PdplCategory, Template } from './api';
+import type { FieldDef, NationalityRule, PdplCategory, Template } from './api';
 
 export type FieldRowValue = { key: string; label: string; type: FieldDef['type']; required: boolean; isIssueDate?: boolean; isExpiryDate?: boolean; pdplCategory?: PdplCategory | null };
 export type TemplateFormValues = {
@@ -10,6 +10,8 @@ export type TemplateFormValues = {
   gracePeriodDays: number; displayOrder: number; isActive: boolean; fields?: FieldRowValue[]; reason: string;
   /** Spec §5.4 (D-64): checked with SCFHS; suspended on an adverse answer. */
   scfhsEnabled?: boolean; scfhsAutoSuspend?: boolean;
+  /** Owner decision 2026-10-04: who the type applies to. */
+  nationalityRule?: NationalityRule; nationalityCodes?: string[];
 };
 
 export const isDateType = (type?: string) => type === 'date' || type === 'date_hijri';
@@ -40,6 +42,7 @@ export const toFormValues = (x: Template): TemplateFormValues => ({
   name: x.name, categoryCode: x.categoryCode, description: x.description, hasExpiry: x.hasExpiry, requiresUpload: x.requiresUpload,
   gracePeriodDays: x.gracePeriodDays, displayOrder: x.displayOrder, isActive: x.isActive, reason: '',
   scfhsEnabled: x.scfhsEnabled, scfhsAutoSuspend: x.scfhsAutoSuspend,
+  nationalityRule: x.nationalityRule, nationalityCodes: x.nationalityCodes,
   fields: x.fieldDefs.map((f) => ({ key: f.key, label: f.label, type: f.type, required: f.required, isIssueDate: f.isIssueDate === true, isExpiryDate: f.isExpiryDate === true, pdplCategory: f.pdplCategory ?? null })),
 });
 
@@ -47,6 +50,9 @@ const comparable = (v: Omit<TemplateFormValues, 'code' | 'reason'>) => ({
   name: v.name.trim(), categoryCode: v.categoryCode, description: v.description?.trim() ?? '', hasExpiry: v.hasExpiry, requiresUpload: v.requiresUpload,
   gracePeriodDays: v.gracePeriodDays, displayOrder: v.displayOrder, fieldDefs: toFieldDefs(v.fields),
   scfhsEnabled: v.scfhsEnabled === true, scfhsAutoSuspend: v.scfhsEnabled === true && v.scfhsAutoSuspend === true,
+  // "Every nationality" lists none; codes sorted without repeats, as the server stores them.
+  nationalityRule: v.nationalityRule ?? 'ALL',
+  nationalityCodes: (v.nationalityRule ?? 'ALL') === 'ALL' ? [] : [...new Set(v.nationalityCodes ?? [])].sort(),
 });
 
 /** Body for POST /credential-templates. */

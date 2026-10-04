@@ -27,6 +27,7 @@ import { Prisma, type Db, type DbClient } from '../../lib/prisma.js';
 import { sameValue } from '../../lib/same.js';
 import { FieldDefs } from '../credentials/catalog.js';
 import { canonicalField, fieldRows, toFieldDefs, WITH_FIELDS } from '../credentials/fields.js';
+import { NationalityCodesSchema, NationalityRuleSchema } from '../credentials/nationality-rule.js';
 import { unitScope, type AuthContext } from '../users/access.js';
 import { Beds, Code, CriticalAreaValue, Description, Name, NameAr, TIERS } from '../workforce/org.js';
 
@@ -47,6 +48,8 @@ const TemplateRow = z.strictObject({
   code: TemplateCode, name: Name, categoryCode: TemplateCode, description: Description.optional(),
   hasExpiry: z.boolean(), requiresUpload: z.boolean(), gracePeriodDays: z.number().int().min(0).max(90).default(0),
   displayOrder: Order.default(0), isActive: z.boolean().default(true), fields: FieldDefs,
+  // Owner decision 2026-10-04: who the type applies to; left out = every nationality (and not compared).
+  nationalityRule: NationalityRuleSchema.optional(), nationalityCodes: NationalityCodesSchema.optional(),
 });
 
 export const BaselineFile = z.strictObject({
@@ -120,6 +123,7 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
   const positions = await tx.position.findMany();
   const cats = await tx.credentialCategory.findMany();
   const tpls = await tx.credentialTemplate.findMany({ include: WITH_FIELDS });
+  const nationalityCodes = new Set((await tx.nationality.findMany({ select: { code: true } })).map((n) => n.code));
   const dbDept = new Map(depts.map((d) => [d.code, d]));
   const dbUnit = new Map(units.map((u) => [u.code, u]));
   const dbPos = new Map(positions.map((p) => [p.code, p]));
@@ -180,10 +184,18 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
   for (const r of file.credentialTemplates) {
     if (d.has(r.code)) { push('credentialTemplates', r.code, 'REJECTED', ['code appears more than once in the file']); continue; }
     if (!fileCat.has(r.categoryCode) && !dbCat.has(r.categoryCode)) { push('credentialTemplates', r.code, 'REJECTED', [`category ${r.categoryCode} is neither in the file nor in the database`]); continue; }
+    const rule = r.nationalityRule ?? 'ALL';
+    const codes = r.nationalityCodes ?? [];
+    if ((rule === 'ALL') !== (codes.length === 0)) { push('credentialTemplates', r.code, 'REJECTED', [rule === 'ALL' ? 'nationalityCodes must be empty for nationalityRule ALL' : `nationalityRule ${rule} needs at least one nationality code`]); continue; }
+    const unknownCodes = codes.filter((c) => !nationalityCodes.has(c));
+    if (unknownCodes.length) { push('credentialTemplates', r.code, 'REJECTED', [`not on the nationality list: ${unknownCodes.join(', ')}`]); continue; }
     const s = dbTpl.get(r.code);
     if (!s) { push('credentialTemplates', r.code, 'CREATE'); continue; }
     const diff = differences(
-      { name: r.name, categoryCode: r.categoryCode, description: orNull(r.description), hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive, fields: r.fields.map(canonicalField) },
+      {
+        name: r.name, categoryCode: r.categoryCode, description: orNull(r.description), hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive, fields: r.fields.map(canonicalField),
+        ...(r.nationalityRule !== undefined ? { nationalityRule: rule, nationalityCodes: codes } : {}),
+      },
       { ...s, fields: toFieldDefs(s.fields) },
     );
     push('credentialTemplates', r.code, diff.length ? 'CONFLICT' : 'UNCHANGED', diff);
@@ -229,7 +241,10 @@ export async function applyBaseline(tx: DbClient, actorUserId: number, file: Bas
   }
   for (const r of file.credentialTemplates.filter((x) => isNew('credentialTemplates', x.code))) {
     const t = await tx.credentialTemplate.create({
-      data: { code: r.code, name: r.name, categoryCode: r.categoryCode, description: r.description ?? null, hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive },
+      data: {
+        code: r.code, name: r.name, categoryCode: r.categoryCode, description: r.description ?? null, hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive,
+        nationalityRule: r.nationalityRule ?? 'ALL', nationalityCodes: r.nationalityCodes ?? [],
+      },
     });
     await tx.credentialTemplateField.createMany({ data: fieldRows(t.id, r.fields) });
   }

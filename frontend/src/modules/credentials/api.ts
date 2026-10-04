@@ -7,16 +7,25 @@ export type Lifecycle = 'Active' | 'SubjectToRenew' | 'OnProcess' | 'Expired';
 export type EligibilityStatus = 'ELIGIBLE' | 'ELIGIBLE_WITH_GRACE' | 'ELIGIBLE_WITH_POLICY_WARNING' | 'INELIGIBLE';
 
 /** D-54: sensitive personal data (spec §8.3.1) — encrypted per employee and searchable only by exact number. */
-export const PDPL_CATEGORIES = ['IQAMA', 'PASSPORT', 'SCFHS_REG'] as const;
+export const PDPL_CATEGORIES = ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID'] as const;
 export type PdplCategory = (typeof PDPL_CATEGORIES)[number];
 export interface FieldDef { key: string; label: string; type: (typeof FIELD_TYPES)[number]; required: boolean; displayOrder: number; isIssueDate?: boolean; isExpiryDate?: boolean; pdplCategory?: PdplCategory }
-export interface Template { id: number; code: string; name: string; categoryCode: string; description: string | null; hasExpiry: boolean; requiresUpload: boolean; gracePeriodDays: number; displayOrder: number; isActive: boolean; fieldDefs: FieldDef[]; scfhsEnabled: boolean; scfhsAutoSuspend: boolean }
+export interface Template { id: number; code: string; name: string; categoryCode: string; description: string | null; hasExpiry: boolean; requiresUpload: boolean; gracePeriodDays: number; displayOrder: number; isActive: boolean; fieldDefs: FieldDef[]; scfhsEnabled: boolean; scfhsAutoSuspend: boolean;
+  /** Owner decision 2026-10-04: every nationality, ONLY the listed ones, or all EXCEPT them. */
+  nationalityRule: NationalityRule; nationalityCodes: string[] }
+export type NationalityRule = 'ALL' | 'ONLY' | 'EXCEPT';
+export const NATIONALITY_RULES: NationalityRule[] = ['ALL', 'ONLY', 'EXCEPT'];
+/** Same rule as the server (credentials/nationality-rule.ts): no nationality matches no listed code. */
+export const appliesToNationality = (t: Pick<Template, 'nationalityRule' | 'nationalityCodes'>, nationalityCode: string | null | undefined) =>
+  t.nationalityRule === 'ALL' || (t.nationalityRule === 'ONLY') === (nationalityCode != null && t.nationalityCodes.includes(nationalityCode));
 /** The field types the server accepts (catalog.ts `FieldType`). */
 export const FIELD_TYPES = ['text', 'date', 'date_hijri', 'select', 'number', 'country', 'reference'] as const;
 export interface Requirement {
   id: number; templateId: number; unitId: number; positionCode: string | null;
   policyStatus: 'MANDATORY' | 'TRANSITION' | 'OPTIONAL'; transitionDeadline: string | null;
   template: { code: string; name: string }; unit: { code: string; name: string };
+  /** GET /credentials/me/requirements: the type does not apply to the caller's nationality, so it is optional for them. */
+  optionalByNationality?: boolean;
 }
 export interface CredentialRow {
   id: number; employeeId: number; employee: { fullName: string; jobNumber: string; unitId: number | null };

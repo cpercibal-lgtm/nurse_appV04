@@ -35,7 +35,7 @@ export const SELF: GuideSection[] = [
         before: ['The document (PDF, JPEG, PNG or WebP, at most 10 MB) and its details.'],
         steps: [
           'Open My Credentials. At the top: your eligibility and any required credential you are missing (red box).',
-          'Click Add credential, choose the type, fill in the details (the form follows the type) and Submit.',
+          'Click Add credential, choose the type, fill in the details (the form follows the type) and Submit. A type marked "Optional for you" (e.g. Passport and Iqama for Saudi nationals, who submit the National ID instead) may be added but is never required.',
           'On the new row click Evidence → Upload evidence and choose the file.',
         ],
         result: '"Submitted — HR will verify it." The credential is Pending verification until HR verifies it.',
