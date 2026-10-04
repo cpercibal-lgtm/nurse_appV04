@@ -93,7 +93,8 @@ Each run sends only the milestone a record is in now, once per recipient (event 
 
 | Value | Where | Current |
 | :--- | :--- | :--- |
-| Grace days per type | Credential catalog (four-eyes) | 0 for every type in the baseline file until the hospital policy sets them; 0–90 |
+| Grace days per type | Credential catalog (four-eyes) | 0–90. From the hospital's credential requirements matrix (owner, 2026-10-04; migration `20261023090000_credential_type_settings` and the baseline file): Passport 90; Iqama and Hospital ID 30; Employment Contract, Staff Clearance and National ID 0; every other type 60 |
+| SCFHS checks per type | Credential catalog (four-eyes) | Only a type with an SCFHS registration number field can be checked: the SCFHS licence, checked and suspended at once on a suspended/revoked answer (same matrix) |
 | Requirements per unit / position | Requirements page | None until the hospital enters its policy (the six illustrative ones exist only in the development fixtures) |
 | Renewal window | `RENEWAL_WINDOW_DAYS` in `credentials/records.ts` | 60 days (spec §5.2) |
 | Reminder milestones and recipients | `MILESTONES`, `ROUTING` in `jobs/expiry-scan.ts` | D-39 |

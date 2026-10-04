@@ -1188,7 +1188,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 **Common problems.**
 
-- *Grace days* — Grace days are hospital policy (0 until set). Grace applies only when a renewal is in progress.
+- *Grace days* — Grace days are hospital policy, set from the credential requirements matrix: Passport 90; Iqama and Hospital ID 30; Employment Contract, Staff Clearance and National ID 0; every other type 60. Grace applies only when a renewal is in progress.
 - *"Choose at least one nationality"* — Only and Except need one nationality or more; choose Every nationality to remove the limit.
 
 **Related.** [Approvals (four-eyes)](#3-approvals-four-eyes) · [Eligibility](#8-eligibility)
