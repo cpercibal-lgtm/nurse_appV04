@@ -103,7 +103,7 @@ describeRoles(`database roles (spec §10.7)${allowed ? '' : ' — skipped: the t
       expect(await runtime.unit.count()).toBe(47);
 
       const hr = await signIn(testApp(runtime), input.hrAdmin.email, input.hrAdmin.password);
-      expect((await hr.get('/credential-templates')).body.items).toHaveLength(16);
+      expect((await hr.get('/credential-templates')).body.items).toHaveLength(17); // the baseline's 16 + National ID (owner decision 2026-10-04)
       const asked = await hr.post('/credential-categories', { code: 'ROLE_TEST', name: 'Role test', reason: 'Checks writes as the runtime role' });
       expect(asked.status).toBe(202);
       expect(await findChainBreaks(runtime)).toEqual([]);

@@ -37,9 +37,10 @@ describeDb('MFA (spec §3.5)', () => {
   async function enrol(a: Express, email: string) {
     const first = await login(a, email);
     const { secret } = (await post(a, '/mfa/enroll/start', { challenge: first.body.mfa.challenge })).body;
-    const done = await post(a, '/mfa/enroll/confirm', { challenge: first.body.mfa.challenge, code: totp(secret) });
+    const setupCode = totp(secret);
+    const done = await post(a, '/mfa/enroll/confirm', { challenge: first.body.mfa.challenge, code: setupCode });
     expect(done.status).toBe(200);
-    return { secret, recoveryCodes: done.body.recoveryCodes as string[] };
+    return { secret, setupCode, recoveryCodes: done.body.recoveryCodes as string[] };
   }
 
   it('a required role must set up an authenticator before any session exists', async () => {
@@ -79,12 +80,12 @@ describeDb('MFA (spec §3.5)', () => {
 
   it('later sign-ins need a current code, and each code works once', async () => {
     const u = await supervisor();
-    const { secret } = await enrol(app, u.email);
+    const { secret, setupCode } = await enrol(app, u.email);
     const next = await login(app, u.email);
     expect(next.body.mfa.step).toBe('VERIFY');
     expect(next.body.mfa.expiresIn).toBe(300);
-    // The code used to confirm the set-up is spent.
-    expect((await post(app, '/mfa/verify', { challenge: next.body.mfa.challenge, code: totp(secret) })).body.error.code).toBe('MFA_CODE_INVALID');
+    // The code used to confirm the set-up is spent (that exact code: the clock may have moved to the next one since).
+    expect((await post(app, '/mfa/verify', { challenge: next.body.mfa.challenge, code: setupCode })).body.error.code).toBe('MFA_CODE_INVALID');
     const code = await freshCode(u.id, secret);
     const ok = await post(app, '/mfa/verify', { challenge: next.body.mfa.challenge, code });
     expect(ok.status).toBe(200);
