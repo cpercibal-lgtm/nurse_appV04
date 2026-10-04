@@ -4,6 +4,7 @@
 import express, { Router, type Response } from 'express';
 import { z } from 'zod';
 import type { Db } from '../../lib/prisma.js';
+import { decodeFileName } from '../../lib/uploads.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
 import { CreateBody, ListQuery, PickerQuery, RenewBody, TransitionBody, type ContractService } from './service.js';
@@ -50,8 +51,7 @@ export function createContractsRouter(db: Db, contracts: ContractService, maxUpl
   // Contract copy: raw PDF body, name in X-File-Name (same as credential evidence).
   r.post('/contracts/:id/documents', authorize('contracts.manage'), express.raw({ type: () => true, limit: maxUploadBytes + 1 }), async (req, res) => {
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-    const name = req.get('x-file-name');
-    res.status(201).json(await contracts.upload(authOf(res), IdParam.parse(req.params).id, bytes, req.get('content-type'), name ? decodeURIComponent(name) : undefined, rid(res)));
+    res.status(201).json(await contracts.upload(authOf(res), IdParam.parse(req.params).id, bytes, req.get('content-type'), decodeFileName(req.get('x-file-name')), rid(res)));
   });
   r.get('/contracts/:id/documents', async (req, res) => { res.json(await contracts.listDocuments(authOf(res), IdParam.parse(req.params).id)); });
   r.get('/contracts/:id/documents/:docId', async (req, res) => {

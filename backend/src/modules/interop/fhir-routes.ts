@@ -127,6 +127,7 @@ export function createFhirRouter(db: Db, protection: Protection, baseUrl: string
   r.get('/fhir/Practitioner', PRACTITIONER, async (req, res) => {
     const token = typeof req.query.identifier === 'string' ? req.query.identifier : '';
     if (!token) return fail(res, 400, 'not-supported', 'Search Practitioner by identifier (the job number)');
+    if (token.length > 300) return fail(res, 400, 'invalid', 'The identifier is too long');
     const bar = token.indexOf('|');
     const [system, value] = bar >= 0 ? [token.slice(0, bar), token.slice(bar + 1)] : [null, token];
     if (system !== null && system !== '' && system !== FHIR_SYSTEMS.jobNumber) return send(res, 200, searchBundle([], fhirBase, selfUrl('Practitioner', req.originalUrl)));

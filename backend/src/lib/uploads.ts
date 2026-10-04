@@ -31,6 +31,16 @@ export function sniffMime(bytes: Buffer): string | null {
 
 export interface CheckedUpload { mimeType: string; sizeBytes: number; sha256: string; fileName: string }
 
+/** The X-File-Name header (percent-encoded by the client); a malformed encoding is the client's error, not a 500. */
+export function decodeFileName(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+  try { return decodeURIComponent(header); } catch { throw new HttpError(400, 'FILE_NAME_INVALID', 'The file name is not validly encoded'); }
+}
+
+// Control characters, and the invisible and direction-changing ones that can disguise a
+// name ("invoice<RLO>fdp.exe" displays as "invoiceexe.pdf").
+const UNSAFE_NAME_CHARS = /[\\/\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩﻿]/g;
+
 /** Throws a client-facing HttpError for any rule violation. */
 export function checkUpload(purpose: UploadPurpose, bytes: Buffer, declaredType: string | undefined, fileNameRaw: string | undefined, maxBytes: number): CheckedUpload {
   if (bytes.length === 0) throw new HttpError(400, 'UPLOAD_EMPTY', 'The file is empty');
@@ -43,7 +53,7 @@ export function checkUpload(purpose: UploadPurpose, bytes: Buffer, declaredType:
   const detected = sniffMime(bytes);
   if (detected !== declared) throw new HttpError(415, 'UPLOAD_TYPE_MISMATCH', 'The file content does not match its declared type');
   // Keep only a safe display name; it is never used as a path.
-  const fileName = (fileNameRaw ?? '').replace(/[\\/\u0000-\u001f]/g, '').trim().slice(0, 200) || 'document';
+  const fileName = (fileNameRaw ?? '').replace(UNSAFE_NAME_CHARS, '').trim().slice(0, 200) || 'document';
   if (purpose === 'CONTRACT_COPY' && !fileName.toLowerCase().endsWith('.pdf')) {
     throw new HttpError(415, 'UPLOAD_TYPE_NOT_ALLOWED', 'A contract copy must be a .pdf file (D1)');
   }

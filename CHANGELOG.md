@@ -38,6 +38,13 @@ All notable changes to the AIGH Nursing Workforce Management System. Versions fo
 - `ops/vps/setup-host.sh` comments out provider lines above the `Include` in `/etc/ssh/sshd_config` that silently kept root and password sign-in on (found on UltaHost), and now stops unless `sshd -T` reports keys only and no root sign-in. On a host without an IPv6 route, `apt` uses IPv4 only (a mirror's IPv6 address had timed out mid-install).
 - Production start-up now also refuses a database login that may `TRUNCATE` any table (`backend/src/lib/db-role.ts`). Before, only `ops/db/verify.sql` caught that grant; the API and worker would still have started.
 
+### Security
+- Security review (2026-10-04) of every API route, query, secret and page; findings and fixes in [docs/SECURITY_REVIEW_2026-10-04.md](docs/SECURITY_REVIEW_2026-10-04.md).
+- An upload whose `X-File-Name` is not validly percent-encoded is refused with 400 `FILE_NAME_INVALID` (before: a 500 server error). Stored file names also drop invisible and direction-changing characters (such as the right-to-left override that can make `…fdp.exe` display as `…exe.pdf`) besides control characters and slashes (`backend/src/lib/uploads.ts`).
+- FHIR `GET /fhir/Practitioner?identifier=` longer than 300 characters is refused with 400 `invalid`.
+- The web server sends `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`: the app uses none of them, so no script can ask for them (`frontend/nginx/default.conf.template`).
+- Dependencies: patch updates of dotenv 18.0.5, nodemailer 10.0.14, pg 8.23.1, @tanstack/react-query 5.104.1, vite 8.3.2, vitest 5.0.3, supertest 7.3.1 and smtp-server 3.19.17. `npm audit` reported 4 high advisories, all inside the Prisma command-line tool (`mysql2`, which only MySQL uses, and `deepmerge-ts`, which merges the project's own `prisma.config.ts`), neither reachable from a request; root `overrides` pin the fixed `mysql2` 3.24.5 and `deepmerge-ts` 8.0.2 (no fixed Prisma 7 release exists) — `npm audit` now reports 0. (`npm ls` still prints "invalid" for these two: an npm display bug with overrides in workspaces; `npm ci` installs them correctly.)
+
 ## [0.1.0] - Architecture Baseline Reset (2026-09-27)
 
 ### Added
