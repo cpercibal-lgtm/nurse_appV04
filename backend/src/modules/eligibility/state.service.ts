@@ -11,6 +11,7 @@
 import { appendAudit } from '../../lib/audit.js';
 import { dbDate, riyadhDate, type IsoDate } from '../../lib/dates.js';
 import type { DbClient } from '../../lib/prisma.js';
+import { appliesToNationality } from '../credentials/nationality-rule.js';
 import type { EngineFacts, EngineResult } from './engine.js';
 import { compareShadow, currentLogic, todayInput, type Engine } from './logic.js';
 
@@ -30,7 +31,7 @@ export async function loadFacts(tx: DbClient, employeeId: number, now: Date): Pr
     },
   });
   const requirements = emp?.unitId != null
-    ? await tx.credentialRequirement.findMany({ where: { unitId: emp.unitId } })
+    ? await tx.credentialRequirement.findMany({ where: { unitId: emp.unitId }, include: { template: { select: { nationalityRule: true, nationalityCodes: true } } } })
     : [];
   const templateIds = [...new Set([...requirements.map((r) => r.templateId), ...(emp?.credentials.map((c) => c.templateId) ?? [])])];
   const templates = await tx.credentialTemplate.findMany({
@@ -43,7 +44,9 @@ export async function loadFacts(tx: DbClient, employeeId: number, now: Date): Pr
     position: emp?.position ?? null,
     contracts: (emp?.contracts ?? []).map((c) => ({ status: c.status, startDate: dbDate(c.startDate), endDate: dbDate(c.endDate) })),
     requirements: requirements.map((r) => ({
-      id: r.id, templateId: r.templateId, unitId: r.unitId, positionCode: r.positionCode, policyStatus: r.policyStatus,
+      id: r.id, templateId: r.templateId, unitId: r.unitId, positionCode: r.positionCode,
+      // Owner decision 2026-10-04: a type that does not apply to the employee's nationality is optional for them.
+      policyStatus: appliesToNationality(r.template.nationalityRule, r.template.nationalityCodes, emp?.nationalityCode ?? null) ? r.policyStatus : 'OPTIONAL' as const,
       transitionDeadline: r.transitionDeadline ? dbDate(r.transitionDeadline) : null,
     })),
     templates: new Map(templates.map((t) => [t.id, t])),

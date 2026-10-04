@@ -42,7 +42,7 @@ describeDb('A. an empty database works through the API alone', () => {
   let db: Db;
   let app: Express;
   beforeAll(async () => { ctx = await freshApp(); db = ctx.fresh.db; app = ctx.app; }, 180_000);
-  afterAll(async () => { await ctx?.fresh.drop(); });
+  afterAll(async () => { await ctx?.fresh.drop(); }, 60_000);
 
   it('administrators create the hospital, HR onboards a nurse, credentials decide eligibility, the audit chain holds', async () => {
     const { hr, sa } = ctx;
@@ -104,7 +104,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
   let ctx: Awaited<ReturnType<typeof freshApp>>;
   let db: Db;
   beforeAll(async () => { ctx = await freshApp(); db = ctx.fresh.db; }, 180_000);
-  afterAll(async () => { await ctx?.fresh.drop(); });
+  afterAll(async () => { await ctx?.fresh.drop(); }, 60_000);
 
   it('rejects bad files and blocks on any invalid row, writing nothing', async () => {
     const { hr } = ctx;
@@ -136,7 +136,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
     const preview = await hr.post('/admin/baseline-import/preview', { file: BASELINE });
     expect(preview.status).toBe(200);
     expect(preview.body.canImport).toBe(true);
-    expect(preview.body.totals).toMatchObject({ CREATE: 5 + 47 + 16 + 5 + 16, UNCHANGED: 0, CONFLICT: 0, REJECTED: 0, beds: 582, fields: 68 });
+    expect(preview.body.totals).toMatchObject({ CREATE: 5 + 47 + 16 + 5 + 17, UNCHANGED: 0, CONFLICT: 0, REJECTED: 0, beds: 582, fields: 71 });
 
     const req = await hr.post('/admin/baseline-import', { file: BASELINE, reason: 'Initial hospital configuration from the approved baseline' });
     expect(req.status).toBe(202);
@@ -153,8 +153,15 @@ describeDb('B. the hospital baseline import (P7)', () => {
     expect(await db.position.count()).toBe(16);
     expect(await db.position.count({ where: { replacedBy: { not: null } } })).toBe(2);
     expect(await db.credentialCategory.count()).toBe(5);
-    expect(await db.credentialTemplate.count()).toBe(16);
-    expect(await db.credentialTemplateField.count()).toBe(68);
+    expect(await db.credentialTemplate.count()).toBe(17);
+    expect(await db.credentialTemplateField.count()).toBe(71);
+    // Owner decision 2026-10-04: passport and Iqama optional for Saudi nationals, who hold a National ID instead.
+    expect(await db.credentialTemplate.findMany({ where: { code: { in: ['PASSPORT', 'IQAMA', 'NATIONAL_ID', 'BLS'] } }, orderBy: { code: 'asc' }, select: { code: true, nationalityRule: true, nationalityCodes: true } })).toEqual([
+      { code: 'BLS', nationalityRule: 'ALL', nationalityCodes: [] },
+      { code: 'IQAMA', nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'] },
+      { code: 'NATIONAL_ID', nationalityRule: 'ONLY', nationalityCodes: ['SAU'] },
+      { code: 'PASSPORT', nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'] },
+    ]);
     expect(await db.unit.count({ where: { criticalArea: { not: null } } })).toBe(11);
     expect(await db.auditEntry.count({ where: { action: 'BASELINE_IMPORTED' } })).toBe(1);
     expect((await hr.get('/employees/onboarding-defaults')).body.positionCode).toBe('SN'); // E6 now has its position
@@ -163,9 +170,9 @@ describeDb('B. the hospital baseline import (P7)', () => {
 
   it('is idempotent: the same file again creates nothing', async () => {
     const preview = await ctx.hr.post('/admin/baseline-import/preview', { file: BASELINE });
-    expect(preview.body.totals).toMatchObject({ CREATE: 0, UNCHANGED: 89, CONFLICT: 0, REJECTED: 0 });
+    expect(preview.body.totals).toMatchObject({ CREATE: 0, UNCHANGED: 90, CONFLICT: 0, REJECTED: 0 });
     expect((await ctx.hr.post('/admin/baseline-import', { file: BASELINE, reason: 'Run the same baseline a second time' })).body.error.code).toBe('NOTHING_TO_IMPORT');
-    expect(await db.credentialTemplate.count()).toBe(16);
+    expect(await db.credentialTemplate.count()).toBe(17);
   });
 
   it('never overwrites: a differing existing record is a conflict, and a conflict arising after the request rolls the whole import back', async () => {

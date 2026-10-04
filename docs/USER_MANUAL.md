@@ -1121,7 +1121,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 5. Policy: MANDATORY (missing → ineligible), TRANSITION (warning until the deadline, then blocks — enter the deadline), or OPTIONAL (never affects eligibility).
 6. Click Create.
 
-**System result.** Applies at once: every affected nurse is re-evaluated in the same step; the message says how many. A new TRANSITION requirement notifies the nurses affected.
+**System result.** Applies at once: every affected nurse is re-evaluated in the same step; the message says how many. A new TRANSITION requirement notifies the nurses affected. A type limited by nationality (Catalog → Applies to) is optional for the nurses it does not apply to — e.g. Passport and Iqama for Saudi nationals, National ID for everyone else — so the same unit rule can list all three.
 
 **Approval.** None.
 
@@ -1176,8 +1176,9 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 2. Code, name, category, description.
 3. Has an expiry date; Evidence upload required; Grace days (0–90); display order; Active.
 4. Check with SCFHS (needs a field with the SCFHS registration data category) and, optionally, Suspend on adverse SCFHS status.
-5. Fields: key, label, type, required; mark one date field as the Issue date and one as the Expiry date; mark identity numbers as sensitive (encrypted). Order them with ↑ ↓.
-6. Reason — at least 10 characters. Submit.
+5. Applies to: Every nationality; Only these nationalities; or Every nationality except these — then choose the nationalities. For a nurse it does not apply to, the type is optional: it can be submitted but never makes them ineligible. A nurse whose nationality is not on the list counts as none of the listed ones.
+6. Fields: key, label, type, required; mark one date field as the Issue date and one as the Expiry date; mark identity numbers as sensitive (encrypted). Order them with ↑ ↓.
+7. Reason — at least 10 characters. Submit.
 
 **System result.** A request with the change shown before → after. Field changes affect new entries only; recorded values are kept.
 
@@ -1188,6 +1189,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 **Common problems.**
 
 - *Grace days* — Grace days are hospital policy (0 until set). Grace applies only when a renewal is in progress.
+- *"Choose at least one nationality"* — Only and Except need one nationality or more; choose Every nationality to remove the limit.
 
 **Related.** [Approvals (four-eyes)](#3-approvals-four-eyes) · [Eligibility](#8-eligibility)
 
@@ -2379,7 +2381,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 **Steps.**
 
 1. Open My Credentials. At the top: your eligibility and any required credential you are missing (red box).
-2. Click Add credential, choose the type, fill in the details (the form follows the type) and Submit.
+2. Click Add credential, choose the type, fill in the details (the form follows the type) and Submit. A type marked "Optional for you" (e.g. Passport and Iqama for Saudi nationals, who submit the National ID instead) may be added but is never required.
 3. On the new row click Evidence → Upload evidence and choose the file.
 
 **System result.** "Submitted — HR will verify it." The credential is Pending verification until HR verifies it.

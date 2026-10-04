@@ -4,7 +4,7 @@ import { changeBody, createBody, fieldProblems, toFieldDefs, toFormValues } from
 
 const stored: Template = {
   id: 7, code: 'SCFHS', name: 'SCFHS licence', categoryCode: 'LICENSE', description: null, hasExpiry: true, requiresUpload: true,
-  gracePeriodDays: 0, displayOrder: 1, isActive: true, scfhsEnabled: false, scfhsAutoSuspend: false,
+  gracePeriodDays: 0, displayOrder: 1, isActive: true, scfhsEnabled: false, scfhsAutoSuspend: false, nationalityRule: 'ALL', nationalityCodes: [],
   fieldDefs: [
     { key: 'licence_number', label: 'Licence number', type: 'text', required: true, displayOrder: 1 },
     { key: 'issue_date', label: 'Issue date', type: 'date', required: true, displayOrder: 2, isIssueDate: true },
@@ -67,5 +67,15 @@ describe('credential type form', () => {
     expect(changeBody(stored, { ...toFormValues(stored), scfhsAutoSuspend: true, reason: 'r' })).toEqual({ reason: 'r' });
     expect(changeBody({ ...stored, scfhsEnabled: true, scfhsAutoSuspend: true }, { ...toFormValues({ ...stored, scfhsEnabled: true, scfhsAutoSuspend: true }), scfhsEnabled: false, reason: 'r' }))
       .toEqual({ scfhsEnabled: false, scfhsAutoSuspend: false, reason: 'r' });
+  });
+  it('nationality rule (owner decision 2026-10-04): sends rule and codes as stored; "every nationality" sends no codes', () => {
+    const v = toFormValues(stored);
+    expect(changeBody(stored, { ...v, nationalityRule: 'EXCEPT', nationalityCodes: ['SAU', 'SAU'], reason: 'r' }))
+      .toEqual({ nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'], reason: 'r' });
+    const limited = { ...stored, nationalityRule: 'EXCEPT' as const, nationalityCodes: ['SAU'] };
+    // Codes left in the hidden field when switching back to every nationality are not sent.
+    expect(changeBody(limited, { ...toFormValues(limited), nationalityRule: 'ALL', reason: 'r' })).toEqual({ nationalityRule: 'ALL', nationalityCodes: [], reason: 'r' });
+    expect(changeBody(limited, { ...toFormValues(limited), nationalityCodes: ['SAU', 'KWT'], reason: 'r' })).toEqual({ nationalityCodes: ['KWT', 'SAU'], reason: 'r' });
+    expect(createBody({ ...v, code: 'NID', nationalityRule: 'ONLY', nationalityCodes: ['SAU'], reason: 'r' })).toMatchObject({ nationalityRule: 'ONLY', nationalityCodes: ['SAU'] });
   });
 });

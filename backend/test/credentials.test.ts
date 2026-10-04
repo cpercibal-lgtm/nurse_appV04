@@ -3,6 +3,8 @@
 // L1–L3), §6.1 (materialized state, L6), §6.1.1 grace (L8), §6.1.1.1 transitions
 // (L10), §6.1.2 waivers (L9), §8.1 Credentials row.
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Express } from 'express';
 import { findChainBreaks } from '../src/lib/audit.js';
@@ -582,6 +584,119 @@ describeDb('credentials and eligibility', () => {
           : method === 'PATCH' ? await emp.patch(path, {}) : await emp.post(path, {});
         expect([method, path, r.status]).toEqual([method, path, 403]);
       }
+    });
+  });
+
+  describe('credential types by nationality (owner decision 2026-10-04)', () => {
+    const reason = 'Saudi nationals hold a National ID';
+    const ruled = async (rule: 'ALL' | 'ONLY' | 'EXCEPT', codes: string[]) => {
+      const t = await makeTemplate(db);
+      await db.credentialTemplate.update({ where: { id: t.id }, data: { nationalityRule: rule, nationalityCodes: codes } });
+      return t;
+    };
+    const nurseOf = async (unitId: number, nationalityCode: string | null, account = false) => {
+      const n = await makeNurse(db, unitId, { account });
+      await db.employee.update({ where: { id: n.emp.id }, data: { nationalityCode } });
+      return n;
+    };
+    const missing = async (employeeId: number) => (await state(employeeId))?.reasons.filter((r) => r.code === 'CREDENTIAL_MISSING').map((r) => r.templateId).sort();
+
+    it('a type for all EXCEPT Saudi nationals is optional for them; a type ONLY for them is required of them alone; no nationality counts as non-Saudi', async () => {
+      const unit = await db.unit.create({ data: { code: `NR${Date.now()}`, name: 'Nationality unit', departmentId: org.dept.id } });
+      const passport = await ruled('EXCEPT', ['SAU']);
+      const nationalId = await ruled('ONLY', ['SAU']);
+      const saudi = await nurseOf(unit.id, 'SAU', true);
+      const filipino = await nurseOf(unit.id, 'PHL');
+      const unknown = await nurseOf(unit.id, null);
+      expect((await require(passport.id, unit.id)).body.affectedEmployees).toBe(3);
+      await require(nationalId.id, unit.id);
+
+      expect(await missing(saudi.emp.id)).toEqual([nationalId.id]);
+      expect(await missing(filipino.emp.id)).toEqual([passport.id]);
+      expect(await missing(unknown.emp.id)).toEqual([passport.id]);
+
+      // With the National ID the Saudi nurse is eligible, without any passport.
+      await validCredential(saudi.emp.id, nationalId.id);
+      expect((await state(saudi.emp.id))?.status).toBe('ELIGIBLE');
+      // A passport can still be recorded; it never blocks.
+      const optional = await hr.post('/credentials', { employeeId: saudi.emp.id, templateId: passport.id, ...fields(addDays(today(), -30), addDays(today(), 365)) });
+      expect(optional.status).toBe(201);
+      expect((await state(saudi.emp.id))?.status).toBe('ELIGIBLE');
+
+      // The nurse's own list marks the passport optional for them.
+      const self = await signIn(app, saudi.user!.email);
+      const own = (await self.get('/credentials/me/requirements')).body.items as Array<{ templateId: number; policyStatus: string; optionalByNationality: boolean }>;
+      expect(own.find((r) => r.templateId === passport.id)).toMatchObject({ policyStatus: 'OPTIONAL', optionalByNationality: true });
+      expect(own.find((r) => r.templateId === nationalId.id)).toMatchObject({ policyStatus: 'MANDATORY', optionalByNationality: false });
+
+      // A changed nationality is re-evaluated at once.
+      expect((await hr.patch(`/employees/${saudi.emp.id}`, { nationalityCode: 'PHL' })).status).toBe(200);
+      expect(await missing(saudi.emp.id)).toEqual([]);
+      expect((await state(saudi.emp.id))?.reasons).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'CREDENTIAL_NOT_VERIFIED', templateId: passport.id })]));
+      expect((await hr.patch(`/employees/${unknown.emp.id}`, { nationalityCode: 'SAU' })).status).toBe(200);
+      expect(await missing(unknown.emp.id)).toEqual([nationalId.id]);
+    });
+
+    it('the setting is checked, goes through four-eyes, and re-evaluates the units that require the type', async () => {
+      const hr2 = await signIn(app, (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'SYSTEM' }] })).email);
+      const body = { code: `NAT_${Date.now()}`, name: 'National ID test', categoryCode: 'LICENSURE', reason };
+      expect((await hr.post('/credential-templates', { ...body, nationalityRule: 'ONLY' })).body.error.code).toBe('NATIONALITY_RULE_INVALID');
+      expect((await hr.post('/credential-templates', { ...body, nationalityCodes: ['SAU'] })).body.error.code).toBe('NATIONALITY_RULE_INVALID');
+      expect((await hr.post('/credential-templates', { ...body, nationalityRule: 'ONLY', nationalityCodes: ['ZZZ'] })).body.error.code).toBe('NATIONALITY_INVALID');
+      const asked = await hr.post('/credential-templates', {
+        ...body, nationalityRule: 'ONLY', nationalityCodes: ['sau', 'SAU'],
+        fieldDefs: [{ key: 'national_id_number', label: 'National ID Number', type: 'text', required: true, displayOrder: 1, pdplCategory: 'NATIONAL_ID' }],
+      });
+      expect(asked.status).toBe(202);
+      expect((await hr2.post(`/approvals/${asked.body.requestId}/approve`, { reason: 'Checked against the memo' })).body.status).toBe('EXECUTED');
+      expect(await db.credentialTemplate.findUniqueOrThrow({ where: { code: body.code }, include: { fields: true } })).toMatchObject({
+        nationalityRule: 'ONLY', nationalityCodes: ['SAU'], fields: [expect.objectContaining({ pdplCategory: 'NATIONAL_ID' })],
+      });
+
+      // An existing type required in a unit: limiting it re-evaluates that unit's nurses.
+      const unit = await db.unit.create({ data: { code: `NC${Date.now()}`, name: 'Rule change unit', departmentId: org.dept.id } });
+      const tpl = await makeTemplate(db);
+      const saudi = await nurseOf(unit.id, 'SAU');
+      await require(tpl.id, unit.id);
+      expect(await missing(saudi.emp.id)).toEqual([tpl.id]);
+      const limit = await hr.patch(`/credential-templates/${tpl.id}`, { nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'], reason });
+      expect(limit.status).toBe(202);
+      expect(await missing(saudi.emp.id)).toEqual([tpl.id]); // nothing until approved
+      expect((await hr2.post(`/approvals/${limit.body.requestId}/approve`, { reason: 'Checked against the memo' })).body.status).toBe('EXECUTED');
+      expect(await missing(saudi.emp.id)).toEqual([]);
+      // "Every nationality" clears the list without being told to.
+      const back = await hr.patch(`/credential-templates/${tpl.id}`, { nationalityRule: 'ALL', reason });
+      expect((await hr2.post(`/approvals/${back.body.requestId}/approve`, { reason: 'Checked against the memo' })).body.status).toBe('EXECUTED');
+      expect(await db.credentialTemplate.findUniqueOrThrow({ where: { id: tpl.id }, select: { nationalityRule: true, nationalityCodes: true } })).toEqual({ nationalityRule: 'ALL', nationalityCodes: [] });
+      expect(await missing(saudi.emp.id)).toEqual([tpl.id]);
+    });
+
+    it('the migration limits Passport and Iqama and creates the National ID type (rolled back here)', async () => {
+      const sql = readFileSync(resolve(__dirname, '../prisma/migrations/20261022090000_nationality_credential_rules/migration.sql'), 'utf8');
+      const steps = sql.slice(sql.indexOf('-- Passport and Iqama')).split(/;\s*\n/).map((s) => s.trim()).filter((s) => s && !/^(--[^\n]*\n?)+$/.test(s));
+      // Run inside a transaction that is always rolled back: the shared test database keeps its own catalog.
+      const seen = await db.$transaction(async (tx) => {
+        await tx.credentialCategory.upsert({ where: { code: 'IDENTITY' }, update: {}, create: { code: 'IDENTITY', name: 'Identity' } });
+        await tx.credentialTemplate.updateMany({ where: { code: 'NATIONAL_ID' }, data: { code: `OLD_NID_${Date.now()}` } });
+        for (const code of ['PASSPORT', 'IQAMA']) {
+          await tx.credentialTemplate.upsert({ where: { code }, update: { nationalityRule: 'ALL', nationalityCodes: [] }, create: { code, name: code, categoryCode: 'IDENTITY' } });
+        }
+        for (const s of steps) await tx.$executeRawUnsafe(s);
+        for (const s of steps) await tx.$executeRawUnsafe(s); // a second run changes nothing
+        const rows = await tx.credentialTemplate.findMany({ where: { code: { in: ['PASSPORT', 'IQAMA', 'NATIONAL_ID'] } }, orderBy: { code: 'asc' }, include: { fields: { orderBy: { ordinal: 'asc' } } } });
+        const result = rows.map((t) => ({ code: t.code, rule: t.nationalityRule, codes: t.nationalityCodes, fields: t.fields.map((f) => [f.key, f.type, f.isIssueDate, f.isExpiryDate, f.pdplCategory]) }));
+        throw Object.assign(new Error('rollback'), { result });
+      }).catch((e: unknown) => {
+        if (e instanceof Error && 'result' in e) return e.result;
+        throw e;
+      });
+      expect(seen).toEqual([
+        { code: 'IQAMA', rule: 'EXCEPT', codes: ['SAU'], fields: expect.any(Array) },
+        { code: 'NATIONAL_ID', rule: 'ONLY', codes: ['SAU'], fields: [
+          ['national_id_number', 'text', false, false, 'NATIONAL_ID'], ['issue_date', 'date', true, false, null], ['expiry_date', 'date_hijri', false, true, null],
+        ] },
+        { code: 'PASSPORT', rule: 'EXCEPT', codes: ['SAU'], fields: expect.any(Array) },
+      ]);
     });
   });
 

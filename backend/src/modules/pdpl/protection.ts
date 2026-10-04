@@ -12,7 +12,7 @@
 //   null and the record says so.
 
 import { HttpError } from '../../lib/http-errors.js';
-import { isSealed, type FieldCrypto, type PdplCategory } from '../../lib/field-crypto.js';
+import { isSealed, PDPL_CATEGORIES, type FieldCrypto, type PdplCategory } from '../../lib/field-crypto.js';
 import type { DbClient } from '../../lib/prisma.js';
 
 export type TrackingValues = Record<string, string | number>;
@@ -80,7 +80,7 @@ export function createProtection(crypto: FieldCrypto) {
 
     /** Credential ids whose identifier (any category) equals `value`. */
     async findByIdentifier(tx: DbClient, value: string) {
-      const digests = (['IQAMA', 'PASSPORT', 'SCFHS_REG'] as const).flatMap((c) => crypto.searchDigests(c, value));
+      const digests = PDPL_CATEGORIES.flatMap((c) => crypto.searchDigests(c, value));
       const rows = await tx.pdplIdentifierIndex.findMany({ where: { digest: { in: digests } }, select: { credentialId: true } });
       return [...new Set(rows.map((r) => r.credentialId))];
     },

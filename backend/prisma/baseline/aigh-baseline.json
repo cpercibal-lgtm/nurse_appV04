@@ -594,6 +594,10 @@
           "displayOrder": 4,
           "isExpiryDate": true
         }
+      ],
+      "nationalityRule": "EXCEPT",
+      "nationalityCodes": [
+        "SAU"
       ]
     },
     {
@@ -645,6 +649,51 @@
           "required": true,
           "displayOrder": 5
         }
+      ],
+      "nationalityRule": "EXCEPT",
+      "nationalityCodes": [
+        "SAU"
+      ]
+    },
+    {
+      "code": "NATIONAL_ID",
+      "name": "National ID",
+      "categoryCode": "IDENTITY",
+      "description": "Saudi national identity card (in place of the Iqama)",
+      "hasExpiry": true,
+      "requiresUpload": true,
+      "gracePeriodDays": 0,
+      "displayOrder": 2,
+      "isActive": true,
+      "fields": [
+        {
+          "key": "national_id_number",
+          "label": "National ID Number",
+          "type": "text",
+          "required": true,
+          "displayOrder": 1,
+          "pdplCategory": "NATIONAL_ID"
+        },
+        {
+          "key": "issue_date",
+          "label": "Issue Date",
+          "type": "date",
+          "required": true,
+          "displayOrder": 2,
+          "isIssueDate": true
+        },
+        {
+          "key": "expiry_date",
+          "label": "Expiry Date (Gregorian/Hijri)",
+          "type": "date_hijri",
+          "required": true,
+          "displayOrder": 3,
+          "isExpiryDate": true
+        }
+      ],
+      "nationalityRule": "ONLY",
+      "nationalityCodes": [
+        "SAU"
       ]
     },
     {

@@ -177,7 +177,7 @@ export function useBaselineRequest() {
 
 /** Spec §8.3.2 (D-54): the lawful basis per category of sensitive data. */
 export interface RegisterEntry {
-  id: number; dataCategory: 'IQAMA' | 'PASSPORT' | 'SCFHS_REG' | 'IDENTITY_SCAN';
+  id: number; dataCategory: 'IQAMA' | 'PASSPORT' | 'SCFHS_REG' | 'NATIONAL_ID' | 'IDENTITY_SCAN';
   lawfulBasis: 'EMPLOYMENT_CONTRACT' | 'LEGAL_OBLIGATION' | 'CONSENT' | 'VITAL_INTEREST' | 'PUBLIC_INTEREST';
   purpose: string; retentionRule: string; isActive: boolean; updatedAt: string;
 }

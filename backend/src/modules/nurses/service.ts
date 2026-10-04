@@ -351,6 +351,8 @@ export function createNurseService(db: Db) {
         await appendAudit(tx, { actorUserId: auth.user.id, action: 'EMPLOYEE_UPDATED', resource: 'employee', resourceId: id, changes: changed, requestId });
         // The unit decides which credential requirements apply (§5.1.4): re-evaluate (L6).
         if (body.unitId !== undefined && body.unitId !== before.unitId) await refreshEligibility(tx, id, 'EMPLOYEE_UNIT_CHANGED', { actorUserId: auth.user.id, requestId });
+        // So does the nationality, for credential types limited by nationality (owner decision 2026-10-04).
+        else if (body.nationalityCode !== undefined && body.nationalityCode !== before.nationalityCode) await refreshEligibility(tx, id, 'EMPLOYEE_NATIONALITY_CHANGED', { actorUserId: auth.user.id, requestId });
         return fullView(await tx.employee.findUniqueOrThrow({ where: { id }, include: INCLUDE }));
       });
     },

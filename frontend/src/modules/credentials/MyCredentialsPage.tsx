@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Alert, App, Button, Card, Empty, Flex, Form, Modal, Select, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { describeApiError } from '../../lib/errors';
-import { useCredentialAction, useMyCredentials, useMyEligibility, useMyRequirements, useTemplates, type CredentialRow, type Template } from './api';
+import { appliesToNationality, useCredentialAction, useMyCredentials, useMyEligibility, useMyRequirements, useTemplates, type CredentialRow, type Template } from './api';
+import { useMyEmployee } from '../nurses/api';
 import { CredentialStatusTag, DocumentsDrawer, EligibilityTag, LifecycleTag, normaliseTracking, ReasonList, TrackingFields } from './components';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
@@ -16,6 +17,7 @@ export default function MyCredentialsPage() {
   const reqs = useMyRequirements();
   const templates = useTemplates();
   const eligibility = useMyEligibility();
+  const me = useMyEmployee();
   const action = useCredentialAction();
   const [docsFor, setDocsFor] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -45,6 +47,9 @@ export default function MyCredentialsPage() {
 
   const held = new Set(mine.data?.items.map((c) => c.templateId));
   const missing = reqs.data?.items.filter((r) => r.policyStatus !== 'OPTIONAL' && !held.has(r.templateId)) ?? [];
+  // Owner decision 2026-10-04: a type not for my nationality (e.g. Passport and Iqama for a Saudi national) may be submitted, never required.
+  const optionalForMe = new Set(me.data ? templates.data?.items.filter((x) => !appliesToNationality(x, me.data.nationalityCode)).map((x) => x.id) : []);
+  const optionalTag = (templateId: number) => (optionalForMe.has(templateId) ? <Tag>{t('optionalForYou')}</Tag> : null);
 
   return (
     <Flex vertical gap={16}>
@@ -62,7 +67,7 @@ export default function MyCredentialsPage() {
           rowKey="id" loading={mine.isLoading} dataSource={mine.data?.items} pagination={false} scroll={{ x: true }}
           locale={{ emptyText: <Empty description={t('noData')} /> }}
           columns={[
-            { title: t('credential'), render: (_, r) => `${r.template.code} — ${r.template.name}` },
+            { title: t('credential'), render: (_, r) => <>{r.template.code} — {r.template.name} {optionalTag(r.templateId)}</> },
             { title: t('status'), render: (_, r) => <Space size={4} wrap><CredentialStatusTag status={r.status} /><LifecycleTag label={r.lifecycle} /></Space> },
             { title: t('expiryDate'), render: (_, r) => r.expiryDate ?? '—' },
             {
@@ -85,7 +90,7 @@ export default function MyCredentialsPage() {
       <Modal title={t('addCredential')} open={adding} onCancel={() => setAdding(false)} onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={action.isPending} destroyOnHidden>
         <Form form={form} layout="vertical" onFinish={submitNew}>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` }))} />
+            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}${optionalForMe.has(x.id) ? ` (${t('optionalForYou')})` : ''}` }))} />
           </Form.Item>
           {tplOf(templateId) && <TrackingFields defs={tplOf(templateId)!.fieldDefs} />}
         </Form>

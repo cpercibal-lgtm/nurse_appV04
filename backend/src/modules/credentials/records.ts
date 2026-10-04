@@ -25,6 +25,7 @@ import { HR_ROLES, viewerOf, type Viewer } from './access.js';
 import type { FieldDef } from './catalog.js';
 import { presentTemplate, toFieldDefs, WITH_FIELDS } from './fields.js';
 import { assertActiveRankGrade, CLASSIFICATION_FIELD_KEY } from '../workforce/rank-grades.js';
+import { appliesToNationality } from './nationality-rule.js';
 
 /** Spec §5.2: "Subject to Renew" = within 60 days of expiry (confirmed by the owner, D-39). Also the first credential reminder milestone. */
 export const RENEWAL_WINDOW_DAYS = 60;
@@ -215,16 +216,23 @@ export function createRecordService(db: Db, documents: DocumentAccess, scanner: 
       return { items, total: items.length };
     },
 
-    /** The requirements that apply to the caller (their unit and position). */
+    /**
+     * The requirements that apply to the caller (their unit and position). A credential type that
+     * does not apply to their nationality is OPTIONAL for them, flagged `optionalByNationality`
+     * (owner decision 2026-10-04).
+     */
     async ownRequirements(auth: AuthContext) {
       if (auth.user.employeeId === null) return { items: [], total: 0 };
-      const emp = await db.employee.findUnique({ where: { id: auth.user.employeeId }, select: { unitId: true, positionCode: true } });
+      const emp = await db.employee.findUnique({ where: { id: auth.user.employeeId }, select: { unitId: true, positionCode: true, nationalityCode: true } });
       if (!emp?.unitId) return { items: [], total: 0 };
       const rows = await db.credentialRequirement.findMany({
         where: { unitId: emp.unitId, OR: [{ positionCode: null }, { positionCode: emp.positionCode }] },
-        include: { template: { select: { id: true, code: true, name: true, requiresUpload: true, ...WITH_FIELDS } } },
+        include: { template: { select: { id: true, code: true, name: true, requiresUpload: true, nationalityRule: true, nationalityCodes: true, ...WITH_FIELDS } } },
       });
-      const items = rows.map(({ template: { fields, ...t }, ...r }) => ({ ...r, template: { ...t, fieldDefs: toFieldDefs(fields) } }));
+      const items = rows.map(({ template: { fields, ...t }, ...r }) => {
+        const optionalByNationality = !appliesToNationality(t.nationalityRule, t.nationalityCodes, emp.nationalityCode);
+        return { ...r, policyStatus: optionalByNationality ? 'OPTIONAL' as const : r.policyStatus, optionalByNationality, template: { ...t, fieldDefs: toFieldDefs(fields) } };
+      });
       return { items, total: items.length };
     },
 

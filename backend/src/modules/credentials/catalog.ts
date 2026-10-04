@@ -14,6 +14,7 @@ import { refreshEligibility, refreshUnit } from '../eligibility/state.service.js
 import { unitScope, type AuthContext } from '../users/access.js';
 import { HR_ROLES, REVIEW_ROLES } from './access.js';
 import { canonicalField, fieldRows, presentTemplate, WITH_FIELDS, type TemplateView } from './fields.js';
+import { assertNationalityRule, NationalityCodesSchema, NationalityRuleSchema } from './nationality-rule.js';
 
 const FieldType = z.enum(['text', 'date', 'date_hijri', 'select', 'number', 'country', 'reference']);
 export const FieldDefSchema = z.strictObject({
@@ -25,7 +26,7 @@ export const FieldDefSchema = z.strictObject({
   isIssueDate: z.boolean().optional(),
   isExpiryDate: z.boolean().optional(),
   /** D-54: sensitive personal data (spec §8.3.1) — encrypted per employee and blind-indexed. Text fields only. */
-  pdplCategory: z.enum(['IQAMA', 'PASSPORT', 'SCFHS_REG']).optional(),
+  pdplCategory: z.enum(['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID']).optional(),
 });
 export type FieldDef = z.infer<typeof FieldDefSchema>;
 
@@ -68,6 +69,9 @@ export const TemplateCreateBody = z.strictObject({
   // Spec §5.4 (D-64): check holders' licences with SCFHS; suspend on an adverse answer.
   scfhsEnabled: z.boolean().default(false),
   scfhsAutoSuspend: z.boolean().default(false),
+  // Owner decision 2026-10-04: who the type applies to (nationality-rule.ts).
+  nationalityRule: NationalityRuleSchema.default('ALL'),
+  nationalityCodes: NationalityCodesSchema.default([]),
   reason: ChangeReason,
 });
 // Written out without defaults: `.partial()` of a schema with defaults would
@@ -84,6 +88,8 @@ export const TemplateUpdateBody = z.strictObject({
   isActive: z.boolean().optional(),
   scfhsEnabled: z.boolean().optional(),
   scfhsAutoSuspend: z.boolean().optional(),
+  nationalityRule: NationalityRuleSchema.optional(),
+  nationalityCodes: NationalityCodesSchema.optional(),
   reason: ChangeReason,
 });
 
@@ -207,6 +213,8 @@ export function createCatalogService(db: Db) {
     await assertSystemWide(tx, auth);
     assertFieldRules(t.fieldDefs);
     assertScfhsRules(t);
+    // A request stored before the setting existed carries none: every nationality.
+    await assertNationalityRule(tx, t.nationalityRule ?? 'ALL', t.nationalityCodes ?? []);
     await validateCreate(tx, t);
     const { fieldDefs, ...columns } = t;
     const created = await tx.credentialTemplate.create({ data: columns });
@@ -228,6 +236,8 @@ export function createCatalogService(db: Db) {
     const { fieldDefs, ...columns } = change;
     if (fieldDefs !== undefined) assertFieldRules(fieldDefs);
     assertScfhsRules({ scfhsEnabled: change.scfhsEnabled ?? current.scfhsEnabled, scfhsAutoSuspend: change.scfhsAutoSuspend ?? current.scfhsAutoSuspend, fieldDefs: fieldDefs ?? current.fieldDefs });
+    const nationalityChanged = 'nationalityRule' in before || 'nationalityCodes' in before;
+    if (nationalityChanged) await assertNationalityRule(tx, change.nationalityRule ?? current.nationalityRule, change.nationalityCodes ?? current.nationalityCodes);
     if (Object.keys(columns).length) await tx.credentialTemplate.update({ where: { id }, data: columns });
     // Field definitions are replaced as a set; the audit entry keeps before → after.
     if (fieldDefs !== undefined) {
@@ -240,6 +250,11 @@ export function createCatalogService(db: Db) {
     if (change.gracePeriodDays !== undefined || change.hasExpiry !== undefined || change.isActive !== undefined) {
       const holders = await tx.credential.findMany({ where: { templateId: id }, select: { employeeId: true }, distinct: ['employeeId'] });
       for (const h of holders) await refreshEligibility(tx, h.employeeId, 'TEMPLATE_UPDATED', { actorUserId: auth.user.id, requestId });
+    }
+    // Who the type applies to changed: everyone in a unit that requires it is re-evaluated (L6).
+    if (nationalityChanged) {
+      const units = await tx.credentialRequirement.findMany({ where: { templateId: id }, select: { unitId: true }, distinct: ['unitId'] });
+      for (const u of units) await refreshUnit(tx, u.unitId, null, 'TEMPLATE_UPDATED', { actorUserId: auth.user.id, requestId });
     }
     return row;
   }
@@ -325,15 +340,21 @@ export function createCatalogService(db: Db) {
       await assertSystemWide(db, auth);
       await validateCreate(db, template);
       assertScfhsRules(template);
+      await assertNationalityRule(db, template.nationalityRule, template.nationalityCodes);
       return { status: 'PENDING_APPROVAL', requestId: await initiateApproval(auth, `TEMPLATE_CREATE:${template.code}`, { kind: 'TEMPLATE_CREATE', template, reason }, requestId) };
     },
 
     async updateTemplate(auth: AuthContext, id: number, body: z.infer<typeof TemplateUpdateBody>, requestId?: string): Promise<CatalogOutcome> {
-      const { reason, ...change } = body;
+      const { reason, ...given } = body;
+      // "Every nationality" clears the list even when the request does not say so.
+      const change = given.nationalityRule === 'ALL' && given.nationalityCodes === undefined ? { ...given, nationalityCodes: [] } : given;
       if (auth.breakGlass) return { status: 'APPLIED', template: await db.$transaction((tx) => updateNow(tx, auth, id, change, reason, null, null, requestId)) };
       await assertSystemWide(db, auth);
       const { current, before } = await changedFields(db, id, change);
       assertScfhsRules({ scfhsEnabled: change.scfhsEnabled ?? current.scfhsEnabled, scfhsAutoSuspend: change.scfhsAutoSuspend ?? current.scfhsAutoSuspend, fieldDefs: change.fieldDefs ?? current.fieldDefs });
+      if ('nationalityRule' in before || 'nationalityCodes' in before) {
+        await assertNationalityRule(db, change.nationalityRule ?? current.nationalityRule, change.nationalityCodes ?? current.nationalityCodes);
+      }
       const only = Object.fromEntries(Object.keys(before).map((k) => [k, change[k as keyof TemplateChange]])) as TemplateChange;
       return { status: 'PENDING_APPROVAL', requestId: await initiateApproval(auth, `TEMPLATE_UPDATE:${id}`, { kind: 'TEMPLATE_UPDATE', templateId: id, code: current.code, change: only, before, reason }, requestId) };
     },
