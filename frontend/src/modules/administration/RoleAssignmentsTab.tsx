@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { describeApiError } from '../../lib/errors';
 import type { AppRole, ScopeType } from '../../types/api';
 import { useAccounts, useAssignments, useDepartments, useGrant, useRevoke, useUnits, type Assignment } from './api';
+import { keyAfterError } from '../../lib/idempotency';
 
 interface GrantForm { userId: number; role: AppRole; scopeType: ScopeType; scopeIds?: number[]; reason: string; expiresAt?: Dayjs }
 
@@ -46,6 +47,7 @@ export function RoleAssignmentsTab() {
       setOpen(false);
       form.resetFields();
     } catch (e) {
+      setKey((k) => keyAfterError(k, e)); // a refusal is not replayed on the next submit
       message.error(describeApiError(e));
     }
   }
