@@ -102,6 +102,9 @@ describeDb('FHIR read API (spec §14.1)', () => {
     expect(byId.body.link).toEqual([{ relation: 'self', url: expect.stringMatching(/\/api\/v1\/fhir\/Practitioner\?identifier=/) }]);
     expect((await hr.get(`/fhir/Practitioner?identifier=${emp.jobNumber}`)).body.total).toBe(1);
     expect((await hr.get('/fhir/Practitioner?identifier=http://other.org|x')).body.total).toBe(0);
+    const tooLong = await hr.get(`/fhir/Practitioner?identifier=${'9'.repeat(301)}`);
+    expect(tooLong.status).toBe(400);
+    expect(tooLong.body).toMatchObject({ resourceType: 'OperationOutcome', issue: [{ code: 'invalid' }] });
     expect((await hr.get(`/fhir/PractitionerRole?practitioner=Practitioner/${emp.id}`)).body.total).toBe(1);
     const noParam = await hr.get('/fhir/Practitioner');
     expect(noParam.status).toBe(400);

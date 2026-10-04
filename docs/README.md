@@ -9,6 +9,7 @@
 | [SYSTEM_SPECIFICATION.md](SYSTEM_SPECIFICATION.md) | **What the system must do**: the reference specification plus every owner amendment, clarification, open conflict and REQUIREMENT NOT ESTABLISHED item |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How it is built: components, layout, modules, request flow, jobs, tests |
 | [RBAC.md](RBAC.md) | Roles, scopes, the permission table (checked against the code by a test), field visibility, separation of duties, PAM, break-glass |
+| [SECURITY_REVIEW_2026-10-04.md](SECURITY_REVIEW_2026-10-04.md) | Security review of the whole application: input validation, SQL, admin routes, secrets, XSS, dependencies — findings and fixes |
 | [CLINICAL_ELIGIBILITY.md](CLINICAL_ELIGIBILITY.md) | Credentials, the eligibility engine, grace, waivers, policy transitions, reminders |
 | [WORKFORCE.md](WORKFORCE.md) | Organisation, employees, contracts, scheduling, attendance |
 | [API.md](API.md) | Every endpoint, with permission, scope and source |

@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../../lib/http-errors.js';
+import { decodeFileName } from '../../lib/uploads.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { EvaluateQuery, StateQuery, WaiverBody, WaiverQuery, type createEligibilityService } from '../eligibility/service.js';
 import {
@@ -114,8 +115,7 @@ export function createCredentialsRouter(catalog: CatalogService, records: Record
   // ── Evidence (§5.1.5, D1–D5). The body is the raw file; the name travels in X-File-Name. ─
   r.post('/credentials/:id/documents', express.raw({ type: () => true, limit: maxUploadBytes + 1 }), async (req, res) => {
     const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-    const name = req.get('x-file-name');
-    res.status(201).json(await records.upload(authOf(res), IdParam.parse(req.params).id, bytes, req.get('content-type'), name ? decodeURIComponent(name) : undefined, rid(res)));
+    res.status(201).json(await records.upload(authOf(res), IdParam.parse(req.params).id, bytes, req.get('content-type'), decodeFileName(req.get('x-file-name')), rid(res)));
   });
   r.get('/credentials/:id/documents', async (req, res) => { res.json(await records.listDocuments(authOf(res), IdParam.parse(req.params).id)); });
   r.get('/credentials/:id/documents/:docId', async (req, res) => {
