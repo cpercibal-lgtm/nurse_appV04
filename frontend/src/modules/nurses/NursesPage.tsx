@@ -23,6 +23,7 @@ import { FacilityField, facilityLabel } from '../../components/FacilityField';
 import { useEmployee, useEmployeeAction, useEmployees, useInvitations, useInviteEmployee, useOnboardingDefaults, type EmployeeRow } from './api';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
+import { keyAfterError } from '../../lib/idempotency';
 const OPTIONAL_TEXT = ['middleName', 'jobTitle', 'fileNo', 'primaryPhone', 'emergencyContactPhone'] as const;
 
 /** Form values → API body: empty strings become null, dates YYYY-MM-DD. */
@@ -133,7 +134,10 @@ export default function NursesPage() {
   const positionOptions = (positions.data?.items ?? []).map((p) => ({ value: p.code, label: `${p.code} — ${p.title}` }));
 
   async function run<T>(a: Parameters<typeof action.mutateAsync>[0], ok: string): Promise<T | undefined> {
-    try { const out = await action.mutateAsync(a); message.success(ok); return out as T; } catch (e) { message.error(describeApiError(e)); return undefined; }
+    try { const out = await action.mutateAsync(a); message.success(ok); return out as T; } catch (e) {
+      if (a.kind === 'onboard') setOnboarding((k) => (k ? keyAfterError(k, e) : k)); // a refusal is not replayed on the next submit
+      message.error(describeApiError(e)); return undefined;
+    }
   }
 
   const e = detail.data;

@@ -7,6 +7,7 @@ import { ApiError, http } from '../../services/http';
 import { useAccounts, useCreateAccount, useUpdateAccount, type Account } from './api';
 import type { TelegramLinkOffer as Offer } from '../../types/api';
 import { TelegramLinkOffer } from '../auth/telegram/TelegramLinkOffer';
+import { keyAfterError } from '../../lib/idempotency';
 
 interface NewAccount { email: string; displayName: string; password: string; employeeId?: number }
 
@@ -60,6 +61,7 @@ export function AccountsTab() {
       setOpen(false);
       form.resetFields();
     } catch (e) {
+      setKey((k) => keyAfterError(k, e)); // a refusal is not replayed on the next submit
       message.error(describeApiError(e));
     }
   }

@@ -17,6 +17,7 @@ import {
   type ContractAction, type ContractRow, type ContractStatus, type Renewable,
 } from './api';
 import { ContractTypesDrawer } from './ContractTypesDrawer';
+import { keyAfterError } from '../../lib/idempotency';
 
 const COLOR: Record<ContractStatus, string> = {
   Draft: 'default', PendingApproval: 'orange', Approved: 'blue', Active: 'green', Expired: 'red', Suspended: 'volcano', Terminated: 'magenta', Superseded: 'purple',
@@ -69,7 +70,11 @@ export default function ContractsPage() {
   }
 
   async function run(a: Parameters<typeof action.mutateAsync>[0], ok: string) {
-    try { const out = await action.mutateAsync(a); message.success(ok); return out; } catch (e) { message.error(describeApiError(e)); return undefined; }
+    try { const out = await action.mutateAsync(a); message.success(ok); return out; } catch (e) {
+      // A refused New contract / Renew must not replay that refusal on the next submit.
+      if (a.kind === 'create' || a.kind === 'renew') setCreating((c) => (c ? { ...c, key: keyAfterError(c.key, e) } : c));
+      message.error(describeApiError(e)); return undefined;
+    }
   }
 
   async function transition(row: ContractRow, act: ContractAction, why?: string) {
