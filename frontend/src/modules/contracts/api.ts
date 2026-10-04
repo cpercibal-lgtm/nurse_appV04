@@ -71,8 +71,8 @@ export function useContractTypeAction() {
 export const useContractDocs = (id: number | null) => useQuery({ queryKey: ['contracts', 'docs', id], enabled: id !== null, queryFn: () => http.get<Paged<ContractDoc>>(`/contracts/${id}/documents`) });
 
 type Action =
-  | { kind: 'create'; body: { employeeId: number; startDate: string; endDate: string; contractTypeCode: string }; key: string }
-  | { kind: 'renew'; priorId: number; body: { startDate: string; endDate: string; contractTypeCode: string }; key: string }
+  | { kind: 'create'; body: { employeeId: number; startDate: string; endDate: string; contractTypeCode?: string }; key: string }
+  | { kind: 'renew'; priorId: number; body: { startDate: string; endDate: string; contractTypeCode?: string }; key: string }
   | { kind: 'transition'; id: number; action: ContractAction; reason?: string }
   | { kind: 'upload'; id: number; file: File };
 

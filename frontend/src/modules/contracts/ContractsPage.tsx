@@ -32,9 +32,9 @@ export default function ContractsPage() {
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
   const [filter, setFilter] = useState<{ status?: ContractStatus; contractTypeCode?: string; page: number }>({ page: 1 });
   const contracts = useContracts(filter, staff);
-  // Every type for the filter (old contracts may carry an inactive one); only active ones for a new contract.
+  // Every type for the filter (old contracts may carry an inactive one). New contracts and renewals carry the
+  // employee's previous type on the server (owner decision 2026-10-04: the type is chosen at Onboard employee).
   const allTypes = useContractTypes(true, staff);
-  const activeTypes = (allTypes.data?.items ?? []).filter((x) => x.isActive);
   const typeLabel = (x: { name: string; nameAr: string | null }) => (ar && x.nameAr ? x.nameAr : x.name);
   const [managingTypes, setManagingTypes] = useState(false);
   const action = useContractAction();
@@ -58,7 +58,7 @@ export default function ContractsPage() {
   // The chosen employee stays selectable (and labelled) even when a later search no longer returns them.
   const options = chosenOption && !pickerOptions.some((o) => o.value === chosenOption.value) ? [chosenOption, ...pickerOptions] : pickerOptions;
   const docs = useContractDocs(docsFor?.id ?? null);
-  const [form] = Form.useForm<{ employeeId: number; contractTypeCode: string; start: Dayjs; end: Dayjs }>();
+  const [form] = Form.useForm<{ employeeId: number; start: Dayjs; end: Dayjs }>();
   const start = Form.useWatch('start', form);
   const end = Form.useWatch('end', form);
 
@@ -125,7 +125,7 @@ export default function ContractsPage() {
         <Alert type="info" showIcon title={t('contractDraftHint')} style={{ marginBottom: 12 }} />
         <Form form={form} layout="vertical" onFinish={async (v) => {
           if (!creating) return;
-          const body = { startDate: v.start.format('YYYY-MM-DD'), endDate: v.end.format('YYYY-MM-DD'), contractTypeCode: v.contractTypeCode };
+          const body = { startDate: v.start.format('YYYY-MM-DD'), endDate: v.end.format('YYYY-MM-DD') };
           const out = creating.mode === 'new'
             ? await run({ kind: 'create', body: { employeeId: v.employeeId, ...body }, key: creating.key }, t('saved'))
             : await run({ kind: 'renew', priorId: chosenRenewal!.prior.id, body, key: creating.key }, t('saved'));
@@ -140,11 +140,7 @@ export default function ContractsPage() {
                 setChosenOption(options.find((o) => o.value === id) ?? null);
                 const r = renewable.data?.items.find((x) => x.employeeId === id) ?? (chosenRenewal?.employeeId === id ? chosenRenewal : undefined);
                 setChosenRenewal(creating?.mode === 'renew' ? r ?? null : null);
-                if (creating?.mode === 'renew' && r) {
-                  // C8 dates; the previous contract's type, if it is still in use (it can be changed).
-                  const prevType = activeTypes.some((x) => x.code === r.prior.contractTypeCode) ? r.prior.contractTypeCode! : undefined;
-                  form.setFieldsValue({ start: dayjs(r.prefill.start), end: dayjs(r.prefill.end), contractTypeCode: prevType });
-                }
+                if (creating?.mode === 'renew' && r) form.setFieldsValue({ start: dayjs(r.prefill.start), end: dayjs(r.prefill.end) }); // C8
               }} />
           </Form.Item>
           {creating?.mode === 'renew' && chosenRenewal && (
@@ -153,10 +149,6 @@ export default function ContractsPage() {
               hstart: chosenRenewal.prior.startDateHijri ?? '', hend: chosenRenewal.prior.endDateHijri ?? '',
             })} />
           )}
-          <Form.Item name="contractTypeCode" label={t('contractType')} rules={[{ required: true, message: t('contractTypeRequired') }]}>
-            <Select placeholder={t('contractTypeSelect')} loading={allTypes.isLoading}
-              options={activeTypes.map((x) => ({ value: x.code, label: typeLabel(x) }))} />
-          </Form.Item>
           <Flex gap={8}>
             <Form.Item name="start" label={t('contractStart')} extra={start ? toHijriShort(start) : undefined} rules={[{ required: true }]} style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
             <Form.Item name="end" label={t('contractEnd')} extra={end ? toHijriShort(end) : undefined} rules={[{ required: true }]} style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>

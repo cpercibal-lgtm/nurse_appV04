@@ -560,7 +560,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 > **Note:** Two Approved/Active periods of one nurse may never overlap. Every contract change re-evaluates the nurse's eligibility at once.
 
-> **Note:** Every new contract and renewal names an Employment Contract Type from the hospital's list (Contract types). It is information only: it does not change eligibility, the renewal rule or approval. Contracts created before the field existed show "Not classified".
+> **Note:** The Employment Contract Type is chosen at Onboard employee, from the hospital's list (Contract types). New contracts and renewals carry the employee's previous type automatically — the forms do not ask for it; with no previous type, or one that has since been deactivated, the contract shows "Not classified". It is information only: it does not change eligibility, the renewal rule or approval.
 
 > **Important:** A renewal needs valid credentials. For a nurse who has had a contract before, a contract is neither created nor approved while a required credential of their unit and position is missing, expired, not yet verified, suspended or revoked. The ended contract itself does not count, so an expired contract can always be renewed once the credentials are in order. A nurse's first contract is not checked.
 
@@ -605,18 +605,17 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 **Before you start.**
 
-- The employment contract type, start and end dates.
+- The start and end dates.
 - The signed contract as a PDF.
 
 **Steps.**
 
 1. Open Contracts and click New contract.
 2. Search the employee by job number or name (only nurses with no Approved/Active contract are offered).
-3. Choose the Employment Contract Type (required; only active types are offered).
-4. Choose the start and end dates (the Hijri dates are shown).
-5. Click Submit — the contract is saved as Draft.
+3. Choose the start and end dates (the Hijri dates are shown).
+4. Click Submit — the contract is saved as Draft.
 
-**System result.** A Draft contract. It gives no coverage yet.
+**System result.** A Draft contract with the employee's previous Employment Contract Type (normally the one chosen at Onboard employee), or "Not classified" when there is none. It gives no coverage yet.
 
 **Approval.** Approval by a different HR administrator comes after Submit.
 
@@ -625,7 +624,6 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 **Common problems.**
 
 - *The employee is not offered* — They already have an Approved or Active contract: use Renew contract.
-- *"Employment Contract Type is required."* — Choose a type. If the right one is missing, a system-wide HR Admin or System Admin adds it under Contract types.
 - *"Renew or verify these credentials before renewing the contract"* — The nurse had a contract before, so this counts as a renewal: the credentials listed must be valid first (see Renew a contract).
 
 **Related.** [Nurses](#5-nurses) · [Eligibility](#8-eligibility)
@@ -650,8 +648,8 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 **Steps.**
 
 1. Open Contracts and click Renew contract.
-2. Choose the employee: the current contract is shown, and the dates (the day after the current end, same length) and the Employment Contract Type are pre-filled from it.
-3. Adjust the dates or the type if needed and Submit. A contract from before the type existed has none: choose one.
+2. Choose the employee: the current contract is shown, and the dates (the day after the current end, same length) are pre-filled from it.
+3. Adjust the dates if needed and Submit. The renewal keeps the current contract's Employment Contract Type.
 
 **System result.** A new Draft contract for the next period. Refused with the list of credentials to renew or verify first if any required credential is not valid — checked again when the contract is approved.
 

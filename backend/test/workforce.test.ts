@@ -793,12 +793,9 @@ describeDb('workforce, employees and contracts', () => {
       expect((await act(hr2, next.body.id, 'approve')).body).toMatchObject({ status: 'Active', eligibility: 'ELIGIBLE' });
     });
 
-    it('an employment contract type is required, must be on the active list, carries over on renewal and is returned by name (owner decision 2026-10-03)', async () => {
+    it('an employment contract type, when given, must be on the active list; new contracts and renewals otherwise carry the previous one (owner decisions 2026-10-03, 2026-10-04)', async () => {
       const emp = await makeEmployee(db, org.unitA.id);
       const body = { employeeId: emp.id, startDate: today(), endDate: addDays(today(), 364) };
-      const missing = await idem(hr.post('/contracts', body));
-      expect(missing.body.error.code).toBe('VALIDATION_FAILED');
-      expect(JSON.stringify(missing.body)).toContain('Employment Contract Type is required.');
       expect((await idem(hr.post('/contracts', { ...body, contractTypeCode: 'NOT_A_TYPE' }))).body.error.code).toBe('CONTRACT_TYPE_INVALID');
       const retired = await hr.post('/contract-types', { code: uniq('RT').toUpperCase().slice(0, 20), name: 'Retired type' });
       await hr.patch(`/contract-types/${retired.body.code}`, { isActive: false });
@@ -813,18 +810,37 @@ describeDb('workforce, employees and contracts', () => {
       const audit = await db.auditEntry.findFirstOrThrow({ where: { action: 'CONTRACT_CREATED', resourceId: String(made.body.id) } });
       expect(audit.changes).toMatchObject({ contractTypeCode: 'AGENCY' });
 
-      // A renewal keeps the type unless another is chosen.
+      // A renewal keeps the type unless another is given.
       const kept = await idem(hr.post(`/contracts/${made.body.id}/renew`, {}));
       expect((await db.contract.findUniqueOrThrow({ where: { id: kept.body.id } })).contractTypeCode).toBe('AGENCY');
       const changed = await idem(hr.post(`/contracts/${kept.body.id}/renew`, { contractTypeCode: 'TEMPORARY' }));
       expect((await db.contract.findUniqueOrThrow({ where: { id: changed.body.id } })).contractTypeCode).toBe('TEMPORARY');
 
-      // A contract from before the field stays unclassified; renewing it needs a type.
+      // New contract without a type: the employee's latest contract's type (set at Onboard employee)…
+      const returning = await makeEmployee(db, org.unitA.id);
+      await db.contract.create({ data: { employeeId: returning.id, jobNumber: returning.jobNumber, status: 'Expired', contractTypeCode: 'SOP', startDate: toDbDate(addDays(today(), -400)), endDate: toDbDate(addDays(today(), -35)) } });
+      const carried = await idem(hr.post('/contracts', { employeeId: returning.id, startDate: today(), endDate: addDays(today(), 364) }));
+      expect(carried.status).toBe(201);
+      expect((await db.contract.findUniqueOrThrow({ where: { id: carried.body.id } })).contractTypeCode).toBe('SOP');
+      // …or "Not classified" when there is none.
+      const first = await idem(hr.post('/contracts', { employeeId: (await makeEmployee(db, org.unitA.id)).id, startDate: today(), endDate: addDays(today(), 364) }));
+      expect(first.status).toBe(201);
+      expect((await hr.get(`/contracts/${first.body.id}`)).body).toMatchObject({ contractTypeCode: null, contractTypeName: null });
+
+      // A previous type that has been deactivated is not carried into a new contract or renewal.
+      const stale = await makeEmployee(db, org.unitA.id);
+      const staleOld = await db.contract.create({ data: { employeeId: stale.id, jobNumber: stale.jobNumber, status: 'Expired', contractTypeCode: retired.body.code, startDate: toDbDate(addDays(today(), -400)), endDate: toDbDate(addDays(today(), -35)) } });
+      const renewedStale = await idem(hr.post(`/contracts/${staleOld.id}/renew`, {}));
+      expect(renewedStale.status).toBe(201);
+      expect((await db.contract.findUniqueOrThrow({ where: { id: renewedStale.body.id } })).contractTypeCode).toBeNull();
+
+      // A contract from before the field stays unclassified, and so does its renewal unless a type is given.
       const legacy = await makeEmployee(db, org.unitA.id);
       const old = await db.contract.create({ data: { employeeId: legacy.id, jobNumber: legacy.jobNumber, status: 'Expired', startDate: toDbDate(addDays(today(), -400)), endDate: toDbDate(addDays(today(), -35)) } });
       expect((await hr.get(`/contracts/${old.id}`)).body).toMatchObject({ contractTypeCode: null, contractTypeName: null });
-      expect((await idem(hr.post(`/contracts/${old.id}/renew`, {}))).body.error.code).toBe('CONTRACT_TYPE_REQUIRED');
-      expect((await idem(hr.post(`/contracts/${old.id}/renew`, { contractTypeCode: 'SOP' }))).status).toBe(201);
+      const unclassified = await idem(hr.post(`/contracts/${old.id}/renew`, {}));
+      expect(unclassified.status).toBe(201);
+      expect((await db.contract.findUniqueOrThrow({ where: { id: unclassified.body.id } })).contractTypeCode).toBeNull();
     });
 
     it('contract types: system-wide HR adds and edits them; delete removes an unused type and deactivates a used one', async () => {

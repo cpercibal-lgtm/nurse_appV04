@@ -48,7 +48,9 @@ import { assertActiveContractType, ContractTypeCode as TypeCode } from './contra
 const IsoDate = z.string().refine(isIsoDate, 'YYYY-MM-DD');
 const Reason = z.string().trim().min(5, 'A reason of at least 5 characters is required').max(500);
 
-export const CreateBody = z.strictObject({ employeeId: z.number().int().positive(), startDate: IsoDate, endDate: IsoDate, contractTypeCode: TypeCode });
+// The type is chosen at Onboard employee (owner decision 2026-10-04): a new contract or renewal carries the
+// employee's previous type unless one is given (the API still accepts it).
+export const CreateBody = z.strictObject({ employeeId: z.number().int().positive(), startDate: IsoDate, endDate: IsoDate, contractTypeCode: TypeCode.optional() });
 export const RenewBody = z.strictObject({ startDate: IsoDate.optional(), endDate: IsoDate.optional(), contractTypeCode: TypeCode.optional() });
 export const TransitionBody = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('submit') }),
@@ -170,7 +172,15 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
     }
   }
 
-  async function createDraft(tx: DbClient, auth: AuthContext, emp: { id: number; jobNumber: string }, start: string, end: string, contractTypeCode: string, event: string, extra: Record<string, unknown>, requestId?: string) {
+  /** A type given in the request must be active; otherwise the previous contract's type carries over while it is
+   *  still in use, else the contract is "Not classified" (a deactivated type is hidden from new contracts). */
+  async function typeFor(tx: DbClient, given: string | undefined, previous: string | null | undefined) {
+    if (given) return assertActiveContractType(tx, given);
+    if (!previous) return null;
+    return (await tx.contractType.findUnique({ where: { code: previous }, select: { isActive: true } }))?.isActive ? previous : null;
+  }
+
+  async function createDraft(tx: DbClient, auth: AuthContext, emp: { id: number; jobNumber: string }, start: string, end: string, contractTypeCode: string | null, event: string, extra: Record<string, unknown>, requestId?: string) {
     if (end <= start) throw unprocessable('CONTRACT_DATES_INVALID', 'The contract end must be after its start (C5)');
     const c = await tx.contract.create({
       data: {
@@ -253,14 +263,15 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
         if (await tx.contract.findFirst({ where: { employeeId: emp.id, status: { in: [...COVERING] } }, select: { id: true } })) {
           throw conflict('EMPLOYEE_HAS_CONTRACT', 'This employee already has an approved or active contract — use renewal for the next period (C10)');
         }
-        const type = await assertActiveContractType(tx, body.contractTypeCode);
+        const previous = await tx.contract.findFirst({ where: { employeeId: emp.id }, orderBy: [{ endDate: 'desc' }, { id: 'desc' }], select: { contractTypeCode: true } });
+        const type = await typeFor(tx, body.contractTypeCode, previous?.contractTypeCode);
         await assertCredentialsAllowRenewal(tx, emp.id);
         const c = await createDraft(tx, auth, emp, body.startDate, body.endDate, type, 'CONTRACT_CREATED', {}, requestId);
         return { id: c.id };
       });
     },
 
-    /** C8 prefill from the prior contract; dates and type stay editable. The approval overlap check (C4) still applies. */
+    /** C8 prefill from the prior contract; the dates stay editable. The approval overlap check (C4) still applies. */
     async renew(auth: AuthContext, priorId: number, body: z.infer<typeof RenewBody>, requestId?: string) {
       return db.$transaction(async (tx) => {
         const prior = await tx.contract.findUnique({ where: { id: priorId } });
@@ -268,10 +279,7 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
         const emp = await assertEmployee(tx, auth, prior.employeeId);
         const latest = await tx.contract.findFirst({ where: { employeeId: prior.employeeId }, orderBy: { endDate: 'desc' }, select: { id: true } });
         if (latest?.id !== prior.id) throw unprocessable('NOT_LATEST_CONTRACT', 'Renew from the employee\'s latest contract');
-        // The previous contract's type carries over; one from before the field existed has none, so it must be chosen.
-        const code = body.contractTypeCode ?? prior.contractTypeCode;
-        if (!code) throw unprocessable('CONTRACT_TYPE_REQUIRED', 'Employment Contract Type is required.');
-        const type = await assertActiveContractType(tx, code);
+        const type = await typeFor(tx, body.contractTypeCode, prior.contractTypeCode);
         await assertCredentialsAllowRenewal(tx, emp.id);
         const pre = renewalPeriodAfter({ startDate: dbDate(prior.startDate), endDate: dbDate(prior.endDate) });
         const c = await createDraft(tx, auth, emp, body.startDate ?? pre.start, body.endDate ?? pre.end, type, 'CONTRACT_RENEWAL_CREATED', { renewedFromId: prior.id }, requestId);
