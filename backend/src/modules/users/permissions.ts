@@ -38,6 +38,8 @@ export const PERMISSIONS = {
   'employees.write': ['HR_ADMIN', 'SYSTEM_ADMIN'],
   // Rule E9: position assignment is HR_ADMIN only.
   'employees.position': ['HR_ADMIN'],
+  // Owner decision 2026-10-05: unit and position together from the Nurses list (right-click); System Admin while elevated.
+  'employees.assign': ['HR_ADMIN', 'SYSTEM_ADMIN'],
 
   // Contracts — spec §4.1: HR/System Admin scoped create, approval, renewal,
   // termination; Supervisor scoped reduced view; Employee own reduced view.

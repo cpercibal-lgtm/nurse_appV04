@@ -55,6 +55,7 @@ Generated from `backend/src/modules/users/permissions.ts`. **`backend/test/docs.
 | `employees.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Employee list and records (Supervisor: baseline view) |
 | `employees.write` | HR_ADMIN, SYSTEM_ADMIN | Onboard, edit, soft-delete |
 | `employees.position` | HR_ADMIN | Position change (E9) — System Admin excluded |
+| `employees.assign` | HR_ADMIN, SYSTEM_ADMIN | Unit and/or position from the Nurses list (right-click), with a reason, and its preview (owner decision 2026-10-05); System Admin only while elevated |
 | `contracts.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Contract list and records |
 | `contracts.manage` | HR_ADMIN, SYSTEM_ADMIN | Create, renew, transition, upload contract copies |
 | `roster.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Roster board, pool, coverage |

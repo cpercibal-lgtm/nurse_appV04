@@ -12,7 +12,7 @@
 import { z } from 'zod';
 import type { Employee } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
-import { dbDate, isIsoDate, toDbDate } from '../../lib/dates.js';
+import { dbDate, isIsoDate, riyadhDate, toDbDate } from '../../lib/dates.js';
 import { toHijriIso } from '../../lib/hijri.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import { Prisma, type Db, type DbClient } from '../../lib/prisma.js';
@@ -106,6 +106,20 @@ export const OwnContactBody = z.strictObject({
 export const DEFAULT_ONBOARDING_POSITION = 'SN';
 
 export const PositionBody = z.strictObject({ positionCode: z.string().min(1).max(20), reason: z.string().trim().min(3).max(500) });
+/** Owner decision 2026-10-05: unit and/or position from the Nurses list, with a reason kept in the audit trail. */
+const AssignmentTarget = {
+  unitId: z.number().int().positive().nullable().optional(), // null = Unassigned (system-wide HR only)
+  positionCode: z.string().min(1).max(20).optional(),
+};
+export const AssignmentBody = z.strictObject({
+  ...AssignmentTarget,
+  reason: z.string().trim().min(10, 'An assignment needs a reason of at least 10 characters').max(500),
+}).refine((b) => b.unitId !== undefined || b.positionCode !== undefined, { message: 'Choose a unit, a position, or both' });
+export const AssignmentPreviewQuery = z.object({
+  unitId: z.union([z.literal('none'), z.coerce.number().int().positive()]).optional(),
+  positionCode: z.string().min(1).max(20).optional(),
+}).transform((q) => ({ unitId: q.unitId === 'none' ? null : q.unitId, positionCode: q.positionCode }))
+  .refine((b) => b.unitId !== undefined || b.positionCode !== undefined, { message: 'Choose a unit, a position, or both' });
 export const DeleteBody = z.strictObject({ reason: z.string().trim().min(10, 'Deleting an employee needs a reason of at least 10 characters').max(500) });
 export const ListQuery = z.object({
   unitId: z.coerce.number().int().positive().optional(),
@@ -218,6 +232,30 @@ export function createNurseService(db: Db) {
   async function assertJobNumberFree(tx: DbClient, jobNumber: string, exceptId?: number) {
     const clash = await tx.employee.findFirst({ where: { jobNumber: { equals: jobNumber, mode: 'insensitive' }, ...(exceptId ? { id: { not: exceptId } } : {}) }, select: { id: true } });
     if (clash) throw conflict('JOB_NUMBER_TAKEN', 'An employee with this job number already exists');
+  }
+
+  async function assignWithin(tx: DbClient, auth: AuthContext, id: number, body: z.infer<typeof AssignmentBody>, requestId: string | undefined) {
+    const before = await loadForHr(tx, auth, id);
+    if (auth.user.employeeId === id) throw new HttpError(403, 'SELF_ACTION_FORBIDDEN', 'You cannot change your own unit or position');
+    const unitChanges = body.unitId !== undefined && body.unitId !== before.unitId;
+    const positionChanges = body.positionCode !== undefined && body.positionCode !== before.positionCode;
+    if (!unitChanges && !positionChanges) throw unprocessable('ASSIGNMENT_UNCHANGED', 'The employee already has this unit and position');
+    if (unitChanges) await assertPlaceable(tx, auth, body.unitId ?? null);
+    if (positionChanges) await assertPosition(tx, body.positionCode!);
+    const to = { unitId: unitChanges ? (body.unitId ?? null) : before.unitId, positionCode: positionChanges ? body.positionCode! : before.positionCode };
+    await tx.employee.update({ where: { id }, data: to });
+    await appendAudit(tx, {
+      actorUserId: auth.user.id, action: 'EMPLOYEE_ASSIGNMENT_CHANGED', resource: 'employee', resourceId: id,
+      changes: { from: { unitId: before.unitId, positionCode: before.positionCode }, to, reason: body.reason }, requestId, priority: 'HIGH',
+    });
+    const result = await refreshEligibility(tx, id, 'EMPLOYEE_ASSIGNMENT_CHANGED', { actorUserId: auth.user.id, requestId });
+    return {
+      id, ...to,
+      eligibility: result && {
+        status: result.status,
+        reasons: result.reasons.filter((r) => r.severity === 'BLOCK').map((r) => ({ code: r.code, message: r.message, templateCode: r.templateCode ?? null })),
+      },
+    };
   }
 
   async function loadForHr(tx: DbClient, auth: AuthContext, id: number) {
@@ -368,6 +406,42 @@ export function createNurseService(db: Db) {
         await refreshEligibility(tx, id, 'EMPLOYEE_POSITION_CHANGED', { actorUserId: auth.user.id, requestId });
         return { id, positionCode: body.positionCode };
       });
+    },
+
+    /**
+     * Unit and/or position in one step (owner decision 2026-10-05): one HIGH audit entry with the reason, one
+     * eligibility refresh, which returns future published shifts that no longer pass to Draft and tells the
+     * supervisors (spec 6.2, D-32). Both the current and the new unit must be in the caller's scope.
+     */
+    async assign(auth: AuthContext, id: number, body: z.infer<typeof AssignmentBody>, requestId?: string) {
+      return db.$transaction((tx) => assignWithin(tx, auth, id, body, requestId));
+    },
+
+    /** What `assign` would do, without doing it: the same steps inside a transaction that is always rolled back. */
+    async previewAssignment(auth: AuthContext, id: number, target: { unitId?: number | null; positionCode?: string }) {
+      class Rollback extends Error { constructor(readonly result: unknown) { super('rollback'); } }
+      try {
+        await db.$transaction(async (tx) => {
+          const today = new Date(`${riyadhDate()}T00:00:00Z`);
+          const published = () => tx.shiftAssignment.findMany({
+            where: { employeeId: id, status: 'Published', shiftDate: { gte: today } },
+            select: { id: true, unitId: true, shiftDate: true, shiftType: true }, orderBy: { shiftDate: 'asc' },
+          });
+          const before = await published();
+          const out = await assignWithin(tx, auth, id, { ...target, reason: 'preview only' }, undefined);
+          const still = new Set((await published()).map((a) => a.id));
+          const units = await tx.unit.findMany({ where: { id: { in: [...new Set(before.map((a) => a.unitId))] } }, select: { id: true, code: true } });
+          const unitCode = new Map(units.map((u) => [u.id, u.code]));
+          throw new Rollback({
+            ...out,
+            shiftsToDraft: before.filter((a) => !still.has(a.id)).map((a) => ({ date: dbDate(a.shiftDate), shiftType: a.shiftType, unitCode: unitCode.get(a.unitId) ?? null })),
+          });
+        });
+      } catch (e) {
+        if (e instanceof Rollback) return e.result;
+        throw e;
+      }
+      throw new Error('unreachable: the preview transaction always rolls back');
     },
 
     /** Soft delete (deletedAt). The record, its contracts and credentials stay for history; eligibility becomes INELIGIBLE. */

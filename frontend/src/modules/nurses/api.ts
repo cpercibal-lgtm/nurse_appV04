@@ -58,6 +58,7 @@ type Action =
   | { kind: 'onboard'; body: object; key: string }
   | { kind: 'update'; id: number; body: object }
   | { kind: 'position'; id: number; positionCode: string; reason: string }
+  | { kind: 'assign'; id: number; key: string; body: AssignmentTarget & { reason: string } }
   | { kind: 'delete'; id: number; reason: string };
 
 export function useEmployeeAction() {
@@ -68,12 +69,34 @@ export function useEmployeeAction() {
         case 'onboard': return http.post<{ employeeId: number; contractId: number }>('/employees/onboard', a.body, { idempotencyKey: a.key });
         case 'update': return http.patch(`/employees/${a.id}`, a.body);
         case 'position': return http.post(`/employees/${a.id}/position`, { positionCode: a.positionCode, reason: a.reason });
+        case 'assign': return http.post<AssignmentResult>(`/employees/${a.id}/assignment`, a.body, { idempotencyKey: a.key });
         case 'delete': return http.delete(`/employees/${a.id}`, { reason: a.reason });
       }
     },
-    onSuccess: () => Promise.all(['employees', 'contracts', 'eligibility'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onSuccess: () => Promise.all(['employees', 'contracts', 'eligibility', 'roster', 'assignment-preview'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
   });
 }
+
+// ── Assign unit and position (owner decision 2026-10-05) ────────────────────
+/** `unitId: null` = Unassigned; a property left out keeps the current value. */
+export interface AssignmentTarget { unitId?: number | null; positionCode?: string }
+export interface AssignmentResult {
+  id: number; unitId: number | null; positionCode: string;
+  eligibility: { status: 'ELIGIBLE' | 'ELIGIBLE_WITH_GRACE' | 'ELIGIBLE_WITH_POLICY_WARNING' | 'INELIGIBLE'; reasons: Array<{ code: string; message: string; templateCode: string | null }> } | null;
+}
+export interface AssignmentPreview extends AssignmentResult { shiftsToDraft: Array<{ date: string; shiftType: string; unitCode: string | null }> }
+/** What an assignment would do; the server runs it and rolls it back. Only asked when something changes. */
+export const useAssignmentPreview = (id: number | null, target: AssignmentTarget | null) => useQuery({
+  queryKey: ['assignment-preview', id, target?.unitId, target?.positionCode],
+  enabled: id !== null && target !== null && (target.unitId !== undefined || target.positionCode !== undefined),
+  retry: false,
+  queryFn: () => {
+    const q = new URLSearchParams();
+    if (target!.unitId !== undefined) q.set('unitId', target!.unitId === null ? 'none' : String(target!.unitId));
+    if (target!.positionCode !== undefined) q.set('positionCode', target!.positionCode);
+    return http.get<AssignmentPreview>(`/employees/${id}/assignment/preview?${q.toString()}`);
+  },
+});
 
 // ── Registration invitations (spec §3.2): HR sends; the link goes only by e-mail ──
 export type InvitationStatus = 'OPEN' | 'CLAIMED' | 'REVOKED' | 'EXPIRED';
