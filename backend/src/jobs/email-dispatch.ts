@@ -3,6 +3,12 @@
 // outbox e-mails through the hospital SMTP relay: up to SMTP_RETRY_MAX
 // attempts, SMTP_RETRY_DELAY_SECONDS apart, then FAILED and logged.
 //
+// D-69: with EMAIL_HOURLY_LIMIT set, a run sends only what keeps the last 60
+// minutes under the limit (UltaMail allows 200 per hour per domain); the rest
+// waits as PENDING without using an attempt. Outbox mail (the break-glass
+// alert) goes first, then notifications by priority, so a large send never
+// holds back a security e-mail.
+//
 // Delivery is at-least-once: a crash after the relay accepted a message but
 // before the row is marked SENT sends it again (same Message-ID, so most
 // clients show it once). With e-mail off, pending rows are marked SKIPPED.
@@ -23,12 +29,15 @@ export interface DispatchConfig {
   /** Right-hand side of Message-IDs, e.g. the sender's domain. */
   domain: string;
   batchSize?: number;
+  /** D-69: most e-mails sent in any 60 minutes; 0 or unset = no limit. */
+  hourlyLimit?: number;
 }
 
 export function dispatchConfigFrom(env: Env): DispatchConfig {
   return {
     retryMax: env.SMTP_RETRY_MAX, retryDelaySeconds: env.SMTP_RETRY_DELAY_SECONDS,
     baseUrl: env.APP_BASE_URL ?? env.CORS_ORIGIN, domain: senderDomain(env.SMTP_FROM),
+    hourlyLimit: env.EMAIL_HOURLY_LIMIT,
   };
 }
 
@@ -51,14 +60,30 @@ export async function dispatchEmails(db: Db, mailer: Mailer, cfg: DispatchConfig
     out.skipped = a.count + b.count;
     return out;
   }
-  const take = cfg.batchSize ?? 100;
+  const batch = cfg.batchSize ?? 100;
   const dueBefore = new Date(now.getTime() - cfg.retryDelaySeconds * 1000);
+  let allowance = cfg.hourlyLimit ? Math.max(0, cfg.hourlyLimit - await sentInLastHour(db, now)) : Infinity;
 
-  // Notification e-mails: one per recipient account.
-  const pending = await db.notification.findMany({
+  // Outbox e-mails first: addresses without an account (the break-glass alert).
+  const outbox = allowance <= 0 ? [] : await db.emailOutbox.findMany({
+    where: { status: 'PENDING', OR: [{ lastAt: null }, { lastAt: { lte: dueBefore } }] },
+    orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
+  });
+  for (const m of outbox) {
+    const outcome = await attempt(mailer, cfg, m.attempts, {
+      to: m.toAddress, subject: m.subject, text: m.bodyText, html: m.bodyHtml,
+      messageId: `<outbox-${m.id}@${cfg.domain}>`, urgent: URGENT.has(m.priority),
+    }, { kind: 'outbox', id: m.id });
+    await db.emailOutbox.update({ where: { id: m.id }, data: { status: outcome.status, attempts: { increment: 1 }, lastAt: new Date(), lastError: outcome.error } });
+    count(out, outcome.status);
+    allowance--;
+  }
+
+  // Notification e-mails: one per recipient account, most urgent first (the enum sorts CRITICAL → LOW).
+  const pending = allowance <= 0 ? [] : await db.notification.findMany({
     where: { emailStatus: 'PENDING', OR: [{ emailLastAt: null }, { emailLastAt: { lte: dueBefore } }] },
     include: { recipient: { select: { email: true, isActive: true } } },
-    orderBy: { id: 'asc' }, take,
+    orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
   });
   for (const n of pending) {
     if (!n.recipient.isActive) {
@@ -73,21 +98,17 @@ export async function dispatchEmails(db: Db, mailer: Mailer, cfg: DispatchConfig
     await db.notification.update({ where: { id: n.id }, data: { emailStatus: outcome.status, emailAttempts: { increment: 1 }, emailLastAt: new Date(), emailLastError: outcome.error } });
     count(out, outcome.status);
   }
-
-  // Outbox e-mails: addresses without an account (the break-glass alert).
-  const outbox = await db.emailOutbox.findMany({
-    where: { status: 'PENDING', OR: [{ lastAt: null }, { lastAt: { lte: dueBefore } }] },
-    orderBy: { id: 'asc' }, take,
-  });
-  for (const m of outbox) {
-    const outcome = await attempt(mailer, cfg, m.attempts, {
-      to: m.toAddress, subject: m.subject, text: m.bodyText, html: m.bodyHtml,
-      messageId: `<outbox-${m.id}@${cfg.domain}>`, urgent: URGENT.has(m.priority),
-    }, { kind: 'outbox', id: m.id });
-    await db.emailOutbox.update({ where: { id: m.id }, data: { status: outcome.status, attempts: { increment: 1 }, lastAt: new Date(), lastError: outcome.error } });
-    count(out, outcome.status);
-  }
   return out;
+}
+
+/** E-mails the relay accepted in the hour before `now`, notifications and outbox together (D-69). */
+export async function sentInLastHour(db: Db, now = new Date()) {
+  const since = new Date(now.getTime() - 3_600_000);
+  const [notifications, outbox] = await Promise.all([
+    db.notification.count({ where: { emailStatus: 'SENT', emailLastAt: { gte: since } } }),
+    db.emailOutbox.count({ where: { status: 'SENT', lastAt: { gte: since } } }),
+  ]);
+  return notifications + outbox;
 }
 
 type Outcome = { status: Notification['emailStatus']; error: string | null };
