@@ -134,7 +134,7 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
 function RequirementsTab() {
   const positions = usePositions();
   const { t } = useTranslation();
-  const { typeLabel } = useTypeLabels();
+  const { typeLabel, ar } = useTypeLabels();
   const { message } = App.useApp();
   const { hasRole } = usePermissions();
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
@@ -182,7 +182,7 @@ function RequirementsTab() {
             <Select showSearch optionFilterProp="label" options={units.data?.items.map((u) => ({ value: u.id, label: `${u.code} — ${u.name}` }))} />
           </Form.Item>
           <Form.Item name="positionCode" label={t('position')} extra={t('positionBlankHint')}>
-            <Select allowClear showSearch optionFilterProp="label" options={positions.data?.items.map((p) => ({ value: p.code, label: `${p.code} — ${p.title}` }))} />
+            <Select allowClear showSearch optionFilterProp="label" options={positions.data?.items.map((p) => ({ value: p.code, label: `${p.code} — ${ar && p.titleAr ? p.titleAr : p.title}` }))} />
           </Form.Item>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
             <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: typeLabel(x) }))} />

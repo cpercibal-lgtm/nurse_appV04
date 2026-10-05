@@ -201,7 +201,8 @@ function PositionsTab({ canWrite }: { canWrite: boolean }) {
       {canWrite && <Button type="primary" style={{ marginBottom: 12 }} onClick={() => { form.resetFields(); setEditing('new'); }}>{t('addPosition')}</Button>}
       <Table<PositionRow> rowKey="code" size="middle" loading={positions.isLoading} dataSource={positions.data?.items} pagination={false} scroll={{ x: true }}
         columns={[
-          { title: t('code'), dataIndex: 'code' }, { title: t('title'), dataIndex: 'title' }, { title: t('tier'), dataIndex: 'tier' },
+          { title: t('code'), dataIndex: 'code' }, { title: t('title'), dataIndex: 'title' },
+          { title: t('titleArabic'), dataIndex: 'titleAr', render: (v: string | null) => (v ? <span dir="rtl" lang="ar">{v}</span> : '—') }, { title: t('tier'), dataIndex: 'tier' },
           { title: t('schedulable'), render: (_, p) => (p.isSchedulable ? <Tag color="blue">{t('yes')}</Tag> : <Tag>{t('no')}</Tag>) },
           { title: t('status'), render: (_, p) => <>{activeTag(p.isActive, t)}{p.replacedBy && <Tag>→ {p.replacedBy}</Tag>}</> },
           ...(canWrite ? [{ title: '', render: (_: unknown, p: PositionRow) => <Button size="small" onClick={() => { form.setFieldsValue(p); setEditing(p); }}>{t('edit')}</Button> }] : []),
@@ -211,12 +212,13 @@ function PositionsTab({ canWrite }: { canWrite: boolean }) {
         <Alert type="warning" showIcon title={t('schedulableHint')} style={{ marginBottom: 12 }} />
         <Form form={form} layout="vertical" initialValues={{ isSchedulable: true }} onFinish={async (v) => {
           const { code, replacedBy: _r, ...rest } = v;
-          const out = editing === 'new' ? await run({ kind: 'position', body: { code, ...rest, isActive: undefined } })
-            : await run({ kind: 'position', code: (editing as PositionRow).code, body: { title: rest.title, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, isActive: rest.isActive, displayOrder: rest.displayOrder } });
+          const out = editing === 'new' ? await run({ kind: 'position', body: { code, ...rest, titleAr: rest.titleAr?.trim() || undefined, isActive: undefined } })
+            : await run({ kind: 'position', code: (editing as PositionRow).code, body: { title: rest.title, titleAr: rest.titleAr?.trim() || null, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, isActive: rest.isActive, displayOrder: rest.displayOrder } });
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}
           <Form.Item name="title" label={t('title')} rules={[{ required: true }]}><Input maxLength={120} /></Form.Item>
+          <Form.Item name="titleAr" label={t('titleArabic')}><Input maxLength={120} dir="rtl" lang="ar" /></Form.Item>
           <Form.Item name="tier" label={t('tier')} rules={[{ required: true }]}><Select options={TIERS.map((x) => ({ value: x, label: x }))} /></Form.Item>
           <Form.Item name="description" label={t('description')}><Input.TextArea rows={2} maxLength={500} /></Form.Item>
           <Form.Item name="displayOrder" label={t('displayOrder')} initialValue={0}><InputNumber min={0} precision={0} /></Form.Item>

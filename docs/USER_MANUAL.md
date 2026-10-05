@@ -1529,7 +1529,7 @@ The hospital's structure: departments, units and their beds, positions, and how 
 **Steps.**
 
 1. Workforce → Positions → Add position (or Edit).
-2. Code, title, tier, description, display order, Schedulable, Active.
+2. Code, title, Arabic title (shown when the interface is Arabic), tier, description, display order, Schedulable, Active.
 3. Submit.
 
 **System result.** Changing Schedulable re-evaluates everyone in the position. Deprecated positions show "→ replacement".

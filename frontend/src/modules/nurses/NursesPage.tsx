@@ -135,7 +135,7 @@ export default function NursesPage() {
   const [positionForm] = Form.useForm<{ positionCode: string; reason: string }>();
 
   const unitOptions = [{ value: null, label: t('unassigned') }, ...(units.data?.items ?? []).map((u) => ({ value: u.id as number | null, label: `${u.code} — ${u.name}` }))];
-  const positionOptions = (positions.data?.items ?? []).map((p) => ({ value: p.code, label: `${p.code} — ${p.title}` }));
+  const positionOptions = (positions.data?.items ?? []).map((p) => ({ value: p.code, label: `${p.code} — ${i18n.language === 'ar' && p.titleAr ? p.titleAr : p.title}` }));
 
   async function run<T>(a: Parameters<typeof action.mutateAsync>[0], ok: string): Promise<T | undefined> {
     try { const out = await action.mutateAsync(a); message.success(ok); return out as T; } catch (e) {
