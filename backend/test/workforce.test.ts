@@ -649,6 +649,71 @@ describeDb('workforce, employees and contracts', () => {
     });
   });
 
+  describe('assign unit and position (owner decision 2026-10-05)', () => {
+    it('one step for unit and position: reason required, scope checked, one audit entry, eligibility refreshed', async () => {
+      const emp = await makeEmployee(db, org.unitA.id);
+      await db.position.upsert({ where: { code: 'CN' }, update: { isActive: true }, create: { code: 'CN', title: 'Charge Nurse', tier: 'Clinical Lead', isSchedulable: true } });
+      const path = `/employees/${emp.id}/assignment`;
+      const send = (c: Client, body: object) => c.post(path, body).set('Idempotency-Key', randomUUID());
+      expect((await send(hr, { unitId: org.unitB.id, reason: 'short' })).body.error.code).toBe('VALIDATION_FAILED');
+      expect((await send(hr, { reason: 'Nothing chosen to change' })).body.error.code).toBe('VALIDATION_FAILED');
+      expect((await send(hr, { unitId: org.unitA.id, positionCode: 'SN', reason: 'Same unit and position' })).body.error.code).toBe('ASSIGNMENT_UNCHANGED');
+      expect((await send(scoped, { unitId: org.unitC.id, reason: 'Move outside my units' })).body.error.code).toBe('SCOPE_NOT_COVERED');
+      expect((await send(scoped, { unitId: null, reason: 'Unassign the nurse for now' })).body.error.code).toBe('SCOPE_NOT_COVERED');
+      expect((await send(hr, { positionCode: 'NOPE', reason: 'Unknown position code' })).body.error.code).toBe('POSITION_NOT_FOUND');
+
+      const ok = await send(hr, { unitId: org.unitB.id, positionCode: 'CN', reason: 'Transfer to unit B as charge nurse, memo 118' });
+      expect(ok.status).toBe(200);
+      expect(ok.body).toMatchObject({ id: emp.id, unitId: org.unitB.id, positionCode: 'CN', eligibility: { status: expect.any(String) } });
+      const audit = await db.auditEntry.findMany({ where: { action: 'EMPLOYEE_ASSIGNMENT_CHANGED', resourceId: String(emp.id) } });
+      expect(audit).toHaveLength(1);
+      expect(audit[0]!.changes).toMatchObject({ from: { unitId: org.unitA.id, positionCode: 'SN' }, to: { unitId: org.unitB.id, positionCode: 'CN' }, reason: 'Transfer to unit B as charge nurse, memo 118' });
+      expect((await db.eligibilityState.findUniqueOrThrow({ where: { employeeId: emp.id } })).updatedByEvent).toBe('EMPLOYEE_ASSIGNMENT_CHANGED');
+      // Unit B is outside the unit-A HR's scope now, so that administrator can no longer move the nurse.
+      expect((await send(scoped, { unitId: org.unitA.id, reason: 'Bring the nurse back to unit A' })).body.error.code).toBe('SCOPE_NOT_COVERED');
+    });
+
+    it('System Admin only while elevated; supervisors and nurses never; nobody changes their own assignment', async () => {
+      const emp = await makeEmployee(db, org.unitA.id);
+      const body = { unitId: org.unitB.id, reason: 'Transfer for the permission test' };
+      const dormant = await signIn(app, (await makeUser(db, { roles: [{ role: 'SYSTEM_ADMIN', scopeType: 'SYSTEM' }] })).email);
+      expect((await dormant.post(`/employees/${emp.id}/assignment`, body).set('Idempotency-Key', randomUUID())).body.error.code).toBe('PAM_ELEVATION_REQUIRED');
+      const elevated = await signIn(app, (await makeUser(db, { roles: [{ role: 'SYSTEM_ADMIN', scopeType: 'SYSTEM' }], pam: true })).email);
+      expect((await elevated.post(`/employees/${emp.id}/assignment`, body).set('Idempotency-Key', randomUUID())).status).toBe(200);
+      const sup = await signIn(app, (await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'UNIT', scopeIds: [org.unitA.id, org.unitB.id] }] })).email);
+      expect((await sup.post(`/employees/${emp.id}/assignment`, { ...body, unitId: org.unitA.id }).set('Idempotency-Key', randomUUID())).status).toBe(403);
+      expect((await sup.get(`/employees/${emp.id}/assignment/preview?unitId=${org.unitA.id}`)).status).toBe(403);
+
+      const me = await makeEmployee(db, org.unitA.id);
+      const hrNurse = await signIn(app, (await makeUser(db, { employeeId: me.id, roles: [{ role: 'HR_ADMIN', scopeType: 'SYSTEM' }] })).email);
+      expect((await hrNurse.post(`/employees/${me.id}/assignment`, { unitId: org.unitB.id, reason: 'Moving myself to unit B' }).set('Idempotency-Key', randomUUID())).body.error.code).toBe('SELF_ACTION_FORBIDDEN');
+    });
+
+    it('the preview shows the result and the shifts that go back to Draft, and changes nothing', async () => {
+      const emp = await makeEmployee(db, org.unitA.id);
+      const tomorrow = new Date(Date.now() + 2 * 86_400_000);
+      const day = new Date(`${tomorrow.toISOString().slice(0, 10)}T00:00:00Z`);
+      const shift = await db.shiftAssignment.create({ data: { employeeId: emp.id, unitId: org.unitA.id, shiftDate: day, shiftType: 'Morning', status: 'Published', publishedAt: new Date() } });
+      const auditsBefore = await db.auditEntry.count();
+
+      const preview = await hr.get(`/employees/${emp.id}/assignment/preview?unitId=${org.unitB.id}`);
+      expect(preview.status).toBe(200);
+      expect(preview.body).toMatchObject({ id: emp.id, unitId: org.unitB.id, positionCode: 'SN', shiftsToDraft: [{ date: day.toISOString().slice(0, 10), shiftType: 'Morning', unitCode: org.unitA.code }] });
+      // Nothing was written.
+      expect((await db.employee.findUniqueOrThrow({ where: { id: emp.id } })).unitId).toBe(org.unitA.id);
+      expect((await db.shiftAssignment.findUniqueOrThrow({ where: { id: shift.id } })).status).toBe('Published');
+      expect(await db.auditEntry.count()).toBe(auditsBefore);
+      expect((await hr.get(`/employees/${emp.id}/assignment/preview?unitId=none`)).body.unitId).toBeNull();
+      expect((await hr.get(`/employees/${emp.id}/assignment/preview`)).body.error.code).toBe('VALIDATION_FAILED');
+
+      // The real assignment does what the preview said.
+      const done = await hr.post(`/employees/${emp.id}/assignment`, { unitId: org.unitB.id, reason: 'Transfer to unit B, memo 119' }).set('Idempotency-Key', randomUUID());
+      expect(done.status).toBe(200);
+      expect((await db.shiftAssignment.findUniqueOrThrow({ where: { id: shift.id } })).status).toBe('Draft');
+      expect(await db.auditEntry.count({ where: { action: 'ASSIGNMENT_DEMOTED', resourceId: String(shift.id) } })).toBe(1);
+    });
+  });
+
   describe('own phone numbers (D-35)', () => {
     it('the employee updates only their phones, in international format; HR too; the next-of-kin number stays out of the audit', async () => {
       const { emp, user } = await makeNurse(db, org.unitA.id, { account: true });

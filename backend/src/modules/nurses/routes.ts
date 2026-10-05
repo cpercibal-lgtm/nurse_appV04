@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
-import { DeleteBody, ListQuery, OnboardBody, OwnContactBody, PositionBody, UpdateBody, type NurseService } from './service.js';
+import { AssignmentBody, AssignmentPreviewQuery, DeleteBody, ListQuery, OnboardBody, OwnContactBody, PositionBody, UpdateBody, type NurseService } from './service.js';
 
 const IdParam = z.object({ id: z.coerce.number().int().positive() });
 
@@ -29,6 +29,13 @@ export function createNursesRouter(db: Db, nurses: NurseService) {
   });
   r.post('/employees/:id/position', authorize('employees.position'), async (req, res) => {
     res.json(await nurses.assignPosition(authOf(res), IdParam.parse(req.params).id, PositionBody.parse(req.body), rid(res)));
+  });
+  // Owner decision 2026-10-05: unit and position from the Nurses list (right-click); the preview changes nothing.
+  r.get('/employees/:id/assignment/preview', authorize('employees.assign'), async (req, res) => {
+    res.json(await nurses.previewAssignment(authOf(res), IdParam.parse(req.params).id, AssignmentPreviewQuery.parse(req.query)));
+  });
+  r.post('/employees/:id/assignment', authorize('employees.assign'), idempotent(db, 'employees.assign'), async (req, res) => {
+    res.json(await nurses.assign(authOf(res), IdParam.parse(req.params).id, AssignmentBody.parse(req.body), rid(res)));
   });
   r.delete('/employees/:id', authorize('employees.write'), async (req, res) => {
     res.json(await nurses.remove(authOf(res), IdParam.parse(req.params).id, DeleteBody.parse(req.body).reason, rid(res)));

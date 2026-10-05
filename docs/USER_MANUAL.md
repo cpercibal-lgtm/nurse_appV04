@@ -353,8 +353,8 @@ The staff master record: one row per employee with job number, name, unit, posit
 | Job Post (City) | HR / System Admin | Required. Region + City, chosen in the Select Job Post Location window (region first, then a city of that region) from Workforce → Locations; shown as "Qassim Region - Buraydah"; free text is not accepted. Hidden from supervisors |
 | Specialty | HR / System Admin | Required. Chosen from the Nursing Specialty master (Workforce → Specialty), in its sort order; type to search by code, name or description; free text is not accepted. Supervisors see it |
 | Rank/Grade (SCFHS classification) | HR / System Admin | Required. Chosen in the Select Rank/Grade window from the Rank/Grade master (Workforce → Rank/Grade); free text is not accepted. Hidden from supervisors |
-| Unit | HR / System Admin | Moving a nurse re-checks eligibility and returns invalid future shifts to Draft |
-| Position | HR Admin only (Change position) | Needs a reason; recorded from → to; a position never gives a login role |
+| Unit | HR / System Admin (Edit, or right-click → Assign) | Moving a nurse re-checks eligibility and returns invalid future shifts to Draft |
+| Position | HR Admin (Change position); HR / elevated System Admin (right-click → Assign) | Needs a reason; recorded from → to; a position never gives a login role |
 | Contact e-mail | HR / System Admin | Used for the login invitation |
 | Mobile and emergency contact phone | HR, and the employee on My Profile | International format, e.g. +966500000000 |
 
@@ -486,7 +486,44 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Workforce](#9-workforce) · [Eligibility](#8-eligibility)
 
-### 5.5 Delete a staff record
+### 5.5 Assign a unit and position from the list (right-click)
+
+**Status:** Implemented  
+**Roles:** HR Admin, System Admin
+
+**Purpose.** Move a nurse to another unit, give a new position, or both, without opening the record.
+
+**Who can perform it.** HR Admin, or System Admin while elevated, for a nurse whose current and new unit are both in scope.
+
+**Before you start.**
+
+- The reason, e.g. the transfer memo number.
+
+**Steps.**
+
+1. Open Nurses.
+2. Right-click the nurse's row (mouse, on a desktop or laptop).
+3. Choose Assign unit and position…, Assign unit… or Assign position….
+4. Choose the new unit and/or position. Under each field the current value is shown.
+5. Read What will change: the eligibility the nurse would have, and any published shifts that would return to Draft.
+6. Write the reason (at least 10 characters) and click Assign.
+
+**System result.** Unit and position change together, audited as high priority with the reason (from → to). Eligibility is re-evaluated at once; future published shifts that no longer pass return to Draft and the supervisors are told — exactly as previewed.
+
+**Approval.** None.
+
+**Next step.** Roster & Scheduling, if shifts returned to Draft.
+
+**Common problems.**
+
+- *Right-click shows the browser's own menu* — The menu is for HR Admin, and for System Admin only while elevated. Supervisors and nurses do not have it.
+- *"This unit is outside your assigned scope"* — Both the nurse's current unit and the new one must be in your scope. Unassigned needs hospital-wide HR.
+- *"The employee already has this unit and position"* — Choose a different unit or position.
+- *You cannot change your own unit or position* — Another administrator does it.
+
+**Related.** [Eligibility](#8-eligibility) · [Roster and scheduling](#11-roster-and-scheduling)
+
+### 5.6 Delete a staff record
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -509,7 +546,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Nursing Administration](#14-nursing-administration)
 
-### 5.6 Send a login invitation
+### 5.7 Send a login invitation
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin

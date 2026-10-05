@@ -23,6 +23,7 @@ import { FacilityField, facilityLabel } from '../../components/FacilityField';
 import { useEmployee, useEmployeeAction, useEmployees, useInvitations, useInviteEmployee, useOnboardingDefaults, type EmployeeRow } from './api';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
+import { AssignDialog, NurseContextMenu, type AssignMode } from './AssignDialog';
 import { keyAfterError } from '../../lib/idempotency';
 const OPTIONAL_TEXT = ['middleName', 'jobTitle', 'fileNo', 'primaryPhone', 'emergencyContactPhone'] as const;
 
@@ -115,6 +116,9 @@ export default function NursesPage() {
   const { hasRole } = usePermissions();
   const canWrite = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
   const canAssignPosition = hasRole('HR_ADMIN'); // E9
+  const canAssign = hasRole('HR_ADMIN', 'SYSTEM_ADMIN'); // owner decision 2026-10-05: right-click menu, administrators only
+  const [menu, setMenu] = useState<{ x: number; y: number; row: EmployeeRow } | null>(null);
+  const [assigning, setAssigning] = useState<{ row: EmployeeRow; mode: AssignMode } | null>(null);
   const [filter, setFilter] = useState<{ q?: string; unitId?: number; page: number }>({ page: 1 });
   const employees = useEmployees(filter);
   const units = useUnits();
@@ -152,7 +156,11 @@ export default function NursesPage() {
       <Table<EmployeeRow>
         rowKey="id" loading={employees.isLoading} dataSource={employees.data?.items} scroll={{ x: true }}
         pagination={{ current: filter.page, pageSize: 50, total: employees.data?.total, onChange: (page) => setFilter({ ...filter, page }) }}
-        onRow={(r) => ({ onClick: () => setSelected(r.id), style: { cursor: 'pointer' } })}
+        onRow={(r) => ({
+          onClick: () => setSelected(r.id), style: { cursor: 'pointer' },
+          // Administrators: right-click (mouse, desktop or laptop) opens the assign menu; everyone else keeps the browser's menu.
+          onContextMenu: canAssign ? (ev) => { ev.preventDefault(); setMenu({ x: ev.clientX, y: ev.clientY, row: r }); } : undefined,
+        })}
         columns={[
           { title: t('jobNumber'), dataIndex: 'jobNumber' },
           { title: t('name'), dataIndex: 'fullName' },
@@ -163,6 +171,11 @@ export default function NursesPage() {
         ]}
       />
 
+      {menu && (
+        <NurseContextMenu at={{ x: menu.x, y: menu.y }} row={menu.row} onClose={() => setMenu(null)}
+          onPick={(choice) => { const row = menu.row; setMenu(null); if (choice === 'open') setSelected(row.id); else setAssigning({ row, mode: choice }); }} />
+      )}
+      {assigning && <AssignDialog row={assigning.row} mode={assigning.mode} onClose={() => setAssigning(null)} />}
       <Drawer title={t('onboardEmployee')} open={onboarding !== null} onClose={() => setOnboarding(null)} size={640} destroyOnHidden>
         <Alert type="info" showIcon title={t('onboardHint')} style={{ marginBottom: 12 }} />
         <Form form={onboardForm} layout="vertical" initialValues={{ unitId: null, positionCode: defaults.data?.positionCode ?? undefined }} onFinish={async (v) => {

@@ -88,3 +88,8 @@ body {
   box-sizing: border-box;
   background: linear-gradient(135deg, var(--brand-deep) 0%, var(--brand) 60%, #134e38 100%);
 }
+
+/* Nurses list: the administrators' right-click menu (owner decision 2026-10-05). */
+.nurse-context-menu { background: var(--header-bg); border: 1px solid var(--header-border); border-radius: 8px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); overflow: hidden; }
+.nurse-context-menu .ant-menu { border-inline-end: none !important; background: transparent; }
+.nurse-context-menu-title { padding: 8px 12px; font-size: 12px; color: var(--text); opacity: 0.7; border-bottom: 1px solid var(--header-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
