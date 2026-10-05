@@ -114,7 +114,7 @@ export async function expiryScan(db: Db, now = new Date()) {
       ],
       employee: { deletedAt: null },
     },
-    select: { id: true, employeeId: true, expiryDate: true, template: { select: { name: true } }, employee },
+    select: { id: true, employeeId: true, expiryDate: true, template: { select: { name: true, nameAr: true } }, employee },
   });
 
   const notices: Notice[] = [];
@@ -154,14 +154,14 @@ export async function expiryScan(db: Db, now = new Date()) {
       notices.push({
         kind: 'CREDENTIAL', milestone, employeeId: c.employeeId, unitId: c.employee.unitId, eventKey: `credential:${c.id}:${expiry}:expired`,
         title: 'Credential expired', message: `${who}: ${c.template.name} expired on ${expiry}.`,
-        titleAr: 'انتهت صلاحية شهادة', messageAr: `${who}: انتهت صلاحية ${c.template.name} في ${expiry}.`,
+        titleAr: 'انتهت صلاحية شهادة', messageAr: `${who}: انتهت صلاحية ${c.template.nameAr ?? c.template.name} في ${expiry}.`,
       });
     } else {
       summary.credentialsExpiring += 1;
       notices.push({
         kind: 'CREDENTIAL', milestone, employeeId: c.employeeId, unitId: c.employee.unitId, eventKey: `credential:${c.id}:${expiry}:within-${milestone}`,
         title: 'Credential expiring soon', message: `${who}: ${c.template.name} expires on ${expiry} (${left} days left). Start the renewal now.`,
-        titleAr: 'شهادة تقترب من الانتهاء', messageAr: `${who}: تنتهي ${c.template.name} في ${expiry} (متبقٍ ${left} يومًا). ابدأ التجديد الآن.`,
+        titleAr: 'شهادة تقترب من الانتهاء', messageAr: `${who}: تنتهي ${c.template.nameAr ?? c.template.name} في ${expiry} (متبقٍ ${left} يومًا). ابدأ التجديد الآن.`,
       });
     }
   }

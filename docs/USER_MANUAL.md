@@ -1173,11 +1173,11 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 **Steps.**
 
 1. Credentials → Catalog → Add credential type (or Edit).
-2. Code, name, category, description.
+2. Code, name, name in Arabic (shown in the Arabic interface; the English name when empty), category, description.
 3. Has an expiry date; Evidence upload required; Grace days (0–90); display order; Active.
 4. Check with SCFHS (needs a field with the SCFHS registration data category) and, optionally, Suspend on adverse SCFHS status.
 5. Applies to: Every nationality; Only these nationalities; or Every nationality except these — then choose the nationalities. For a nurse it does not apply to, the type is optional: it can be submitted but never makes them ineligible. A nurse whose nationality is not on the list counts as none of the listed ones.
-6. Fields: key, label, type, required; mark one date field as the Issue date and one as the Expiry date; mark identity numbers as sensitive (encrypted). Order them with ↑ ↓.
+6. Fields: key, label, label in Arabic, type, required; mark one date field as the Issue date and one as the Expiry date; mark identity numbers as sensitive (encrypted). Order them with ↑ ↓.
 7. Reason — at least 10 characters. Submit.
 
 **System result.** A request with the change shown before → after. Field changes affect new entries only; recorded values are kept.
@@ -1188,7 +1188,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 **Common problems.**
 
-- *Grace days* — Grace days are hospital policy, set from the credential requirements matrix: Passport 90; Iqama and Hospital ID 30; Employment Contract, Staff Clearance and National ID 0; every other type 60. Grace applies only when a renewal is in progress.
+- *Grace days* — Grace days are hospital policy, set from the credential requirements matrix: Passport 90; Iqama, National ID and Hospital ID 30; Employment Contract and Staff Clearance 0; every other type 60. Grace applies only when a renewal is in progress.
 - *"Choose at least one nationality"* — Only and Except need one nationality or more; choose Every nationality to remove the limit.
 
 **Related.** [Approvals (four-eyes)](#3-approvals-four-eyes) · [Eligibility](#8-eligibility)

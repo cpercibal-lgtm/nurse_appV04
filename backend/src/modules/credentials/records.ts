@@ -117,13 +117,13 @@ export function readTrackingData(tpl: { fieldDefs: FieldDef[]; hasExpiry: boolea
 }
 
 type WithRelations = Credential & {
-  template: Pick<CredentialTemplate, 'id' | 'code' | 'name' | 'hasExpiry' | 'requiresUpload'>;
+  template: Pick<CredentialTemplate, 'id' | 'code' | 'name' | 'nameAr' | 'hasExpiry' | 'requiresUpload'>;
   documents: Array<{ id: number; reviewStatus: string; scanStatus: string }>;
   employee: { id: number; fullName: string; jobNumber: string; unitId: number | null };
 };
 
 const withRelations = {
-  template: { select: { id: true, code: true, name: true, hasExpiry: true, requiresUpload: true } },
+  template: { select: { id: true, code: true, name: true, nameAr: true, hasExpiry: true, requiresUpload: true } },
   documents: { select: { id: true, reviewStatus: true, scanStatus: true } },
   employee: { select: { id: true, fullName: true, jobNumber: true, unitId: true } },
 } satisfies Prisma.CredentialInclude;
@@ -132,7 +132,7 @@ function present(c: WithRelations & { personalDataErased?: boolean }, viewer: Vi
   const pendingDoc = c.documents.some((d) => d.reviewStatus === 'PENDING_REVIEW' && d.scanStatus !== 'INFECTED');
   const base = {
     id: c.id, employeeId: c.employeeId, employee: { fullName: c.employee.fullName, jobNumber: c.employee.jobNumber, unitId: c.employee.unitId },
-    templateId: c.templateId, template: { code: c.template.code, name: c.template.name },
+    templateId: c.templateId, template: { code: c.template.code, name: c.template.name, nameAr: c.template.nameAr },
     status: c.status, lifecycle: lifecycleLabel(c, pendingDoc, today),
     issueDate: c.issueDate ? dbDate(c.issueDate) : null, expiryDate: c.expiryDate ? dbDate(c.expiryDate) : null,
     expiryDateHijri: c.expiryDateHijri, graceExpiryDate: c.graceExpiryDate ? dbDate(c.graceExpiryDate) : null,
@@ -227,7 +227,7 @@ export function createRecordService(db: Db, documents: DocumentAccess, scanner: 
       if (!emp?.unitId) return { items: [], total: 0 };
       const rows = await db.credentialRequirement.findMany({
         where: { unitId: emp.unitId, OR: [{ positionCode: null }, { positionCode: emp.positionCode }] },
-        include: { template: { select: { id: true, code: true, name: true, requiresUpload: true, nationalityRule: true, nationalityCodes: true, ...WITH_FIELDS } } },
+        include: { template: { select: { id: true, code: true, name: true, nameAr: true, requiresUpload: true, nationalityRule: true, nationalityCodes: true, ...WITH_FIELDS } } },
       });
       const items = rows.map(({ template: { fields, ...t }, ...r }) => {
         const optionalByNationality = !appliesToNationality(t.nationalityRule, t.nationalityCodes, emp.nationalityCode);

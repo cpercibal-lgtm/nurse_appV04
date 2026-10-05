@@ -57,14 +57,14 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
     return { reg: typeof v === 'string' && v.trim() ? normalizeReg(v) : null };
   }
 
-  async function notifyHr(tx: DbClient, c: { id: number; employeeId: number; employee: { unitId: number | null; fullName: string; jobNumber: string }; template: { name: string } }, eventKey: string, what: string, whatAr: string) {
+  async function notifyHr(tx: DbClient, c: { id: number; employeeId: number; employee: { unitId: number | null; fullName: string; jobNumber: string }; template: { name: string; nameAr: string | null } }, eventKey: string, what: string, whatAr: string) {
     const ids = await recipientsForUnit(tx, 'HR_ADMIN', c.employee.unitId);
     const who = `${c.employee.fullName} (${c.employee.jobNumber})`;
     await tx.notification.createMany({
       data: [...new Set(ids)].map((recipientId) => ({
         recipientId, employeeId: c.employeeId, type: 'CREDENTIAL' as const, priority: 'HIGH' as const, eventKey,
         title: `SCFHS: ${c.template.name} of ${who}`, message: what,
-        titleAr: `الهيئة السعودية للتخصصات الصحية: ${c.template.name} — ${who}`, messageAr: whatAr,
+        titleAr: `الهيئة السعودية للتخصصات الصحية: ${c.template.nameAr ?? c.template.name} — ${who}`, messageAr: whatAr,
       })),
       skipDuplicates: true,
     });
@@ -76,7 +76,7 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
     const c = await db.credential.findUnique({
       where: { id: credentialId },
       include: {
-        template: { select: { name: true, scfhsEnabled: true, scfhsAutoSuspend: true, fields: { where: { pdplCategory: 'SCFHS_REG' }, select: { key: true } } } },
+        template: { select: { name: true, nameAr: true, scfhsEnabled: true, scfhsAutoSuspend: true, fields: { where: { pdplCategory: 'SCFHS_REG' }, select: { key: true } } } },
         employee: { select: { unitId: true, fullName: true, jobNumber: true } },
       },
     });

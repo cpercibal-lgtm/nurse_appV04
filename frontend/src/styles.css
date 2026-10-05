@@ -73,7 +73,8 @@ body {
   border-bottom: 1px solid var(--header-border);
 }
 
-.app-title { font-weight: 600; font-size: 15px; color: var(--text); }
+/* One line: the Arabic name is long and must not wrap under the header on a phone. */
+.app-title { font-weight: 600; font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .app-user { font-size: 13px; font-weight: 500; color: var(--text); }
 
 .app-avatar { background: var(--brand) !important; font-weight: 600; }

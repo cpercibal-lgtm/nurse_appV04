@@ -555,6 +555,7 @@
     {
       "code": "PASSPORT",
       "name": "Passport",
+      "nameAr": "جواز السفر",
       "categoryCode": "IDENTITY",
       "description": "International passport",
       "hasExpiry": true,
@@ -566,6 +567,7 @@
         {
           "key": "passport_number",
           "label": "Passport Number",
+          "labelAr": "رقم جواز السفر",
           "type": "text",
           "required": true,
           "displayOrder": 1,
@@ -574,6 +576,7 @@
         {
           "key": "issuing_country",
           "label": "Issuing Country",
+          "labelAr": "بلد الإصدار",
           "type": "country",
           "required": true,
           "displayOrder": 2
@@ -581,6 +584,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -589,6 +593,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -603,6 +608,7 @@
     {
       "code": "IQAMA",
       "name": "Resident ID (Iqama)",
+      "nameAr": "الإقامة (هوية مقيم)",
       "categoryCode": "IDENTITY",
       "description": "Saudi residency permit",
       "hasExpiry": true,
@@ -614,6 +620,7 @@
         {
           "key": "iqama_number",
           "label": "Iqama Number",
+          "labelAr": "رقم الإقامة",
           "type": "text",
           "required": true,
           "displayOrder": 1,
@@ -622,6 +629,7 @@
         {
           "key": "sponsor",
           "label": "Sponsor/Employer Name",
+          "labelAr": "الكفيل / جهة العمل",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -629,6 +637,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -637,6 +646,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date (Gregorian/Hijri)",
+          "labelAr": "تاريخ الانتهاء (ميلادي/هجري)",
           "type": "date_hijri",
           "required": true,
           "displayOrder": 4,
@@ -645,6 +655,7 @@
         {
           "key": "job_title",
           "label": "Job Title",
+          "labelAr": "المسمى الوظيفي",
           "type": "text",
           "required": true,
           "displayOrder": 5
@@ -658,17 +669,19 @@
     {
       "code": "NATIONAL_ID",
       "name": "National ID",
+      "nameAr": "الهوية الوطنية",
       "categoryCode": "IDENTITY",
       "description": "Saudi national identity card (in place of the Iqama)",
       "hasExpiry": true,
       "requiresUpload": true,
-      "gracePeriodDays": 0,
+      "gracePeriodDays": 30,
       "displayOrder": 2,
       "isActive": true,
       "fields": [
         {
           "key": "national_id_number",
           "label": "National ID Number",
+          "labelAr": "رقم الهوية الوطنية",
           "type": "text",
           "required": true,
           "displayOrder": 1,
@@ -677,6 +690,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 2,
@@ -685,6 +699,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date (Gregorian/Hijri)",
+          "labelAr": "تاريخ الانتهاء (ميلادي/هجري)",
           "type": "date_hijri",
           "required": true,
           "displayOrder": 3,
@@ -699,6 +714,7 @@
     {
       "code": "HOSPITAL_ID",
       "name": "Hospital ID",
+      "nameAr": "بطاقة هوية المستشفى",
       "categoryCode": "IDENTITY",
       "description": "Hospital ID card",
       "hasExpiry": true,
@@ -710,6 +726,7 @@
         {
           "key": "employee_id_number",
           "label": "Employee ID Number",
+          "labelAr": "الرقم الوظيفي",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -717,6 +734,7 @@
         {
           "key": "department",
           "label": "Department/Cost Center",
+          "labelAr": "القسم / مركز التكلفة",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -724,6 +742,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -732,6 +751,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -742,6 +762,7 @@
     {
       "code": "PROF_LICENSE",
       "name": "Professional License",
+      "nameAr": "الترخيص المهني",
       "categoryCode": "LICENSURE",
       "description": "Professional practice license",
       "hasExpiry": true,
@@ -753,6 +774,7 @@
         {
           "key": "license_number",
           "label": "License Number",
+          "labelAr": "رقم الترخيص",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -760,6 +782,7 @@
         {
           "key": "issuing_board",
           "label": "Issuing Board",
+          "labelAr": "الجهة المُصدِرة",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -767,6 +790,7 @@
         {
           "key": "issuing_country",
           "label": "Issuing Country",
+          "labelAr": "بلد الإصدار",
           "type": "country",
           "required": true,
           "displayOrder": 3
@@ -774,6 +798,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -782,6 +807,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 5,
@@ -792,6 +818,7 @@
     {
       "code": "SCFHS",
       "name": "Saudi Council License (SCFHS)",
+      "nameAr": "ترخيص الهيئة السعودية للتخصصات الصحية",
       "categoryCode": "LICENSURE",
       "description": "Saudi Commission for Health Specialties registration",
       "hasExpiry": true,
@@ -805,6 +832,7 @@
         {
           "key": "scfhs_number",
           "label": "SCFHS Registration Number",
+          "labelAr": "رقم التسجيل في الهيئة السعودية للتخصصات الصحية",
           "type": "text",
           "required": true,
           "displayOrder": 1,
@@ -813,6 +841,7 @@
         {
           "key": "classification",
           "label": "Professional Classification",
+          "labelAr": "التصنيف المهني",
           "type": "select",
           "required": true,
           "displayOrder": 2
@@ -820,6 +849,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -828,6 +858,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -838,6 +869,7 @@
     {
       "code": "EMP_CONTRACT",
       "name": "Employment Contract",
+      "nameAr": "عقد العمل",
       "categoryCode": "LIABILITY",
       "description": "Employment contract document (eligibility comes from the Contract Master)",
       "hasExpiry": true,
@@ -849,6 +881,7 @@
         {
           "key": "contract_reference",
           "label": "Contract ID/Reference No.",
+          "labelAr": "رقم العقد / المرجع",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -856,6 +889,7 @@
         {
           "key": "contracting_agency",
           "label": "Contracting Agency",
+          "labelAr": "جهة التعاقد",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -863,6 +897,7 @@
         {
           "key": "start_date",
           "label": "Start Date",
+          "labelAr": "تاريخ البدء",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -871,6 +906,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -881,6 +917,7 @@
     {
       "code": "MALPRACTICE",
       "name": "Medical Malpractice Insurance",
+      "nameAr": "تأمين الأخطاء الطبية",
       "categoryCode": "LIABILITY",
       "description": "Professional liability insurance",
       "hasExpiry": true,
@@ -892,6 +929,7 @@
         {
           "key": "policy_number",
           "label": "Policy Number",
+          "labelAr": "رقم وثيقة التأمين",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -899,6 +937,7 @@
         {
           "key": "insurance_provider",
           "label": "Insurance Provider",
+          "labelAr": "شركة التأمين",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -906,6 +945,7 @@
         {
           "key": "effective_date",
           "label": "Effective Date",
+          "labelAr": "تاريخ السريان",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -914,6 +954,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -924,6 +965,7 @@
     {
       "code": "CLEARANCE",
       "name": "Staff Clearance",
+      "nameAr": "تصريح الموظف (اللياقة الطبية والتحقق الأمني)",
       "categoryCode": "LIABILITY",
       "description": "Medical fitness and background clearance",
       "hasExpiry": false,
@@ -935,6 +977,7 @@
         {
           "key": "clearance_form_id",
           "label": "Clearance Form ID",
+          "labelAr": "رقم نموذج التصريح",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -942,6 +985,7 @@
         {
           "key": "medical_fitness_status",
           "label": "Medical Fitness Status",
+          "labelAr": "حالة اللياقة الطبية",
           "type": "select",
           "required": true,
           "displayOrder": 2
@@ -949,6 +993,7 @@
         {
           "key": "background_check_status",
           "label": "Background Check Status",
+          "labelAr": "حالة التحقق الأمني",
           "type": "select",
           "required": true,
           "displayOrder": 3
@@ -956,6 +1001,7 @@
         {
           "key": "approval_date",
           "label": "Approval Date",
+          "labelAr": "تاريخ الاعتماد",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -966,6 +1012,7 @@
     {
       "code": "CORE_COMP",
       "name": "Core Generic Competency",
+      "nameAr": "الكفاءة العامة الأساسية",
       "categoryCode": "COMPETENCY",
       "description": "Core competency assessment (expiry = next reassessment)",
       "hasExpiry": true,
@@ -977,6 +1024,7 @@
         {
           "key": "assessment_date",
           "label": "Assessment Date",
+          "labelAr": "تاريخ التقييم",
           "type": "date",
           "required": true,
           "displayOrder": 1,
@@ -985,6 +1033,7 @@
         {
           "key": "evaluator_name",
           "label": "Evaluator Name",
+          "labelAr": "اسم المقيِّم",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -992,6 +1041,7 @@
         {
           "key": "result",
           "label": "Pass/Fail Status",
+          "labelAr": "النتيجة (ناجح/راسب)",
           "type": "select",
           "required": true,
           "displayOrder": 3
@@ -999,6 +1049,7 @@
         {
           "key": "next_reassessment_date",
           "label": "Next Reassessment Due Date",
+          "labelAr": "موعد إعادة التقييم القادم",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1009,6 +1060,7 @@
     {
       "code": "UNIT_COMP",
       "name": "Unit Specific Competency",
+      "nameAr": "الكفاءة الخاصة بالوحدة",
       "categoryCode": "COMPETENCY",
       "description": "Unit competency assessment (expiry = next reassessment)",
       "hasExpiry": true,
@@ -1020,6 +1072,7 @@
         {
           "key": "assigned_unit",
           "label": "Assigned Unit",
+          "labelAr": "الوحدة المكلَّف بها",
           "type": "reference",
           "required": true,
           "displayOrder": 1
@@ -1027,6 +1080,7 @@
         {
           "key": "assessment_date",
           "label": "Assessment Date",
+          "labelAr": "تاريخ التقييم",
           "type": "date",
           "required": true,
           "displayOrder": 2,
@@ -1035,6 +1089,7 @@
         {
           "key": "evaluator_name",
           "label": "Evaluator Name",
+          "labelAr": "اسم المقيِّم",
           "type": "text",
           "required": true,
           "displayOrder": 3
@@ -1042,6 +1097,7 @@
         {
           "key": "result",
           "label": "Pass/Fail Status",
+          "labelAr": "النتيجة (ناجح/راسب)",
           "type": "select",
           "required": true,
           "displayOrder": 4
@@ -1049,6 +1105,7 @@
         {
           "key": "next_reassessment_date",
           "label": "Next Reassessment Due Date",
+          "labelAr": "موعد إعادة التقييم القادم",
           "type": "date",
           "required": true,
           "displayOrder": 5,
@@ -1059,6 +1116,7 @@
     {
       "code": "SEDATION",
       "name": "Conscious Sedation",
+      "nameAr": "التهدئة الواعية",
       "categoryCode": "COMPETENCY",
       "description": "Conscious sedation certification",
       "hasExpiry": true,
@@ -1070,6 +1128,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1077,6 +1136,7 @@
         {
           "key": "certifying_department",
           "label": "Certifying Department",
+          "labelAr": "القسم المانح للشهادة",
           "type": "reference",
           "required": true,
           "displayOrder": 2
@@ -1084,6 +1144,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1092,6 +1153,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1100,6 +1162,7 @@
         {
           "key": "supervised_cases",
           "label": "Supervised Cases Count",
+          "labelAr": "عدد الحالات تحت الإشراف",
           "type": "number",
           "required": true,
           "displayOrder": 5
@@ -1109,6 +1172,7 @@
     {
       "code": "BLS",
       "name": "Basic Life Support (BLS)",
+      "nameAr": "دعم الحياة الأساسي (BLS)",
       "categoryCode": "LIFE_SUPPORT",
       "description": "CPR and airway basics",
       "hasExpiry": true,
@@ -1120,6 +1184,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1127,6 +1192,7 @@
         {
           "key": "training_provider",
           "label": "Training Provider",
+          "labelAr": "جهة التدريب",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -1134,6 +1200,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1142,6 +1209,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1152,6 +1220,7 @@
     {
       "code": "ACLS",
       "name": "Advanced Cardiac Life Support (ACLS)",
+      "nameAr": "دعم الحياة القلبي المتقدم (ACLS)",
       "categoryCode": "LIFE_SUPPORT",
       "description": "Adult cardiac emergencies",
       "hasExpiry": true,
@@ -1163,6 +1232,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1170,6 +1240,7 @@
         {
           "key": "training_provider",
           "label": "Training Provider",
+          "labelAr": "جهة التدريب",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -1177,6 +1248,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1185,6 +1257,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1195,6 +1268,7 @@
     {
       "code": "PALS",
       "name": "Pediatric Advanced Life Support (PALS)",
+      "nameAr": "دعم الحياة المتقدم للأطفال (PALS)",
       "categoryCode": "LIFE_SUPPORT",
       "description": "Pediatric emergencies",
       "hasExpiry": true,
@@ -1206,6 +1280,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1213,6 +1288,7 @@
         {
           "key": "training_provider",
           "label": "Training Provider",
+          "labelAr": "جهة التدريب",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -1220,6 +1296,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1228,6 +1305,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1238,6 +1316,7 @@
     {
       "code": "NRP",
       "name": "Neonatal Resuscitation Program (NRP)",
+      "nameAr": "برنامج إنعاش حديثي الولادة (NRP)",
       "categoryCode": "LIFE_SUPPORT",
       "description": "Newborn resuscitation",
       "hasExpiry": true,
@@ -1249,6 +1328,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1256,6 +1336,7 @@
         {
           "key": "training_provider",
           "label": "Training Provider",
+          "labelAr": "جهة التدريب",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -1263,6 +1344,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1271,6 +1353,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,
@@ -1281,6 +1364,7 @@
     {
       "code": "BICSL",
       "name": "Basic Infection Control Skills License (BICSL)",
+      "nameAr": "رخصة المهارات الأساسية لمكافحة العدوى (BICSL)",
       "categoryCode": "LIFE_SUPPORT",
       "description": "Basic infection control",
       "hasExpiry": true,
@@ -1292,6 +1376,7 @@
         {
           "key": "certificate_number",
           "label": "Certificate Number",
+          "labelAr": "رقم الشهادة",
           "type": "text",
           "required": true,
           "displayOrder": 1
@@ -1299,6 +1384,7 @@
         {
           "key": "training_provider",
           "label": "Training Facility",
+          "labelAr": "منشأة التدريب",
           "type": "text",
           "required": true,
           "displayOrder": 2
@@ -1306,6 +1392,7 @@
         {
           "key": "issue_date",
           "label": "Issue Date",
+          "labelAr": "تاريخ الإصدار",
           "type": "date",
           "required": true,
           "displayOrder": 3,
@@ -1314,6 +1401,7 @@
         {
           "key": "expiry_date",
           "label": "Expiry Date",
+          "labelAr": "تاريخ الانتهاء",
           "type": "date",
           "required": true,
           "displayOrder": 4,

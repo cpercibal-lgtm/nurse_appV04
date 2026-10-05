@@ -45,7 +45,7 @@ const PositionRow = z.strictObject({
 });
 const CategoryRow = z.strictObject({ code: TemplateCode, name: Name, description: Description.optional(), displayOrder: Order.default(0) });
 const TemplateRow = z.strictObject({
-  code: TemplateCode, name: Name, categoryCode: TemplateCode, description: Description.optional(),
+  code: TemplateCode, name: Name, nameAr: NameAr.optional(), categoryCode: TemplateCode, description: Description.optional(),
   hasExpiry: z.boolean(), requiresUpload: z.boolean(), gracePeriodDays: z.number().int().min(0).max(90).default(0),
   displayOrder: Order.default(0), isActive: z.boolean().default(true), fields: FieldDefs,
   // Owner decision 2026-10-04: who the type applies to; left out = every nationality (and not compared).
@@ -200,6 +200,7 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
         name: r.name, categoryCode: r.categoryCode, description: orNull(r.description), hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive, fields: r.fields.map(canonicalField),
         ...(r.nationalityRule !== undefined ? { nationalityRule: rule, nationalityCodes: codes } : {}),
         ...(r.scfhsEnabled !== undefined ? { scfhsEnabled: r.scfhsEnabled } : {}),
+        ...(r.nameAr !== undefined ? { nameAr: r.nameAr } : {}),
         ...(r.scfhsAutoSuspend !== undefined ? { scfhsAutoSuspend: r.scfhsAutoSuspend } : {}),
       },
       { ...s, fields: toFieldDefs(s.fields) },
@@ -248,7 +249,7 @@ export async function applyBaseline(tx: DbClient, actorUserId: number, file: Bas
   for (const r of file.credentialTemplates.filter((x) => isNew('credentialTemplates', x.code))) {
     const t = await tx.credentialTemplate.create({
       data: {
-        code: r.code, name: r.name, categoryCode: r.categoryCode, description: r.description ?? null, hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive,
+        code: r.code, name: r.name, nameAr: r.nameAr ?? null, categoryCode: r.categoryCode, description: r.description ?? null, hasExpiry: r.hasExpiry, requiresUpload: r.requiresUpload, gracePeriodDays: r.gracePeriodDays, displayOrder: r.displayOrder, isActive: r.isActive,
         nationalityRule: r.nationalityRule ?? 'ALL', nationalityCodes: r.nationalityCodes ?? [],
         scfhsEnabled: r.scfhsEnabled ?? false, scfhsAutoSuspend: r.scfhsAutoSuspend ?? false,
       },

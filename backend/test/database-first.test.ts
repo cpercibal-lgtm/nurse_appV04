@@ -168,12 +168,19 @@ describeDb('B. the hospital baseline import (P7)', () => {
       { code: 'NATIONAL_ID', nationalityRule: 'ONLY', nationalityCodes: ['SAU'] },
       { code: 'PASSPORT', nationalityRule: 'EXCEPT', nationalityCodes: ['SAU'] },
     ]);
+    // Arabic names (owner, 2026-10-05): every type and every field has one.
+    expect(await db.credentialTemplate.count({ where: { nameAr: null } })).toBe(0);
+    expect(await db.credentialTemplateField.count({ where: { labelAr: null } })).toBe(0);
+    expect(await db.credentialTemplate.findUniqueOrThrow({ where: { code: 'NATIONAL_ID' }, select: { nameAr: true, fields: { select: { key: true, labelAr: true }, orderBy: { ordinal: 'asc' } } } })).toEqual({
+      nameAr: 'الهوية الوطنية',
+      fields: [{ key: 'national_id_number', labelAr: 'رقم الهوية الوطنية' }, { key: 'issue_date', labelAr: 'تاريخ الإصدار' }, { key: 'expiry_date', labelAr: 'تاريخ الانتهاء (ميلادي/هجري)' }],
+    });
     // The credential requirements matrix (owner, 2026-10-04): grace days, and SCFHS checks on the SCFHS licence only.
     expect(await db.credentialTemplate.findMany({ where: { code: { in: ['PASSPORT', 'IQAMA', 'NATIONAL_ID', 'SCFHS', 'EMP_CONTRACT', 'BLS'] } }, orderBy: { code: 'asc' }, select: { code: true, gracePeriodDays: true, scfhsEnabled: true, scfhsAutoSuspend: true } })).toEqual([
       { code: 'BLS', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
       { code: 'EMP_CONTRACT', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false },
       { code: 'IQAMA', gracePeriodDays: 30, scfhsEnabled: false, scfhsAutoSuspend: false },
-      { code: 'NATIONAL_ID', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false },
+      { code: 'NATIONAL_ID', gracePeriodDays: 30, scfhsEnabled: false, scfhsAutoSuspend: false },
       { code: 'PASSPORT', gracePeriodDays: 90, scfhsEnabled: false, scfhsAutoSuspend: false },
       { code: 'SCFHS', gracePeriodDays: 60, scfhsEnabled: true, scfhsAutoSuspend: true },
     ]);
