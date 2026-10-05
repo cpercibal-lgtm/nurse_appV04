@@ -51,6 +51,8 @@ Scheduled publish time, reminders before meetings/seminars, `.ics` calendar invi
 
 ## 4. Data model (one migration: `20261026090000_announcements`)
 
+**Done in step 2.** The model below is the plan's sketch; the built version is in `backend/prisma/schema.prisma` (`model Announcement`). Differences: `positionFilter` is `String[]` (position codes are text), the arrays default to empty, and there are two extra columns, `emailOnlyCount` (frozen at publication) and `cancelledById`. Checks: `chk_announcements_*` and `chk_notifications_announcement`, tested in `backend/test/database-constraints.test.ts`. A sent announcement cannot be deleted while notifications point to it (`ON DELETE RESTRICT`).
+
 ```prisma
 enum AnnouncementKind   { MEMO  MEETING  SEMINAR }
 enum AnnouncementStatus { DRAFT  PENDING_APPROVAL  PUBLISHED  CANCELLED  REJECTED }
@@ -99,7 +101,7 @@ model Announcement {
 Changes to existing tables:
 
 - `enum NotificationType`: add `ANNOUNCEMENT`.
-- `model Notification`: add `announcementId Int? @map("announcement_id")` + relation + `@@index([announcementId])`. Lets the board show "read by 312 of 412" later (Phase 3) and lets a cancel find its rows.
+- `model Notification`: add `announcementId Int? @map("announcement_id")` + relation (`onDelete: Restrict`) + `@@index([announcementId])`. Lets the board show "read by 312 of 412" later (Phase 3) and lets a cancel find its rows.
 - Database checks (SQL in the migration): `MEETING`/`SEMINAR` require `starts_at`; `ends_at > starts_at`; `online_url LIKE 'https://%'`; title/body lengths.
 
 ---
@@ -180,7 +182,7 @@ The existing dispatcher already sends one message per person per minute, however
 'announcements.manage': ['HR_ADMIN', 'SYSTEM_ADMIN'],               // see all, cancel any within scope
 ```
 
-Approval uses the existing `approvals.decide`. System Admin writes need elevation (existing PAM check). `docs/RBAC.md` and the `ACCESS_MATRIX` gain an "Announcements" row.
+Added in **step 3** together with the routes: `route-matrix.test.ts` refuses a permission no route uses, and `docs.test.ts` requires `RBAC.md` to match. Approval uses the existing `approvals.decide`. System Admin writes need elevation (existing PAM check). `docs/RBAC.md` and the `ACCESS_MATRIX` gain an "Announcements" row.
 
 ---
 
@@ -248,8 +250,8 @@ Frontend: compose form validation (type-specific required fields), board renders
 ## 14. Build order (small, buildable commits on branch `claude/announcements-phase1`)
 
 1. **E-mail hourly cap + priority ordering** (§6.3). Useful on its own and safe to ship first.
-2. **Migration + model + permissions** (§4, §8), no routes yet.
-3. **Service + routes**: drafts, preview, audience resolution, supervisor direct publish, cancel (§5, §9).
+2. **Migration + model** (§4). **Done.**
+3. **Permissions + service + routes**: drafts, preview, audience resolution, supervisor direct publish, cancel, announcement mail last in the e-mail order, health check (§5, §6.3, §8, §9).
 4. **Approval integration** (§7).
 5. **Frontend**: board, detail, compose, approvals row, notification link, i18n EN/AR (§10).
 6. **Docs + manual + guidelines** (§13).
