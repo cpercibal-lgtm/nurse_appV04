@@ -139,21 +139,35 @@ ENV
 chmod 600 "$CONF/monitor.env"
 export CERT_WARN_DAYS=0 CERT_FAIL_DAYS=0   # Caddy's local test CA issues 12-hour certificates
 MON=("$HERE/monitor.sh" --notify --only "site,containers,database,disk,cert")
+# The host running this test is not the VPS stand-in. In CI, Docker images and
+# browser dependencies can fill the runner disk, so make the simulated VPS
+# disk usage deterministic without changing monitor.sh or the production check.
+mkdir -p "$WORK/bin"
+cat > "$WORK/bin/df" <<'DF'
+#!/bin/sh
+if [ "$1" = "--output=pcent" ]; then
+  printf 'Use%%\n 20%%\n'
+else
+  exec /usr/bin/df "$@"
+fi
+DF
+chmod +x "$WORK/bin/df"
+run_mon() { PATH="$WORK/bin:$PATH" "${MON[@]}"; }
 mails() { curl -s --noproxy '*' http://172.30.0.60:8025/api/v1/messages | jq -r '.messages[].Subject'; }
 until curl -s --noproxy '*' -o /dev/null http://172.30.0.60:8025/api/v1/messages; do sleep 1; done
 "$HERE/monitor.sh" --test-alert >/dev/null || { echo "monitor --test-alert failed" >&2; exit 1; }
 mails | grep -q "TEST alert" || { echo "no TEST alert e-mail: $(mails)" >&2; exit 1; }
 curl -s --noproxy '*' -X DELETE http://172.30.0.60:8025/api/v1/messages >/dev/null   # the checks below count alerts from zero
-"${MON[@]}" || { echo "monitor: expected all checks to pass" >&2; exit 1; }
+run_mon || { echo "monitor: expected all checks to pass" >&2; exit 1; }
 [[ -z "$(mails)" ]] || { echo "monitor sent an alert while everything passed" >&2; exit 1; }
 docker stop nurseapp-edge-caddy-1 >/dev/null
-if "${MON[@]}"; then echo "monitor: the site is down but every check passed" >&2; exit 1; fi
+if run_mon; then echo "monitor: the site is down but every check passed" >&2; exit 1; fi
 mails | grep -q "FAILING: site" || { echo "no FAILING alert e-mail: $(mails)" >&2; exit 1; }
-"${MON[@]}" >/dev/null || true
+run_mon >/dev/null || true
 (( $(mails | grep -c "FAILING: site") == 1 )) || { echo "the same failure was alerted twice within 6 hours" >&2; exit 1; }
 docker start nurseapp-edge-caddy-1 >/dev/null
 until fetch /api/v1/health >/dev/null 2>&1; do sleep 1; done
-"${MON[@]}" || { echo "monitor: expected recovery" >&2; exit 1; }
+run_mon || { echo "monitor: expected recovery" >&2; exit 1; }
 mails | grep -q "RECOVERED: site" || { echo "no RECOVERED alert e-mail: $(mails)" >&2; exit 1; }
 echo "alert e-mails: $(mails | tr '\n' ';')"
 OUT="$("$HERE/verify-install.sh" --only settings,roles,https,containers,site,admins)" || { echo "$OUT" >&2; echo "verify-install.sh failed" >&2; exit 1; }
