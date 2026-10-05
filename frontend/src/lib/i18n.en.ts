@@ -408,6 +408,7 @@ export const en = {
   addContractType: 'Add contract type',
   editContractType: 'Edit contract type',
   nameArabic: 'Name (Arabic)',
+  titleArabic: 'Title (Arabic)',
   contractTypeCodeHint: 'Letters A–Z, digits and _ (max 20), starting with a letter, e.g. LOCUM. It cannot be changed later.',
   contractsUsing: 'Contracts',
   contractTypeDeleteConfirm: 'Delete this contract type? If contracts already use it, it is deactivated instead.',

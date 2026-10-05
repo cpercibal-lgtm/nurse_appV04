@@ -90,7 +90,7 @@ export const OPERATIONS: GuideSection[] = [
         purpose: 'Keep the list of position codes (SN, CN, HN …) and whether each can be rostered.',
         who: 'Hospital-wide HR Admin or System Admin.',
         roles: ['HR_ADMIN', 'SYSTEM_ADMIN'],
-        steps: ['Workforce → Positions → Add position (or Edit).', 'Code, title, tier, description, display order, Schedulable, Active.', 'Submit.'],
+        steps: ['Workforce → Positions → Add position (or Edit).', 'Code, title, Arabic title (shown when the interface is Arabic), tier, description, display order, Schedulable, Active.', 'Submit.'],
         result: 'Changing Schedulable re-evaluates everyone in the position. Deprecated positions show "→ replacement".',
         approval: 'None.',
         next: 'Eligibility for holders of the position.',

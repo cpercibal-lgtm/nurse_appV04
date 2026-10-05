@@ -375,6 +375,7 @@
     {
       "code": "DON",
       "title": "Director of Nursing",
+      "titleAr": "مدير التمريض",
       "tier": "Executive",
       "description": "Executive leadership, strategic planning, and overall clinical governance.",
       "isSchedulable": false,
@@ -384,6 +385,7 @@
     {
       "code": "DEPUTY_DON",
       "title": "Deputy Director of Nursing",
+      "titleAr": "نائب مدير التمريض",
       "tier": "Executive",
       "description": "Operational management and implementation of nursing standards.",
       "isSchedulable": false,
@@ -393,6 +395,7 @@
     {
       "code": "ADMIN",
       "title": "Administrator",
+      "titleAr": "مسؤول إداري",
       "tier": "Administrative",
       "description": "Non-clinical operations, budgeting, staffing schedules, and procurement.",
       "isSchedulable": false,
@@ -402,6 +405,7 @@
     {
       "code": "NS",
       "title": "Nursing Supervisor",
+      "titleAr": "مشرف تمريض",
       "tier": "Management",
       "description": "Multi-unit shift coordination and resource allocation.",
       "isSchedulable": true,
@@ -411,6 +415,7 @@
     {
       "code": "ACTING_HEAD",
       "title": "Acting Head Nurse",
+      "titleAr": "رئيس تمريض بالإنابة",
       "tier": "Management",
       "description": "Temporary leadership of a unit to ensure continuity of care and management.",
       "isSchedulable": true,
@@ -420,6 +425,7 @@
     {
       "code": "NURSE_EDUCATOR",
       "title": "Clinical Nurse Educator",
+      "titleAr": "معلم تمريض سريري",
       "tier": "Specialist",
       "description": "Staff training, onboarding, and maintaining clinical competency.",
       "isSchedulable": true,
@@ -429,6 +435,7 @@
     {
       "code": "PRACTITIONER",
       "title": "Nurse Practitioner",
+      "titleAr": "ممرض ممارس",
       "tier": "Advanced Practice",
       "description": "Advanced practice nurse capable of diagnostics and prescribing.",
       "isSchedulable": true,
@@ -438,6 +445,7 @@
     {
       "code": "HN",
       "title": "Head Nurse",
+      "titleAr": "رئيس تمريض",
       "tier": "Management",
       "description": "Unit-specific management, staff oversight, and quality control.",
       "isSchedulable": true,
@@ -447,6 +455,7 @@
     {
       "code": "CN",
       "title": "Charge Nurse",
+      "titleAr": "ممرض مسؤول المناوبة",
       "tier": "Clinical Lead",
       "description": "Shift-lead responsible for patient assignments and immediate unit needs.",
       "isSchedulable": true,
@@ -456,6 +465,7 @@
     {
       "code": "SN",
       "title": "Staff Nurse",
+      "titleAr": "ممرض",
       "tier": "Clinical",
       "description": "Frontline registered nurse providing direct bedside patient care.",
       "isSchedulable": true,
@@ -465,6 +475,7 @@
     {
       "code": "PCT",
       "title": "Patient Care Technician",
+      "titleAr": "فني رعاية المرضى",
       "tier": "Support",
       "description": "Support staff providing basic patient care, vitals, and hygiene.",
       "isSchedulable": true,
@@ -474,6 +485,7 @@
     {
       "code": "TEC",
       "title": "Technician",
+      "titleAr": "فني",
       "tier": "Support",
       "description": "Technical support staff. Legacy position retained for existing records.",
       "isSchedulable": true,
@@ -483,6 +495,7 @@
     {
       "code": "HCA",
       "title": "Healthcare Assistant",
+      "titleAr": "مساعد رعاية صحية",
       "tier": "Support",
       "description": "Healthcare support assistant. Legacy position retained for existing records.",
       "isSchedulable": true,
@@ -492,6 +505,7 @@
     {
       "code": "MW",
       "title": "Midwife",
+      "titleAr": "قابلة",
       "tier": "Clinical Specialist",
       "description": "Specialist midwifery practitioner. Legacy position retained for existing records.",
       "isSchedulable": true,
@@ -501,6 +515,7 @@
     {
       "code": "AHN",
       "title": "Acting/Assistant Head Nurse",
+      "titleAr": "رئيس تمريض بالإنابة أو مساعد",
       "tier": "Management",
       "description": "Deprecated — migrate to ACTING_HEAD.",
       "isSchedulable": true,
@@ -511,6 +526,7 @@
     {
       "code": "CI",
       "title": "Clinical Instructor",
+      "titleAr": "مدرب سريري",
       "tier": "Specialist",
       "description": "Deprecated — migrate to NURSE_EDUCATOR.",
       "isSchedulable": true,

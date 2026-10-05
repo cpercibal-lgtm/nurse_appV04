@@ -410,6 +410,7 @@ export const ar: Record<keyof typeof en, string> = {
   addContractType: 'إضافة نوع عقد',
   editContractType: 'تعديل نوع العقد',
   nameArabic: 'الاسم (بالعربية)',
+  titleArabic: 'المسمى (بالعربية)',
   contractTypeCodeHint: 'أحرف إنجليزية A–Z وأرقام و _ (حتى 20)، تبدأ بحرف، مثل LOCUM. لا يمكن تغييره لاحقًا.',
   contractsUsing: 'العقود',
   contractTypeDeleteConfirm: 'حذف نوع العقد هذا؟ إذا كانت هناك عقود تستخدمه فسيُعطَّل بدلًا من ذلك.',
