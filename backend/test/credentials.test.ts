@@ -671,6 +671,49 @@ describeDb('credentials and eligibility', () => {
       expect(await missing(saudi.emp.id)).toEqual([tpl.id]);
     });
 
+    it('Arabic names of a type and its fields are stored, returned and changed through four-eyes (owner, 2026-10-05)', async () => {
+      const hr2 = await signIn(app, (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'SYSTEM' }] })).email);
+      const code = `AR_${Date.now()}`;
+      const asked = await hr.post('/credential-templates', {
+        code, name: 'National ID test', nameAr: '  الهوية الوطنية  ', categoryCode: 'LICENSURE', reason,
+        fieldDefs: [{ key: 'national_id_number', label: 'National ID Number', labelAr: 'رقم الهوية الوطنية', type: 'text', required: true, displayOrder: 1 },
+          { key: 'issue_date', label: 'Issue Date', type: 'date', required: true, displayOrder: 2, isIssueDate: true }],
+      });
+      expect(asked.status).toBe(202);
+      expect((await hr2.post(`/approvals/${asked.body.requestId}/approve`, { reason: 'Checked the Arabic' })).body.status).toBe('EXECUTED');
+      const listed = (await hr.get('/credential-templates')).body.items.find((t: { code: string }) => t.code === code);
+      expect(listed).toMatchObject({ nameAr: 'الهوية الوطنية', fieldDefs: [{ key: 'national_id_number', labelAr: 'رقم الهوية الوطنية' }, { key: 'issue_date' }] });
+      expect(listed.fieldDefs[1]).not.toHaveProperty('labelAr'); // no Arabic label: the English one is shown
+
+      expect((await hr.patch(`/credential-templates/${listed.id}`, { nameAr: '', reason })).body.error.code).toBe('VALIDATION_FAILED');
+      const cleared = await hr.patch(`/credential-templates/${listed.id}`, { nameAr: null, reason });
+      expect(cleared.status).toBe(202);
+      expect((await hr2.post(`/approvals/${cleared.body.requestId}/approve`, { reason: 'Checked the Arabic' })).body.status).toBe('EXECUTED');
+      expect((await db.credentialTemplate.findUniqueOrThrow({ where: { code } })).nameAr).toBeNull();
+    });
+
+    it('the Arabic names migration fills the baseline types and fields by code, key and label (rolled back here)', async () => {
+      const sql = readFileSync(resolve(__dirname, '../prisma/migrations/20261024100000_credential_arabic_names/migration.sql'), 'utf8');
+      const updates = sql.split(/;\s*\n/).map((s) => s.replace(/^(--[^\n]*\n|\s*\n)+/, '').trim()).filter((s) => s.startsWith('UPDATE'));
+      expect(updates).toHaveLength(2);
+      const seen = await db.$transaction(async (tx) => {
+        await tx.credentialCategory.upsert({ where: { code: 'IDENTITY' }, update: {}, create: { code: 'IDENTITY', name: 'Identity' } });
+        await tx.credentialTemplate.updateMany({ where: { code: 'NATIONAL_ID' }, data: { code: `OLD_NID_${Date.now()}` } });
+        const t = await tx.credentialTemplate.create({ data: { code: 'NATIONAL_ID', name: 'National ID', categoryCode: 'IDENTITY' } });
+        await tx.credentialTemplateField.createMany({ data: [
+          { templateId: t.id, ordinal: 0, key: 'national_id_number', label: 'National ID Number', type: 'text', required: true },
+          { templateId: t.id, ordinal: 1, key: 'issue_date', label: 'Date issued', type: 'date', required: true }, // relabelled by the hospital: left alone
+        ] });
+        for (const s of updates) await tx.$executeRawUnsafe(s);
+        const row = await tx.credentialTemplate.findUniqueOrThrow({ where: { id: t.id }, select: { nameAr: true, fields: { select: { key: true, labelAr: true }, orderBy: { ordinal: 'asc' } } } });
+        throw Object.assign(new Error('rollback'), { result: row });
+      }).catch((e: unknown) => {
+        if (e instanceof Error && 'result' in e) return e.result;
+        throw e;
+      });
+      expect(seen).toEqual({ nameAr: 'الهوية الوطنية', fields: [{ key: 'national_id_number', labelAr: 'رقم الهوية الوطنية' }, { key: 'issue_date', labelAr: null }] });
+    });
+
     it('the migration limits Passport and Iqama and creates the National ID type (rolled back here)', async () => {
       const sql = readFileSync(resolve(__dirname, '../prisma/migrations/20261022090000_nationality_credential_rules/migration.sql'), 'utf8');
       const steps = sql.slice(sql.indexOf('-- Passport and Iqama')).split(/;\s*\n/).map((s) => s.trim()).filter((s) => s && !/^(--[^\n]*\n?)+$/.test(s));
@@ -699,8 +742,9 @@ describeDb('credentials and eligibility', () => {
       ]);
     });
 
-    it('the matrix migration sets grace days and SCFHS checks on the SCFHS licence only (rolled back here)', async () => {
-      const sql = readFileSync(resolve(__dirname, '../prisma/migrations/20261023090000_credential_type_settings/migration.sql'), 'utf8');
+    it('the matrix migrations set grace days and SCFHS checks on the SCFHS licence only (rolled back here)', async () => {
+      const sql = ['20261023090000_credential_type_settings', '20261024090000_national_id_grace']
+        .map((m) => readFileSync(resolve(__dirname, `../prisma/migrations/${m}/migration.sql`), 'utf8')).join('\n');
       const steps = sql.split(/;\s*\n/).map((s) => s.replace(/^(--[^\n]*\n)+/, '').trim()).filter(Boolean);
       const seen = await db.$transaction(async (tx) => {
         await tx.credentialCategory.upsert({ where: { code: 'LICENSURE' }, update: {}, create: { code: 'LICENSURE', name: 'Licensure' } });
@@ -722,7 +766,7 @@ describeDb('credentials and eligibility', () => {
       });
       expect(seen).toEqual([
         { code: 'BLS', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
-        { code: 'NATIONAL_ID', gracePeriodDays: 0, scfhsEnabled: false, scfhsAutoSuspend: false }, // not in the matrix
+        { code: 'NATIONAL_ID', gracePeriodDays: 30, scfhsEnabled: false, scfhsAutoSuspend: false }, // owner, 2026-10-05
         { code: 'PROF_LICENSE', gracePeriodDays: 60, scfhsEnabled: false, scfhsAutoSuspend: false },
         { code: 'SCFHS', gracePeriodDays: 60, scfhsEnabled: true, scfhsAutoSuspend: true },
       ]);

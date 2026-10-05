@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Alert, App, Button, Card, Empty, Flex, Form, Modal, Select, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useTypeLabels } from './labels';
 import { describeApiError } from '../../lib/errors';
 import { appliesToNationality, useCredentialAction, useMyCredentials, useMyEligibility, useMyRequirements, useTemplates, type CredentialRow, type Template } from './api';
 import { useMyEmployee } from '../nurses/api';
@@ -12,6 +13,7 @@ import { CredentialStatusTag, DocumentsDrawer, EligibilityTag, LifecycleTag, nor
 import { GuideHelp } from '../guidelines/GuideHelp';
 export default function MyCredentialsPage() {
   const { t } = useTranslation();
+  const { typeName, typeLabel } = useTypeLabels();
   const { message } = App.useApp();
   const mine = useMyCredentials();
   const reqs = useMyRequirements();
@@ -60,14 +62,14 @@ export default function MyCredentialsPage() {
         </Card>
       )}
       {missing.length > 0 && (
-        <Alert type="error" showIcon title={t('missingRequired')} description={missing.map((r) => `${r.template.code} — ${r.template.name}`).join(' · ')} />
+        <Alert type="error" showIcon title={t('missingRequired')} description={missing.map((r) => typeLabel(r.template)).join(' · ')} />
       )}
       <Card title={<>{t('myCredentials')} <GuideHelp section="self-service" task="my-credentials" /></>} extra={<Button type="primary" onClick={() => { form.resetFields(); setAdding(true); }}>{t('addCredential')}</Button>}>
         <Table<CredentialRow>
           rowKey="id" loading={mine.isLoading} dataSource={mine.data?.items} pagination={false} scroll={{ x: true }}
           locale={{ emptyText: <Empty description={t('noData')} /> }}
           columns={[
-            { title: t('credential'), render: (_, r) => <>{r.template.code} — {r.template.name} {optionalTag(r.templateId)}</> },
+            { title: t('credential'), render: (_, r) => <>{typeLabel(r.template)} {optionalTag(r.templateId)}</> },
             { title: t('status'), render: (_, r) => <Space size={4} wrap><CredentialStatusTag status={r.status} /><LifecycleTag label={r.lifecycle} /></Space> },
             { title: t('expiryDate'), render: (_, r) => r.expiryDate ?? '—' },
             {
@@ -90,13 +92,13 @@ export default function MyCredentialsPage() {
       <Modal title={t('addCredential')} open={adding} onCancel={() => setAdding(false)} onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={action.isPending} destroyOnHidden>
         <Form form={form} layout="vertical" onFinish={submitNew}>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}${optionalForMe.has(x.id) ? ` (${t('optionalForYou')})` : ''}` }))} />
+            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${typeLabel(x)}${optionalForMe.has(x.id) ? ` (${t('optionalForYou')})` : ''}` }))} />
           </Form.Item>
           {tplOf(templateId) && <TrackingFields defs={tplOf(templateId)!.fieldDefs} />}
         </Form>
       </Modal>
 
-      <Modal title={renewing ? `${t('renew')}: ${renewing.template.name}` : ''} open={renewing !== null} onCancel={() => setRenewing(null)} onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={action.isPending} destroyOnHidden>
+      <Modal title={renewing ? `${t('renew')}: ${typeName(renewing.template)}` : ''} open={renewing !== null} onCancel={() => setRenewing(null)} onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={action.isPending} destroyOnHidden>
         <Alert type="info" showIcon title={t('renewalHint')} style={{ marginBottom: 12 }} />
         <Form form={form} layout="vertical" onFinish={submitRenewal}>
           {renewing && tplOf(renewing.templateId) && <TrackingFields defs={tplOf(renewing.templateId)!.fieldDefs} />}

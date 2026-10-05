@@ -20,6 +20,8 @@ const FieldType = z.enum(['text', 'date', 'date_hijri', 'select', 'number', 'cou
 export const FieldDefSchema = z.strictObject({
   key: z.string().regex(/^[a-z][a-z0-9_]{0,49}$/),
   label: z.string().trim().min(1).max(100),
+  /** Shown in the Arabic interface; the English label when absent. */
+  labelAr: z.string().trim().min(1).max(100).optional(),
   type: FieldType,
   required: z.boolean(),
   displayOrder: z.number().int().min(0),
@@ -51,6 +53,8 @@ export const FieldDefs = z.array(FieldDefSchema).max(30).superRefine((defs, ctx)
 /** Every catalog change goes to a second administrator (D-24), who needs to know why. */
 const ChangeReason = z.string().trim().min(10, 'A catalog change needs a reason of at least 10 characters').max(1000);
 const Name = z.string().trim().min(1).max(120);
+/** Arabic name, shown in the Arabic interface (the English name when empty). */
+const NameAr = z.string().trim().min(1).max(120);
 const Description = z.string().trim().max(500);
 /** Spec §6.1.1: 0–90 days, default 0; set by HR per hospital policy. */
 const GraceDays = z.number().int().min(0).max(90);
@@ -59,6 +63,7 @@ const DisplayOrder = z.number().int().min(0);
 export const TemplateCreateBody = z.strictObject({
   code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/),
   name: Name,
+  nameAr: NameAr.optional(),
   categoryCode: z.string().min(1),
   description: Description.optional(),
   hasExpiry: z.boolean().default(true),
@@ -78,6 +83,7 @@ export const TemplateCreateBody = z.strictObject({
 // fill every omitted field with its default and overwrite the stored value.
 export const TemplateUpdateBody = z.strictObject({
   name: Name.optional(),
+  nameAr: NameAr.nullable().optional(),
   categoryCode: z.string().min(1).optional(),
   description: Description.optional(),
   hasExpiry: z.boolean().optional(),
@@ -395,7 +401,7 @@ export function createCatalogService(db: Db) {
       const unitId = q.unitId ?? (scope.all ? undefined : { in: [...scope.unitIds] });
       const rows = await db.credentialRequirement.findMany({
         where: { ...(unitId === undefined ? {} : { unitId }), ...(q.position ? { positionCode: q.position } : {}), ...(q.templateId ? { templateId: q.templateId } : {}) },
-        include: { template: { select: { code: true, name: true } }, unit: { select: { code: true, name: true } } },
+        include: { template: { select: { code: true, name: true, nameAr: true } }, unit: { select: { code: true, name: true } } },
         orderBy: [{ unitId: 'asc' }, { templateId: 'asc' }, { positionCode: 'asc' }],
       });
       return { items: rows, total: rows.length };

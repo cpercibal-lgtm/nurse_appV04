@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Alert, App, Button, Card, DatePicker, Form, Input, Modal, Segmented, Select, Table, Tag } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
+import { useTypeLabels } from '../credentials/labels';
 import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import { describeApiError } from '../../lib/errors';
@@ -16,6 +17,7 @@ const STATUSES: Array<EligibilityStatus | 'ALL'> = ['ALL', 'INELIGIBLE', 'ELIGIB
 
 export default function EligibilityPage() {
   const { t } = useTranslation();
+  const { typeLabel } = useTypeLabels();
   const { message } = App.useApp();
   const { hasRole } = usePermissions();
   // Spec §6.1.2: only Supervisors and HR Admins issue waivers.
@@ -65,7 +67,7 @@ export default function EligibilityPage() {
           rowKey="id" size="small" loading={waivers.isLoading} dataSource={waivers.data?.items} pagination={{ pageSize: 10 }} scroll={{ x: true }}
           columns={[
             { title: t('employee'), render: (_, w) => `${w.employee.jobNumber} — ${w.employee.fullName}` },
-            { title: t('credential'), render: (_, w) => w.template.code },
+            { title: t('credential'), render: (_, w) => typeLabel(w.template) },
             { title: t('reason'), dataIndex: 'reason', ellipsis: true },
             { title: t('expires'), render: (_, w) => new Date(w.expiresAt).toLocaleString() },
             { title: t('status'), render: (_, w) => <Tag color={w.active ? 'gold' : 'default'}>{w.active ? t('active') : t('expired')}</Tag> },
@@ -78,7 +80,7 @@ export default function EligibilityPage() {
         <Alert type="warning" showIcon title={t('waiverHint')} style={{ marginBottom: 12 }} />
         <Form form={form} layout="vertical" onFinish={waive} initialValues={{ expiresAt: dayjs().add(24, 'hour') }}>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
-            <Select options={waiving ? templates.data?.items.filter((x) => blockingTemplates(waiving).includes(x.code)).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` })) : []} />
+            <Select options={waiving ? templates.data?.items.filter((x) => blockingTemplates(waiving).includes(x.code)).map((x) => ({ value: x.id, label: typeLabel(x) })) : []} />
           </Form.Item>
           <Form.Item name="reason" label={t('clinicalJustification')} rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={2000} /></Form.Item>
           <Form.Item name="expiresAt" label={t('expires')} rules={[{ required: true }]}>

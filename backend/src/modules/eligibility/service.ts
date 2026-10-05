@@ -75,7 +75,7 @@ export function createEligibilityService(db: Db) {
           ...(q.active === 'true' ? { expiresAt: { gt: now } } : q.active === 'false' ? { expiresAt: { lte: now } } : {}),
           employee: { deletedAt: null, ...employeeInScope(scope) },
         },
-        include: { template: { select: { code: true, name: true } }, employee: { select: { jobNumber: true, fullName: true } } },
+        include: { template: { select: { code: true, name: true, nameAr: true } }, employee: { select: { jobNumber: true, fullName: true } } },
         orderBy: { createdAt: 'desc' },
         take: 500,
       });

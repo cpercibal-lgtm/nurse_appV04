@@ -621,6 +621,8 @@ model CredentialTemplate {
   id              Int      @id @default(autoincrement())
   code            String   @unique
   name            String
+  /// Arabic name shown in the Arabic interface (English name when empty).
+  nameAr          String?  @map("name_ar") @db.VarChar(120)
   categoryCode    String   @map("category_code")
   description     String?
   hasExpiry       Boolean  @default(true) @map("has_expiry")
@@ -665,6 +667,8 @@ model CredentialTemplateField {
   ordinal      Int
   key          String
   label        String
+  /// Arabic label shown in the Arabic interface (English label when empty).
+  labelAr      String?             @map("label_ar") @db.VarChar(100)
   type         CredentialFieldType
   required     Boolean
   displayOrder Int                 @default(0) @map("display_order")

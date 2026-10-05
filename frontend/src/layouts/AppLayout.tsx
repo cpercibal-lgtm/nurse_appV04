@@ -94,9 +94,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <Layout style={{ marginInlineStart: sidebarWidth, transition: 'margin 0.2s' }}>
           <Header className="app-header">
-            <Flex align="center" gap={8}>
-              <Button type="text" aria-label="Toggle menu" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} />
-              <span className="app-title">{t('appName')}</span>
+            <Flex align="center" gap={8} style={{ minWidth: 0, flex: '1 1 auto' }}>
+              <Button type="text" aria-label={t('toggleMenu')} icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} />
+              <span className="app-title" title={t('appName')}>{t('appName')}</span>
             </Flex>
             <Flex align="center" gap={4}>
               {breakGlass && <Tag color="red">{t('breakGlassActive', { time: new Date(breakGlass.expiresAt).toLocaleTimeString() })}</Tag>}

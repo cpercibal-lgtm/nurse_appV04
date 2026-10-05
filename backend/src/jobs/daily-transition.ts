@@ -59,7 +59,7 @@ export async function dailyTransition(db: Db, now = new Date()) {
   await db.$transaction(async (tx) => {
     const ended = await tx.credential.findMany({
       where: { graceExpiryDate: { lt: todayDb }, graceCycleId: { not: null } },
-      select: { id: true, employeeId: true, graceCycleId: true, graceExpiryDate: true, template: { select: { name: true } }, employee: { select: { unitId: true, fullName: true, jobNumber: true } } },
+      select: { id: true, employeeId: true, graceCycleId: true, graceExpiryDate: true, template: { select: { name: true, nameAr: true } }, employee: { select: { unitId: true, fullName: true, jobNumber: true } } },
     });
     for (const c of ended) {
       if (c.graceCycleId!.endsWith(':closed')) continue;
@@ -72,7 +72,7 @@ export async function dailyTransition(db: Db, now = new Date()) {
           title: 'Grace period ended without renewal',
           message: `${c.employee.jobNumber} ${c.employee.fullName}: the grace period for ${c.template.name} ended on ${dbDate(c.graceExpiryDate!)}. The nurse is ineligible until the renewal is approved.`,
           titleAr: 'انتهت فترة السماح دون تجديد',
-          messageAr: `${c.employee.jobNumber} ${c.employee.fullName}: انتهت فترة السماح لـ ${c.template.name} في ${dbDate(c.graceExpiryDate!)}. الممرض غير مؤهل حتى اعتماد التجديد.`,
+          messageAr: `${c.employee.jobNumber} ${c.employee.fullName}: انتهت فترة السماح لـ ${c.template.nameAr ?? c.template.name} في ${dbDate(c.graceExpiryDate!)}. الممرض غير مؤهل حتى اعتماد التجديد.`,
           eventKey: `grace-expired:${c.graceCycleId}`,
         })),
         skipDuplicates: true,

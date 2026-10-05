@@ -3,6 +3,7 @@ import { App, Button, DatePicker, Drawer, Form, Input, InputNumber, Space, Table
 import { UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
+import { useTypeLabels } from './labels';
 import { describeApiError } from '../../lib/errors';
 import { http } from '../../services/http';
 import { useCredentialAction, useDocuments, type CredentialStatus, type EligibilityStatus, type FieldDef, type Lifecycle, type Reason } from './api';
@@ -50,10 +51,11 @@ export function ReasonList({ reasons }: { reasons: Reason[] }) {
 
 /** Form items generated from a template's field definitions (spec §5.1.3). Dates are sent as YYYY-MM-DD. */
 export function TrackingFields({ defs }: { defs: FieldDef[] }) {
+  const { fieldLabel } = useTypeLabels();
   return (
     <>
       {[...defs].sort((a, b) => a.displayOrder - b.displayOrder).map((d) => (
-        <Form.Item key={d.key} name={['trackingData', d.key]} label={d.label} rules={[{ required: d.required }]}>
+        <Form.Item key={d.key} name={['trackingData', d.key]} label={fieldLabel(d)} rules={[{ required: d.required }]}>
           {d.type === 'date' ? <DatePicker style={{ width: '100%' }} /> : d.type === 'number' ? <InputNumber style={{ width: '100%' }} />
             // The SCFHS licence's classification is a Rank/Grade code (owner decision 2026-10-03).
             : d.type === 'select' && d.key === 'classification' ? <RankGradePicker /> : <Input maxLength={500} />}

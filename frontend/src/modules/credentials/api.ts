@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../../services/http';
 import type { Paged } from '../../types/api';
+import type { TypeName } from './labels';
 
 export type CredentialStatus = 'PendingVerification' | 'Valid' | 'ExpiringSoon' | 'Expired' | 'Suspended' | 'Revoked';
 export type Lifecycle = 'Active' | 'SubjectToRenew' | 'OnProcess' | 'Expired';
@@ -9,8 +10,8 @@ export type EligibilityStatus = 'ELIGIBLE' | 'ELIGIBLE_WITH_GRACE' | 'ELIGIBLE_W
 /** D-54: sensitive personal data (spec §8.3.1) — encrypted per employee and searchable only by exact number. */
 export const PDPL_CATEGORIES = ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID'] as const;
 export type PdplCategory = (typeof PDPL_CATEGORIES)[number];
-export interface FieldDef { key: string; label: string; type: (typeof FIELD_TYPES)[number]; required: boolean; displayOrder: number; isIssueDate?: boolean; isExpiryDate?: boolean; pdplCategory?: PdplCategory }
-export interface Template { id: number; code: string; name: string; categoryCode: string; description: string | null; hasExpiry: boolean; requiresUpload: boolean; gracePeriodDays: number; displayOrder: number; isActive: boolean; fieldDefs: FieldDef[]; scfhsEnabled: boolean; scfhsAutoSuspend: boolean;
+export interface FieldDef { key: string; label: string; /** Arabic label (owner, 2026-10-05); the English one when absent. */ labelAr?: string; type: (typeof FIELD_TYPES)[number]; required: boolean; displayOrder: number; isIssueDate?: boolean; isExpiryDate?: boolean; pdplCategory?: PdplCategory }
+export interface Template { id: number; code: string; name: string; nameAr: string | null; categoryCode: string; description: string | null; hasExpiry: boolean; requiresUpload: boolean; gracePeriodDays: number; displayOrder: number; isActive: boolean; fieldDefs: FieldDef[]; scfhsEnabled: boolean; scfhsAutoSuspend: boolean;
   /** Owner decision 2026-10-04: every nationality, ONLY the listed ones, or all EXCEPT them. */
   nationalityRule: NationalityRule; nationalityCodes: string[] }
 export type NationalityRule = 'ALL' | 'ONLY' | 'EXCEPT';
@@ -23,13 +24,13 @@ export const FIELD_TYPES = ['text', 'date', 'date_hijri', 'select', 'number', 'c
 export interface Requirement {
   id: number; templateId: number; unitId: number; positionCode: string | null;
   policyStatus: 'MANDATORY' | 'TRANSITION' | 'OPTIONAL'; transitionDeadline: string | null;
-  template: { code: string; name: string }; unit: { code: string; name: string };
+  template: TypeName; unit: { code: string; name: string };
   /** GET /credentials/me/requirements: the type does not apply to the caller's nationality, so it is optional for them. */
   optionalByNationality?: boolean;
 }
 export interface CredentialRow {
   id: number; employeeId: number; employee: { fullName: string; jobNumber: string; unitId: number | null };
-  templateId: number; template: { code: string; name: string };
+  templateId: number; template: TypeName;
   status: CredentialStatus; lifecycle: Lifecycle; issueDate: string | null; expiryDate: string | null; expiryDateHijri: string | null; graceExpiryDate: string | null;
   // Present for the owner and HR only (supervisors get the compliance view).
   trackingData?: Record<string, string | number>; pendingData?: { issueDate: string | null; expiryDate: string | null } | null;
@@ -45,7 +46,7 @@ export interface StateRow {
 }
 export interface Waiver {
   id: number; employeeId: number; templateId: number; reason: string; createdAt: string; expiresAt: string; active: boolean;
-  template: { code: string; name: string }; employee: { jobNumber: string; fullName: string };
+  template: TypeName; employee: { jobNumber: string; fullName: string };
 }
 
 const invalidateAll = (qc: ReturnType<typeof useQueryClient>) =>

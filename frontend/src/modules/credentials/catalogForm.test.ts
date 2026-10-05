@@ -3,10 +3,10 @@ import type { Template } from './api';
 import { changeBody, createBody, fieldProblems, toFieldDefs, toFormValues } from './catalogForm';
 
 const stored: Template = {
-  id: 7, code: 'SCFHS', name: 'SCFHS licence', categoryCode: 'LICENSE', description: null, hasExpiry: true, requiresUpload: true,
+  id: 7, code: 'SCFHS', name: 'SCFHS licence', nameAr: null, categoryCode: 'LICENSE', description: null, hasExpiry: true, requiresUpload: true,
   gracePeriodDays: 0, displayOrder: 1, isActive: true, scfhsEnabled: false, scfhsAutoSuspend: false, nationalityRule: 'ALL', nationalityCodes: [],
   fieldDefs: [
-    { key: 'licence_number', label: 'Licence number', type: 'text', required: true, displayOrder: 1 },
+    { key: 'licence_number', label: 'Licence number', labelAr: 'رقم الترخيص', type: 'text', required: true, displayOrder: 1 },
     { key: 'issue_date', label: 'Issue date', type: 'date', required: true, displayOrder: 2, isIssueDate: true },
     { key: 'expiry_date', label: 'Expiry date', type: 'date', required: true, displayOrder: 3, isExpiryDate: true },
   ],
@@ -77,5 +77,18 @@ describe('credential type form', () => {
     expect(changeBody(limited, { ...toFormValues(limited), nationalityRule: 'ALL', reason: 'r' })).toEqual({ nationalityRule: 'ALL', nationalityCodes: [], reason: 'r' });
     expect(changeBody(limited, { ...toFormValues(limited), nationalityCodes: ['SAU', 'KWT'], reason: 'r' })).toEqual({ nationalityCodes: ['KWT', 'SAU'], reason: 'r' });
     expect(createBody({ ...v, code: 'NID', nationalityRule: 'ONLY', nationalityCodes: ['SAU'], reason: 'r' })).toMatchObject({ nationalityRule: 'ONLY', nationalityCodes: ['SAU'] });
+  });
+
+  it('Arabic names (owner, 2026-10-05): trimmed; empty means none; a cleared name is sent as null; field labels keep theirs', () => {
+    const v = toFormValues(stored);
+    expect(changeBody(stored, { ...v, nameAr: '  ترخيص الهيئة  ', reason: 'r' })).toEqual({ nameAr: 'ترخيص الهيئة', reason: 'r' });
+    expect(changeBody(stored, { ...v, nameAr: '   ', reason: 'r' })).toEqual({ reason: 'r' });
+    const named = { ...stored, nameAr: 'ترخيص الهيئة' };
+    expect(changeBody(named, { ...toFormValues(named), nameAr: '', reason: 'r' })).toEqual({ nameAr: null, reason: 'r' });
+    expect(createBody({ ...v, code: 'X1', reason: 'r' })).not.toHaveProperty('nameAr');
+    expect(toFieldDefs(v.fields)[0]).toMatchObject({ labelAr: 'رقم الترخيص' });
+    expect(toFieldDefs(v.fields)[1]).not.toHaveProperty('labelAr');
+    const relabelled = { ...v, fields: v.fields!.map((f, i) => (i === 1 ? { ...f, labelAr: 'تاريخ الإصدار' } : f)), reason: 'r' };
+    expect((changeBody(stored, relabelled).fieldDefs as { labelAr?: string }[]).map((f) => f.labelAr)).toEqual(['رقم الترخيص', 'تاريخ الإصدار', undefined]);
   });
 });

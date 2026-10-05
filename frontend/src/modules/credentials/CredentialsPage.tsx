@@ -16,12 +16,14 @@ import { ScfhsDrawer } from './ScfhsDrawer';
 import { NationalityRuleTag, useNationalityRuleText } from './NationalityRuleTag';
 import { NationalitySelect } from '../../components/NationalitySelect';
 import { changeBody, createBody, fieldProblems, isDateType, toFormValues, type FieldRowValue, type TemplateFormValues } from './catalogForm';
+import { useTypeLabels } from './labels';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
 type Decision = { kind: 'suspend' | 'revoke' | 'reject'; row: CredentialRow };
 
 function RecordsTable({ queue }: { queue?: 'review' }) {
   const { t } = useTranslation();
+  const { typeLabel } = useTypeLabels();
   const { message } = App.useApp();
   const { hasRole } = usePermissions();
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
@@ -77,7 +79,7 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
             <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => {
               const rule = ruleText(x.nationalityRule, x.nationalityCodes);
-              return { value: x.id, label: `${x.code} — ${x.name}${rule ? ` · ${rule}` : ''}` };
+              return { value: x.id, label: `${typeLabel(x)}${rule ? ` · ${rule}` : ''}` };
             })} />
           </Form.Item>
           {recordTemplate && <TrackingFields defs={recordTemplate.fieldDefs} />}
@@ -87,7 +89,7 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
         rowKey="id" size="middle" loading={rows.isLoading} dataSource={rows.data?.items} pagination={{ pageSize: 20 }} scroll={{ x: true }}
         columns={[
           { title: t('employee'), render: (_, r) => `${r.employee.jobNumber} — ${r.employee.fullName}` },
-          { title: t('credential'), render: (_, r) => `${r.template.code} — ${r.template.name}` },
+          { title: t('credential'), render: (_, r) => typeLabel(r.template) },
           { title: t('status'), render: (_, r) => <Space size={4} wrap><CredentialStatusTag status={r.status} /><LifecycleTag label={r.lifecycle} />{r.personalDataErased && <Tag color="purple">{t('personalDataErased')}</Tag>}{r.graceExpiryDate && <Tag color="gold">{t('graceUntil', { date: r.graceExpiryDate })}</Tag>}</Space> },
           { title: t('issueDate'), dataIndex: 'issueDate' },
           { title: t('expiryDate'), render: (_, r) => r.expiryDate ? `${r.expiryDate}${r.expiryDateHijri ? ` (${r.expiryDateHijri} هـ)` : ''}` : '—' },
@@ -132,6 +134,7 @@ function RecordsTable({ queue }: { queue?: 'review' }) {
 function RequirementsTab() {
   const positions = usePositions();
   const { t } = useTranslation();
+  const { typeLabel } = useTypeLabels();
   const { message } = App.useApp();
   const { hasRole } = usePermissions();
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
@@ -162,7 +165,7 @@ function RequirementsTab() {
         columns={[
           { title: t('unit'), render: (_, r) => `${r.unit.code} — ${r.unit.name}` },
           { title: t('position'), render: (_, r) => r.positionCode ?? <Tag>{t('allPositions')}</Tag> },
-          { title: t('credential'), render: (_, r) => `${r.template.code} — ${r.template.name}` },
+          { title: t('credential'), render: (_, r) => typeLabel(r.template) },
           { title: t('policy'), render: (_, r) => <Tag color={r.policyStatus === 'MANDATORY' ? 'red' : r.policyStatus === 'TRANSITION' ? 'orange' : 'default'}>{r.policyStatus}{r.transitionDeadline ? ` · ${r.transitionDeadline.slice(0, 10)}` : ''}</Tag> },
           ...(hr ? [{
             title: '', render: (_: unknown, r: Requirement) => (
@@ -182,7 +185,7 @@ function RequirementsTab() {
             <Select allowClear showSearch optionFilterProp="label" options={positions.data?.items.map((p) => ({ value: p.code, label: `${p.code} — ${p.title}` }))} />
           </Form.Item>
           <Form.Item name="templateId" label={t('credential')} rules={[{ required: true }]}>
-            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: `${x.code} — ${x.name}` }))} />
+            <Select showSearch optionFilterProp="label" options={templates.data?.items.filter((x) => x.isActive).map((x) => ({ value: x.id, label: typeLabel(x) }))} />
           </Form.Item>
           <Form.Item name="policyStatus" label={t('policy')}>
             <Select options={['MANDATORY', 'TRANSITION', 'OPTIONAL'].map((p) => ({ value: p, label: p }))} />
@@ -256,6 +259,7 @@ function CategoriesTab() {
  */
 function CatalogTab() {
   const { t } = useTranslation();
+  const { typeName, fieldLabel } = useTypeLabels();
   const { message } = App.useApp();
   const { hasRole } = usePermissions();
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
@@ -298,9 +302,9 @@ function CatalogTab() {
         rowKey="id" size="middle" loading={templates.isLoading} dataSource={templates.data?.items} pagination={false} scroll={{ x: true }}
         columns={[
           { title: t('code'), dataIndex: 'code' },
-          { title: t('credential'), dataIndex: 'name' },
+          { title: t('credential'), render: (_, x) => typeName(x) },
           { title: t('category'), dataIndex: 'categoryCode' },
-          { title: t('fields'), render: (_, x) => x.fieldDefs.map((f) => f.label).join(', ') || '—', ellipsis: true },
+          { title: t('fields'), render: (_, x) => x.fieldDefs.map(fieldLabel).join(', ') || '—', ellipsis: true },
           { title: t('graceDays'), dataIndex: 'gracePeriodDays' },
           { title: t('status'), render: (_, x) => <Space size={4} wrap><Tag color={x.isActive ? 'green' : 'default'}>{x.isActive ? t('active') : t('inactive')}</Tag>{x.scfhsEnabled && <Tag color="blue">{x.scfhsAutoSuspend ? t('scfhsCheckedAutoTag') : t('scfhsCheckedTag')}</Tag>}<NationalityRuleTag rule={x.nationalityRule} codes={x.nationalityCodes} /></Space> },
           ...(hr ? [{ title: '', render: (_: unknown, x: Template) => <Button size="small" onClick={() => open(x)}>{t('edit')}</Button> }] : []),
@@ -313,6 +317,7 @@ function CatalogTab() {
           <Flex gap={12} wrap>
             {editing === 'new' && <Form.Item name="code" label={t('code')} style={{ minWidth: 180 }} rules={[{ required: true, pattern: /^[A-Z][A-Z0-9_]{1,39}$/ }]}><Input maxLength={40} /></Form.Item>}
             <Form.Item name="name" label={t('name')} style={{ flex: 1, minWidth: 220 }} rules={[{ required: true, whitespace: true }]}><Input maxLength={120} /></Form.Item>
+            <Form.Item name="nameAr" label={t('nameArabic')} style={{ flex: 1, minWidth: 220 }}><Input maxLength={120} dir="rtl" /></Form.Item>
             <Form.Item name="categoryCode" label={t('category')} style={{ minWidth: 220 }} rules={[{ required: true }]}>
               <Select showSearch optionFilterProp="label" options={categories.data?.items.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))} />
             </Form.Item>
@@ -351,7 +356,7 @@ function CatalogTab() {
           >
             {(items, { add, remove, move }, { errors }) => (
               <Card size="small" title={t('fields')} style={{ marginBottom: 16 }}
-                extra={<Button size="small" disabled={items.length >= 30} onClick={() => add({ key: '', label: '', type: 'text', required: false })}>{t('addField')}</Button>}>
+                extra={<Button size="small" disabled={items.length >= 30} onClick={() => add({ key: '', label: '', labelAr: '', type: 'text', required: false })}>{t('addField')}</Button>}>
                 <Alert type="info" showIcon title={t('fieldsChangeHint')} style={{ marginBottom: 8 }} />
                 {items.map((item, i) => {
                   const dateField = isDateType(rows?.[item.name]?.type);
@@ -361,6 +366,7 @@ function CatalogTab() {
                         rules={[{ required: true, pattern: /^[a-z][a-z0-9_]{0,49}$/, message: t('fieldKeyInvalid') }]}><Input maxLength={50} /></Form.Item>
                       <Form.Item name={[item.name, 'label']} label={i === 0 ? t('fieldLabel') : undefined} style={{ flex: 1, minWidth: 160 }}
                         rules={[{ required: true, whitespace: true }]}><Input maxLength={100} /></Form.Item>
+                      <Form.Item name={[item.name, 'labelAr']} label={i === 0 ? t('fieldLabelArabic') : undefined} style={{ flex: 1, minWidth: 160 }}><Input maxLength={100} dir="rtl" /></Form.Item>
                       <Form.Item name={[item.name, 'type']} label={i === 0 ? t('fieldType') : undefined} style={{ width: 170 }}>
                         <Select options={FIELD_TYPES.map((x) => ({ value: x, label: t(`fieldType_${x}`) }))} />
                       </Form.Item>
