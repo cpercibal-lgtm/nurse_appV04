@@ -119,7 +119,7 @@ Recipients are **active user accounts** (`users.is_active`), resolved at publish
 
 Then the optional filters (role, position, specialty) narrow it. The break-glass account is never a recipient.
 
-**Staff without an account (Q6):** the same audience rules are applied to employee records (not deleted, status Active) that have **no linked account**. They become e-mail-only recipients at `employees.contact_email` (§6.2a). The role filter does not apply to them (they hold no role); position and specialty filters do. An employee who has an account is reached through the account only, never twice.
+**Staff without an account (Q6):** the same audience rules are applied to employee records (not deleted, status Active) that have **no linked account**. They become e-mail-only recipients at `employees.contact_email` (§6.2a). With a role filter they are left out (they hold no role); position and specialty filters apply to them. A PEOPLE audience picks accounts only. An employee who has an account is reached through the account only, never twice.
 
 - **Scope rule:** a Supervisor may pick only units inside their own grants (`unitScope()` in `modules/users/access.ts`), and PEOPLE only from those units; the server checks again with `scopeCovers()`. A scoped HR Admin is limited the same way; HOSPITAL needs system-wide scope.
 - **Preview endpoint** returns: account recipients, how many have Telegram linked, e-mail-only recipients (no account), and the estimated e-mail delivery time under the hourly cap.
@@ -251,8 +251,8 @@ Frontend: compose form validation (type-specific required fields), board renders
 
 1. **E-mail hourly cap + priority ordering** (§6.3). Useful on its own and safe to ship first.
 2. **Migration + model** (§4). **Done.**
-3. **Permissions + service + routes**: drafts, preview, audience resolution, supervisor direct publish, cancel, announcement mail last in the e-mail order, health check (§5, §6.3, §8, §9).
-4. **Approval integration** (§7).
+3. **Permissions + service + routes + approval integration** (§5–§9). **Done.** Steps 3 and 4 were built together: an approval request the queue cannot decide would break the Approvals page (`canDecide()` and the screen's `describe()` assume the known payload kinds), so the announcement payload, approve, reject and withdraw arrived with submit.
+4. *(merged into step 3)*
 5. **Frontend**: board, detail, compose, approvals row, notification link, i18n EN/AR (§10).
 6. **Docs + manual + guidelines** (§13).
 

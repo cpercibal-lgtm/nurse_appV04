@@ -107,20 +107,27 @@ export async function businessHealth(db: Db, now = new Date(), keyStatus?: KeySt
   // ── E-mail delivery ────────────────────────────────────────────────────────
   const stuckBefore = new Date(now.getTime() - 15 * MINUTE);
   const dayAgo = new Date(now.getTime() - 24 * 60 * MINUTE);
-  const [pendingN, pendingO, failedN, failedO, lastN, lastO] = await Promise.all([
-    db.notification.count({ where: { emailStatus: 'PENDING', createdAt: { lt: stuckBefore } } }),
-    db.emailOutbox.count({ where: { status: 'PENDING', createdAt: { lt: stuckBefore } } }),
+  // D-69: announcement mail waits behind the hourly limit by design; it has its own, longer threshold.
+  const announcementStuckBefore = new Date(now.getTime() - 6 * 60 * MINUTE);
+  const notAnnouncement = { NOT: { eventKey: { startsWith: 'announcement:' } } };
+  const [pendingN, pendingO, failedN, failedO, lastN, lastO, annN, annO] = await Promise.all([
+    db.notification.count({ where: { emailStatus: 'PENDING', createdAt: { lt: stuckBefore }, type: { not: 'ANNOUNCEMENT' } } }),
+    db.emailOutbox.count({ where: { status: 'PENDING', createdAt: { lt: stuckBefore }, ...notAnnouncement } }),
     db.notification.count({ where: { emailStatus: 'FAILED', emailLastAt: { gte: dayAgo } } }),
     db.emailOutbox.count({ where: { status: 'FAILED', lastAt: { gte: dayAgo } } }),
     db.notification.findFirst({ where: { emailStatus: 'SENT' }, orderBy: { emailLastAt: 'desc' }, select: { emailLastAt: true } }),
     db.emailOutbox.findFirst({ where: { status: 'SENT' }, orderBy: { lastAt: 'desc' }, select: { lastAt: true } }),
+    db.notification.count({ where: { emailStatus: 'PENDING', createdAt: { lt: announcementStuckBefore }, type: 'ANNOUNCEMENT' } }),
+    db.emailOutbox.count({ where: { status: 'PENDING', createdAt: { lt: announcementStuckBefore }, eventKey: { startsWith: 'announcement:' } } }),
   ]);
   const email = {
     pendingOver15Minutes: pendingN + pendingO,
     failedLast24Hours: failedN + failedO,
     lastSentAt: [lastN?.emailLastAt, lastO?.lastAt].filter((d): d is Date => !!d).sort((a, b) => b.getTime() - a.getTime())[0] ?? null,
+    announcementsPendingOver6Hours: annN + annO,
   };
   if (email.pendingOver15Minutes > 0) issues.push({ code: 'EMAIL_BACKLOG', message: `${email.pendingOver15Minutes} e-mail(s) waiting more than 15 minutes` });
+  if (email.announcementsPendingOver6Hours > 0) issues.push({ code: 'ANNOUNCEMENT_EMAIL_BACKLOG', message: `${email.announcementsPendingOver6Hours} announcement e-mail(s) waiting more than 6 hours — check EMAIL_HOURLY_LIMIT and the relay` });
   if (email.failedLast24Hours > 0) issues.push({ code: 'EMAIL_FAILED', message: `${email.failedLast24Hours} e-mail(s) failed in the last 24 hours` });
 
   // ── Telegram delivery (D-66) ──────────────────────────────────────────────

@@ -91,6 +91,9 @@ Generated from `backend/src/modules/users/permissions.ts`. **`backend/test/docs.
 | `eligibility.logic.promote` | HR_ADMIN | Promote the version in shadow when §10.9 allows it, or retire it; system-wide scope only (D-60) |
 | `waivers.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Waiver list |
 | `waivers.write` | SUPERVISOR, HR_ADMIN | Issue a waiver (spec §6.1.2; System Admin excluded — D-28) |
+| `announcements.read` | EMPLOYEE | Announcements addressed to oneself: the board and their detail (D-69) |
+| `announcements.write` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Write, preview, send and cancel one's own announcements; pick people by name. Scope and approval are decided in the service: a Supervisor sends to own units at once; every other send waits for a second HR / System Admin who covers the audience (D-69, owner Q1–Q2) |
+| `announcements.manage` | HR_ADMIN, SYSTEM_ADMIN | See every sent announcement whose audience is in one's HR scope, and cancel it (D-69) |
 
 ### Routes with no permission (own records only)
 
@@ -127,6 +130,7 @@ These routes are open to any signed-in user; the service limits them to the call
 | Contract approval (D-30) | The creator and the submitter cannot approve (`SELF_APPROVAL_FORBIDDEN`) | `contracts/service.ts` |
 | Own contract and own record (D-37) | Nobody creates, renews, transitions or uploads to their own contract, or deletes their own employee record (`SELF_ACTION_FORBIDDEN`). Basis cited by the owner: CBAHI HRM standards, NCA Essential Cybersecurity Controls, MHRSD / Saudi Labor Law (Qiwa) — control numbers to be added by the owner's compliance team | `contracts/service.ts`, `nurses/service.ts` |
 | Own account link | An administrator cannot re-link their own account to another employee | `users/accounts.ts` |
+| Announcements (D-69) | Every announcement sent by an HR Admin or System Admin is queued in Approvals (`ANNOUNCEMENT_PUBLISH:<id>`, one action type per announcement); a **different** administrator whose scope covers the audience's units (the whole hospital, or an account with no unit: system-wide) approves, and publication runs in the approval's transaction with recipients resolved afresh. A Supervisor addressing only units they supervise publishes at once; break-glass publishes at once (spec §3.6). Rejection marks it Rejected; the sender's withdrawal returns it to Draft | `announcements/service.ts`, `administration/approvals.ts` |
 
 ## 6. Privileged access
 

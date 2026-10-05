@@ -20,6 +20,13 @@ function describe(r: ApprovalRequest): string {
     const diff = Object.keys(p.change).map((k) => `${k}: ${show(p.before[k])} → ${show(p.change[k])}`).join('; ');
     return `Change credential category ${p.code}: ${diff} — “${p.reason}”`;
   }
+  if (p.kind === 'ANNOUNCEMENT') {
+    const kind = { MEMO: 'Memo', MEETING: 'Meeting', SEMINAR: 'Seminar' }[p.announcementKind];
+    const n = p.audienceIds.length;
+    const noun = { DEPARTMENT: ['department', 'departments'], UNIT: ['unit', 'units'], PEOPLE: ['person', 'people'] } as const;
+    const audience = p.audienceType === 'HOSPITAL' ? 'the whole hospital' : `${n} ${noun[p.audienceType][n === 1 ? 0 : 1]}`;
+    return `${kind} “${p.title}” to ${audience} — ${p.recipients} account(s)${p.emailOnly ? ` + ${p.emailOnly} by e-mail only` : ''} (announcement #${p.announcementId})`;
+  }
   if (p.kind === 'GRANT') {
     const g = p.grant;
     return `Grant ${g.role} (${g.scopeType}${g.scopeIds.length ? ` ${g.scopeIds.join(', ')}` : ''}) to account #${g.userId} — “${g.reason}”`;

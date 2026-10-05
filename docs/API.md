@@ -237,6 +237,25 @@ Eligibility in every response is the **live engine for the shift date** (L7), no
 | `expiry-scan` | 06:00 daily | Credentials at 60 / 30 / 14 / 7 days, contracts at 90 / 30 / 14 / 7 days before the last valid day, both once expired (current milestone only). Credentials → employee; + unit Supervisor from 14; + scoped HR from 7. Contracts → employee + scoped HR from 90; + Supervisor from 14; none once a later contract is Approved/Active. Key = record + expiry date + milestone | spec §7.1 (N1, N3, N4); **D-39 overrides N2** |
 | `attendance-alerts` | every 15 minutes | Shifts under way: not clocked in 30 min after the start, or clocked in while ineligible → CRITICAL notice to the unit's supervisors, once per assignment | spec §14.2 |
 
+### 2.11a Announcements (`modules/announcements`, D-69)
+
+Memos, meeting schedules and seminar notices. Plan and owner decisions: [ANNOUNCEMENTS_PHASE1_PLAN.md](ANNOUNCEMENTS_PHASE1_PLAN.md). Body fields: `kind` (MEMO · MEETING · SEMINAR), `title` (≤ 150), `body` (≤ 5000), `titleAr`, `bodyAr`, `referenceNo`, `startsAt`, `endsAt`, `location`, `onlineUrl` (https), `speaker`, `ceHours`, `priority` (LOW · MEDIUM · HIGH — High for memos only), `audienceType` (HOSPITAL · DEPARTMENT · UNIT · PEOPLE), `audienceIds`, `roleFilter`, `positionFilter`, `specialtyFilter`, `expiresAt` (default: 30 days for a memo, the day after the event otherwise).
+
+| Method | Endpoint | Purpose | Permission | Source |
+| :--- | :--- | :--- | :--- | :--- |
+| GET | `/api/v1/announcements?state=active\|archived&kind&page&pageSize` | The board: published announcements addressed to me, by board date | EMP (recipient only) | D-69 |
+| GET | `/api/v1/announcements/:id` | Detail with `canCancel`; 404 unless recipient, sender, or a manager covering the audience | EMP | D-69 |
+| GET | `/api/v1/announcements/sent?status` | My own, every status | HR, SUP, SA | D-69 |
+| GET | `/api/v1/announcements/managed` | Every sent announcement whose audience my HR scope covers (newest 200) | HR, SA | D-69 |
+| GET | `/api/v1/announcements/people?q` | Accounts I may pick by name (HR or Supervisor scope): `{items[{id, displayName, jobNumber, unitName}]}` | HR, SUP, SA | D-69 |
+| POST | `/api/v1/announcements` | Create a draft → the announcement + `needsApproval`. Refused outside the sender's scope (`SCOPE_NOT_COVERED`), on a wrong shape (`ANNOUNCEMENT_INVALID`) or unknown recipients/filters (`AUDIENCE_INVALID`) | HR, SUP, SA | D-69 |
+| PATCH · DELETE | `/api/v1/announcements/:id` | Change or delete one's own draft (409 `ANNOUNCEMENT_NOT_DRAFT` otherwise) | HR, SUP, SA | owner Q4 |
+| POST | `/api/v1/announcements/:id/preview` | `{recipients, telegramLinked, emailOnly, needsApproval, emailsQueued, emailEtaMinutes, emailHourlyLimit}` | HR, SUP, SA | D-69 |
+| POST | `/api/v1/announcements/:id/submit` [I] | Supervisor to own units, or break-glass → `{id, status: PUBLISHED}`; any other → `{id, status: PENDING_APPROVAL, approvalRequestId}` (Approvals, action type `ANNOUNCEMENT_PUBLISH:<id>`). `NO_RECIPIENTS`, `EVENT_IN_PAST`, `ANNOUNCEMENT_EXPIRED` | HR, SUP, SA | owner Q1–Q2 |
+| POST | `/api/v1/announcements/:id/cancel` | `{reason ≥ 10}` → `{id, status: CANCELLED, emailsStopped, telegramStopped}`: undelivered e-mail and Telegram rows become SKIPPED | HR, SUP, SA (sender, or manager in scope) | D-69 |
+
+Publication writes one `notifications` row per recipient account (type `ANNOUNCEMENT`, e-mail button → `/announcements/:id`, Telegram prompt without content) and one `email_outbox` row per contact address of staff without an account (no link). Approve / reject / withdraw go through `/api/v1/approvals/:id/…` (§2.3).
+
 ### 2.12 Interoperability — FHIR R4 (`modules/interop`, D-61)
 
 FHIR R4 (4.0.1) read API for the hospital's other systems (spec §14.1). Responses are `application/fhir+json`; route errors are `OperationOutcome` (404 `not-found`, 410 `deleted`, 400 `not-supported`, 403 `forbidden` for a scope the client's token lacks); authentication errors keep the API's own shape. Two kinds of caller: **another system** with a client token (D-63, below), which reads every nurse within its scopes; or a signed-in HR or System Admin, who reads within their scope — a nurse outside it reads as not found. Checked by the HL7 validator in CI (spec §11.3).

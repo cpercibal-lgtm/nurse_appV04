@@ -13,8 +13,9 @@ import { scopeCovers, unitScope, type AuthContext, type UnitScope } from '../use
 import { isCatalogPayload, type CatalogApprovalPayload, type CatalogService } from '../credentials/catalog.js';
 import { isBaselinePayload, type BaselineApprovalPayload, type BaselineImportService } from './baseline-import.js';
 import type { ApprovalPayload as RolePayload, RoleAssignmentService } from '../users/role-assignments.js';
+import { isAnnouncementPayload, type AnnouncementApprovalPayload, type AnnouncementService } from '../announcements/service.js';
 
-type ApprovalPayload = RolePayload | CatalogApprovalPayload | BaselineApprovalPayload;
+type ApprovalPayload = RolePayload | CatalogApprovalPayload | BaselineApprovalPayload | AnnouncementApprovalPayload;
 const isCatalog = (p: ApprovalPayload): p is CatalogApprovalPayload => isCatalogPayload(p);
 
 export const DecideBody = z.strictObject({
@@ -34,6 +35,7 @@ interface LockedRow { id: number; initiator_id: number; status: string; action_t
  * A UNIT grant cannot cover a DEPARTMENT grant: future units would expand it. */
 function canDecide(auth: AuthContext, scope: UnitScope, p: ApprovalPayload): boolean {
   if (isCatalog(p) || isBaselinePayload(p)) return scope.all; // hospital-wide configuration (D-25, P7)
+  if (isAnnouncementPayload(p)) return p.unitIds === 'ALL' ? scope.all : scopeCovers(scope, p.unitIds); // D-69: the audience's units
   const type = p.kind === 'GRANT' ? p.grant.scopeType : p.update.scopeType ?? 'SYSTEM';
   const ids = p.kind === 'GRANT' ? p.grant.scopeIds : p.update.scopeIds ?? [];
   if (type === 'SYSTEM') return scope.all && ids.length === 0;
@@ -45,7 +47,7 @@ function canDecide(auth: AuthContext, scope: UnitScope, p: ApprovalPayload): boo
   return scopeCovers(scope, ids);
 }
 
-export function createApprovalService(db: Db, roles: RoleAssignmentService, catalog: CatalogService, baseline: BaselineImportService) {
+export function createApprovalService(db: Db, roles: RoleAssignmentService, catalog: CatalogService, baseline: BaselineImportService, announcements: AnnouncementService) {
   async function assertDecisionScope(tx: Parameters<Parameters<Db['$transaction']>[0]>[0], auth: AuthContext, p: ApprovalPayload) {
     if (!canDecide(auth, await unitScope(tx, auth, ADMIN_ROLES), p)) {
       throw new HttpError(403, 'SCOPE_NOT_COVERED', 'This approval request is outside your assigned scope');
@@ -107,6 +109,7 @@ export function createApprovalService(db: Db, roles: RoleAssignmentService, cata
       const p = req.payload;
       const resultId = isBaselinePayload(p) ? await baseline.executeApproved(tx, auth, p, id, requestId)
         : isCatalog(p) ? await catalog.executeApproved(tx, auth, p, id, requestId)
+        : isAnnouncementPayload(p) ? await announcements.executeApproved(tx, auth, p, id, requestId)
         : await roles.executeApproved(tx, auth, p, id, requestId);
       const now = new Date();
       await tx.approvalRequest.update({ where: { id }, data: { status: 'EXECUTED', approverId: auth.user.id, reason, decidedAt: now, executedAt: now } });
@@ -115,7 +118,7 @@ export function createApprovalService(db: Db, roles: RoleAssignmentService, cata
         changes: { initiatorId: req.initiator_id, approverId: auth.user.id, actionType: req.action_type, reason, resultId }, requestId, priority: 'HIGH',
       });
       return { id, status: 'EXECUTED' as const, resultId };
-    }, { timeout: 120_000 }); // a baseline import creates a few hundred rows
+    }, { timeout: 120_000 }); // a baseline import creates a few hundred rows; an announcement a row per recipient
   }
 
   async function reject(auth: AuthContext, id: number, reason: string, requestId?: string) {
@@ -123,6 +126,7 @@ export function createApprovalService(db: Db, roles: RoleAssignmentService, cata
       const req = await lockPending(tx, id, auth.user.id);
       await assertDecisionScope(tx, auth, req.payload);
       await tx.approvalRequest.update({ where: { id }, data: { status: 'REJECTED', approverId: auth.user.id, reason, decidedAt: new Date() } });
+      if (isAnnouncementPayload(req.payload)) await announcements.onRejected(tx, req.payload, auth.user.id, requestId);
       await appendAudit(tx, {
         actorUserId: auth.user.id, action: 'APPROVAL_REJECTED', resource: 'approval_request', resourceId: id,
         changes: { initiatorId: req.initiator_id, approverId: auth.user.id, actionType: req.action_type, reason }, requestId, priority: 'HIGH',
@@ -142,6 +146,7 @@ export function createApprovalService(db: Db, roles: RoleAssignmentService, cata
         where: { id },
         data: { status: 'WITHDRAWN', reason, decidedAt: now, withdrawnAt: now },
       });
+      if (isAnnouncementPayload(req.payload)) await announcements.onWithdrawn(tx, req.payload, auth.user.id, requestId);
       await appendAudit(tx, {
         actorUserId: auth.user.id, action: 'APPROVAL_WITHDRAWN', resource: 'approval_request', resourceId: id,
         changes: { initiatorId: req.initiator_id, actionType: req.action_type, reason }, requestId, priority: 'HIGH',
