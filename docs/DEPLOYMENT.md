@@ -50,6 +50,7 @@ Every backend setting is in [`.env.example`](../.env.example) and is validated a
 | `SMTP_FROM` / `SMTP_REPLY_TO` | — | Sender (required with `SMTP_HOST`) and a monitored HR mailbox |
 | `SMTP_TLS_REJECT_UNAUTHORIZED` | true | Verify the relay certificate; `false` is refused in production |
 | `SMTP_RETRY_MAX` / `SMTP_RETRY_DELAY_SECONDS` | 8 / 60 | Spec §7.2 |
+| `EMAIL_HOURLY_LIMIT` | 0 | D-69: most e-mails sent in any 60 minutes, `0` = no limit. Set it below the mail provider's limit (UltaMail: 200 per hour per domain → `150`) |
 | `APP_BASE_URL` | `CORS_ORIGIN` | The public app URL used in e-mail links |
 | `BREAK_GLASS_ALERT_EMAILS` | — | Comma-separated: the CEO and IT Director (spec §3.6) |
 | `NOTIFICATION_DRIVER` | mock | `mock` keeps Telegram messages in the Dev Console Telegram inbox and sends nothing (§2.3, D-66); `telegram` sends through the Telegram Bot API |
@@ -104,6 +105,9 @@ Every in-app notification is also e-mailed to the recipient's account address, a
 | Relay accepted it | `SENT` |
 | Relay refused or unreachable | stays `PENDING`, retried every `SMTP_RETRY_DELAY_SECONDS`; after `SMTP_RETRY_MAX` attempts `FAILED`, with the relay's error in `email_last_error` and an error log `e-mail delivery failed; giving up` |
 | E-mail off (`SMTP_HOST` empty) or the recipient deactivated | `SKIPPED` |
+| Over `EMAIL_HOURLY_LIMIT` in the last 60 minutes | stays `PENDING` with no attempt used, and goes out as the hour moves on |
+
+Each run sends outbox mail (the break-glass alert) first, then notifications most urgent first, so a large batch never holds back a security e-mail (D-69).
 
 Delivery is at-least-once: a crash after the relay accepted a message but before the row is updated sends it again, with the same `Message-ID`. Each message is plain text + HTML (UTF-8, English and Arabic), has no external images, and links only to `APP_BASE_URL`. Notifications stored before this release keep their status and are never e-mailed.
 

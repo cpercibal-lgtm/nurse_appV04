@@ -7,7 +7,7 @@ import request from 'supertest';
 import { SMTPServer } from 'smtp-server';
 import type { AddressInfo } from 'node:net';
 import { loadEnv } from '../src/config/env.js';
-import { dispatchEmails, type DispatchConfig } from '../src/jobs/email-dispatch.js';
+import { dispatchEmails, sentInLastHour, type DispatchConfig } from '../src/jobs/email-dispatch.js';
 import { renderEmail } from '../src/lib/email-templates.js';
 import { createMailer, disabledMailer, senderDomain, type Mailer, type OutgoingEmail } from '../src/lib/mailer.js';
 import type { Db } from '../src/lib/prisma.js';
@@ -56,6 +56,9 @@ describe('e-mail templates and settings', () => {
     const env = loadEnv({ ...base, BREAK_GLASS_ALERT_EMAILS: 'ceo@aigh.sa, it.director@aigh.sa' });
     expect(env.BREAK_GLASS_ALERT_EMAILS).toEqual(['ceo@aigh.sa', 'it.director@aigh.sa']);
     expect(env.SMTP_SECURE).toBe(false);
+    expect(env.EMAIL_HOURLY_LIMIT).toBe(0); // D-69: no limit unless set
+    expect(loadEnv({ ...base, EMAIL_HOURLY_LIMIT: '150' }).EMAIL_HOURLY_LIMIT).toBe(150);
+    expect(() => loadEnv({ ...base, EMAIL_HOURLY_LIMIT: '-1' })).toThrow(/EMAIL_HOURLY_LIMIT/);
     expect(createMailer(env).enabled).toBe(false); // no SMTP_HOST → e-mail off
     expect(senderDomain('AIGH Workforce <nurseapp@aigh.sa>')).toBe('aigh.sa');
   });
@@ -122,6 +125,31 @@ describeDb('e-mail dispatcher (outbox rules)', () => {
     expect(await dispatchEmails(db, disabledMailer, CFG)).toMatchObject({ skipped: 2 });
     expect((await db.notification.findUniqueOrThrow({ where: { id: n.id } })).emailStatus).toBe('SKIPPED');
     expect((await db.emailOutbox.findUniqueOrThrow({ where: { id: box.id } })).status).toBe('SKIPPED');
+  });
+
+  it('D-69: the hourly limit holds back what is over it as PENDING, without using an attempt', async () => {
+    const u = await makeUser(db);
+    const rows = [await notify(u.id), await notify(u.id), await notify(u.id), await notify(u.id)];
+    // Earlier cases in this file sent mail within the hour: the limit counts those too.
+    const cfg = { ...CFG, hourlyLimit: (await sentInLastHour(db)) + 2 };
+    const mailer = fakeMailer();
+    expect(await dispatchEmails(db, mailer, cfg)).toMatchObject({ sent: 2 });
+    expect(await dispatchEmails(db, mailer, cfg)).toMatchObject({ sent: 0 }); // limit reached
+    const after = await db.notification.findMany({ where: { id: { in: rows.map((r) => r.id) } }, orderBy: { id: 'asc' } });
+    expect(after.map((r) => [r.emailStatus, r.emailAttempts])).toEqual([['SENT', 1], ['SENT', 1], ['PENDING', 0], ['PENDING', 0]]);
+    // An hour later the window has moved past them, and the rest go out.
+    expect(await dispatchEmails(db, mailer, cfg, new Date(Date.now() + 61 * 60_000))).toMatchObject({ sent: 2 });
+  });
+
+  it('D-69: under the limit, outbox mail goes first, then notifications by priority', async () => {
+    const u = await makeUser(db);
+    const low = await db.notification.create({ data: { recipientId: u.id, type: 'SYSTEM', priority: 'LOW', title: 'Routine', message: 'm', eventKey: uniq('ev') } });
+    const critical = await notify(u.id, 'CRITICAL');
+    const box = await db.emailOutbox.create({ data: { toAddress: 'ceo@aigh.sa', subject: 's', bodyText: 't', bodyHtml: 'h', priority: 'CRITICAL', eventKey: uniq('ev') } });
+    const mailer = fakeMailer();
+    await dispatchEmails(db, mailer, { ...CFG, hourlyLimit: (await sentInLastHour(db)) + 2 });
+    expect(mailer.sent.map((m) => m.messageId)).toEqual([`<outbox-${box.id}@aigh.sa>`, `<notification-${critical.id}@aigh.sa>`]);
+    expect((await db.notification.findUniqueOrThrow({ where: { id: low.id } })).emailStatus).toBe('PENDING');
   });
 
   it('break-glass sign-in e-mails the configured CEO and IT Director addresses (spec §3.6)', async () => {

@@ -112,6 +112,9 @@ const EnvSchema = z.object({
   /** Spec §7.2: up to 8 attempts, one minute apart. */
   SMTP_RETRY_MAX: z.coerce.number().int().min(1).max(20).default(8),
   SMTP_RETRY_DELAY_SECONDS: int(60),
+  /** D-69: most e-mails sent in any 60 minutes, kept under the provider's limit (UltaMail: 200 per hour
+   *  per domain); 0 = no limit. Mail over it waits as PENDING, outbox and urgent mail first. */
+  EMAIL_HOURLY_LIMIT: z.coerce.number().int().min(0).max(100_000).default(0),
   /** Where links in e-mails point (the app's public URL); defaults to CORS_ORIGIN. */
   APP_BASE_URL: z.string().url().optional(),
   /** Spec §3.6: people alerted by e-mail when the break-glass account signs in (the CEO and IT Director), comma-separated. */
