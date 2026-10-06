@@ -51,6 +51,8 @@ Scheduled publish time, reminders before meetings/seminars, `.ics` calendar invi
 
 ## 4. Data model (one migration: `20261026090000_announcements`)
 
+**Done in step 2.** The model below is the plan's sketch; the built version is in `backend/prisma/schema.prisma` (`model Announcement`). Differences: `positionFilter` is `String[]` (position codes are text), the arrays default to empty, and there are two extra columns, `emailOnlyCount` (frozen at publication) and `cancelledById`. Checks: `chk_announcements_*` and `chk_notifications_announcement`, tested in `backend/test/database-constraints.test.ts`. A sent announcement cannot be deleted while notifications point to it (`ON DELETE RESTRICT`).
+
 ```prisma
 enum AnnouncementKind   { MEMO  MEETING  SEMINAR }
 enum AnnouncementStatus { DRAFT  PENDING_APPROVAL  PUBLISHED  CANCELLED  REJECTED }
@@ -99,7 +101,7 @@ model Announcement {
 Changes to existing tables:
 
 - `enum NotificationType`: add `ANNOUNCEMENT`.
-- `model Notification`: add `announcementId Int? @map("announcement_id")` + relation + `@@index([announcementId])`. Lets the board show "read by 312 of 412" later (Phase 3) and lets a cancel find its rows.
+- `model Notification`: add `announcementId Int? @map("announcement_id")` + relation (`onDelete: Restrict`) + `@@index([announcementId])`. Lets the board show "read by 312 of 412" later (Phase 3) and lets a cancel find its rows.
 - Database checks (SQL in the migration): `MEETING`/`SEMINAR` require `starts_at`; `ends_at > starts_at`; `online_url LIKE 'https://%'`; title/body lengths.
 
 ---
@@ -117,7 +119,7 @@ Recipients are **active user accounts** (`users.is_active`), resolved at publish
 
 Then the optional filters (role, position, specialty) narrow it. The break-glass account is never a recipient.
 
-**Staff without an account (Q6):** the same audience rules are applied to employee records (not deleted, status Active) that have **no linked account**. They become e-mail-only recipients at `employees.contact_email` (§6.2a). The role filter does not apply to them (they hold no role); position and specialty filters do. An employee who has an account is reached through the account only, never twice.
+**Staff without an account (Q6):** the same audience rules are applied to employee records (not deleted, status Active) that have **no linked account**. They become e-mail-only recipients at `employees.contact_email` (§6.2a). With a role filter they are left out (they hold no role); position and specialty filters apply to them. A PEOPLE audience picks accounts only. An employee who has an account is reached through the account only, never twice.
 
 - **Scope rule:** a Supervisor may pick only units inside their own grants (`unitScope()` in `modules/users/access.ts`), and PEOPLE only from those units; the server checks again with `scopeCovers()`. A scoped HR Admin is limited the same way; HOSPITAL needs system-wide scope.
 - **Preview endpoint** returns: account recipients, how many have Telegram linked, e-mail-only recipients (no account), and the estimated e-mail delivery time under the hourly cap.
@@ -180,7 +182,7 @@ The existing dispatcher already sends one message per person per minute, however
 'announcements.manage': ['HR_ADMIN', 'SYSTEM_ADMIN'],               // see all, cancel any within scope
 ```
 
-Approval uses the existing `approvals.decide`. System Admin writes need elevation (existing PAM check). `docs/RBAC.md` and the `ACCESS_MATRIX` gain an "Announcements" row.
+Added in **step 3** together with the routes: `route-matrix.test.ts` refuses a permission no route uses, and `docs.test.ts` requires `RBAC.md` to match. Approval uses the existing `approvals.decide`. System Admin writes need elevation (existing PAM check). `docs/RBAC.md` and the `ACCESS_MATRIX` gain an "Announcements" row.
 
 ---
 
@@ -248,9 +250,9 @@ Frontend: compose form validation (type-specific required fields), board renders
 ## 14. Build order (small, buildable commits on branch `claude/announcements-phase1`)
 
 1. **E-mail hourly cap + priority ordering** (§6.3). Useful on its own and safe to ship first.
-2. **Migration + model + permissions** (§4, §8), no routes yet.
-3. **Service + routes**: drafts, preview, audience resolution, supervisor direct publish, cancel (§5, §9).
-4. **Approval integration** (§7).
+2. **Migration + model** (§4). **Done.**
+3. **Permissions + service + routes + approval integration** (§5–§9). **Done.** Steps 3 and 4 were built together: an approval request the queue cannot decide would break the Approvals page (`canDecide()` and the screen's `describe()` assume the known payload kinds), so the announcement payload, approve, reject and withdraw arrived with submit.
+4. *(merged into step 3)*
 5. **Frontend**: board, detail, compose, approvals row, notification link, i18n EN/AR (§10).
 6. **Docs + manual + guidelines** (§13).
 

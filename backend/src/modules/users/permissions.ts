@@ -98,6 +98,13 @@ export const PERMISSIONS = {
   'waivers.read': ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'],
   // Spec §6.1.2: "only users with the Supervisor or HR_Admin role can issue a waiver".
   'waivers.write': ['SUPERVISOR', 'HR_ADMIN'],
+
+  // Announcements (D-69, owner decisions 2026-10-05): everyone reads those addressed to them;
+  // HR Admin, Supervisor (own units) and elevated System Admin write and send — the service decides
+  // scope and whether a second administrator must approve; managers oversee and cancel in scope.
+  'announcements.read': ['EMPLOYEE'],
+  'announcements.write': ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'],
+  'announcements.manage': ['HR_ADMIN', 'SYSTEM_ADMIN'],
 } as const satisfies Record<string, readonly EffectiveRole[]>;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -112,6 +119,7 @@ export const ACCESS_MATRIX = {
     { area: 'Credentials', cells: ['Scoped upload, review, validity decisions', 'Scoped compliance view; no evidence downloads', 'Own submission, evidence, alerts'] },
     { area: 'Scheduling', cells: ['Coverage/read view by default', 'Scoped draft and publish', 'Published personal/home-unit view'] },
     { area: 'Notifications', cells: ['Own recipient rows', 'Own recipient rows', 'Own recipient rows'] },
+    { area: 'Announcements', cells: ['Send within scope (second administrator approves); cancel in scope', 'Send to own units at once', 'Read those addressed to them'] },
   ],
   source: 'Specification §8.1',
 } as const;

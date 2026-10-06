@@ -53,6 +53,8 @@ import { createFhirRouter } from './modules/interop/fhir-routes.js';
 import { createClientAuth } from './modules/interop/api-clients.js';
 import { createApiClientRouter } from './modules/interop/api-client-routes.js';
 import { createTelegramLinking } from './modules/telegram/linking.js';
+import { createAnnouncementService } from './modules/announcements/service.js';
+import { createAnnouncementsRouter } from './modules/announcements/routes.js';
 import { createTelegramRouter, telegramWebhook } from './modules/telegram/routes.js';
 
 export interface AppDeps {
@@ -153,11 +155,14 @@ export function createApp({ env, db, passwords = createPasswordService(env.BCRYP
     masterKeyId: protection.crypto.masterKeyId, pepperId: protection.crypto.pepperId,
     previous: (['MFA_ENCRYPTION_KEY_PREVIOUS', 'DOCUMENT_ENCRYPTION_KEY_PREVIOUS', 'PDPL_FIELD_ENCRYPTION_KEY_PREVIOUS', 'PDPL_BLIND_INDEX_PEPPER_PREVIOUS'] as const).filter((k) => env[k]),
   };
-  api.use(createUsersRouter(db, createAccountService(db, passwords), createRoleAssignmentService(db), catalog, createBaselineImportService(db), invitations, passwordResets, mfa, emailChanges));
+  // D-69: announcements are sent from their own router and approved in the shared Approvals queue.
+  const announcements = createAnnouncementService(db, { emailHourlyLimit: env.EMAIL_HOURLY_LIMIT });
+  api.use(createUsersRouter(db, createAccountService(db, passwords), createRoleAssignmentService(db), catalog, createBaselineImportService(db), invitations, passwordResets, mfa, emailChanges, announcements));
   api.use(createWorkforceRouter(db, createOrgService(db)));
   api.use(createNursesRouter(db, createNurseService(db)));
   api.use(createSchedulingRouter(db, createSchedulingService(db), createAttendanceService(db)));
   api.use(createNotificationsRouter(db));
+  api.use(createAnnouncementsRouter(db, announcements));
   api.use(createAuditRouter(db, keyStatus));
   api.use(createPdplRouter(db));
   api.use(createDevConsoleRouter(db, telegram, scfhs.driver, badgeSimulatorOn(env)));

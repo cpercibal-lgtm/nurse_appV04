@@ -4,6 +4,7 @@ import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
 import { createApprovalService, DecideBody, ListApprovalsQuery } from '../administration/approvals.js';
+import type { AnnouncementService } from '../announcements/service.js';
 import { BaselinePreviewBody, BaselineRequestBody, type BaselineImportService } from '../administration/baseline-import.js';
 import { createPamService, ElevateBody } from '../administration/pam.js';
 import { CreateAccountBody, ListAccountsQuery, UpdateAccountBody, type createAccountService } from './accounts.js';
@@ -28,9 +29,10 @@ export function createUsersRouter(
   resets: PasswordResetService,
   mfa: MfaService,
   emailChanges: EmailChangeService,
+  announcements: AnnouncementService,
 ) {
   const router = Router();
-  const approvals = createApprovalService(db, roles, catalog, baseline);
+  const approvals = createApprovalService(db, roles, catalog, baseline, announcements);
   const pam = createPamService(db);
 
   // ── Sign-in e-mail change (D-67) ──────────────────────────────────────────

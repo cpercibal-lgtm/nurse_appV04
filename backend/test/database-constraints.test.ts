@@ -54,6 +54,47 @@ describeDb('database constraints', () => {
     await violates((tx, templateId) => tx.credentialTemplateField.create({ data: { ...base, templateId, key: 'both', type: 'date', isIssueDate: true, isExpiryDate: true } }));
   });
 
+  it('D-69 announcements: event times, https link, audience, priority, publication and cancellation fields', async () => {
+    const valid = (createdById: number) => ({
+      kind: 'MEMO' as const, title: 'Staff memo', body: 'Text', audienceType: 'HOSPITAL' as const,
+      expiresAt: day('2026-12-31'), createdById,
+    });
+    /** Each case in its own rolled-back transaction: a failed statement ends the transaction. */
+    const rejects = (patch: Record<string, unknown>, constraint: string) => inRollback(async (tx) => {
+      const u = await tx.user.create({ data: { email: `ann${Date.now()}${Math.random()}@t.sa`, displayName: 'A', passwordHash: 'x' } });
+      await expect(tx.announcement.create({ data: { ...valid(u.id), ...patch } as Prisma.AnnouncementUncheckedCreateInput })).rejects.toThrow(new RegExp(constraint));
+    });
+    await rejects({ kind: 'MEETING' }, 'chk_announcements_event_time');
+    await rejects({ kind: 'SEMINAR', startsAt: day('2026-11-02'), endsAt: day('2026-11-01') }, 'chk_announcements_end_after_start');
+    await rejects({ onlineUrl: 'http://meet.example/x' }, 'chk_announcements_online_url');
+    await rejects({ onlineUrl: 'https://meet.example/a b' }, 'chk_announcements_online_url');
+    await rejects({ title: '   ' }, 'chk_announcements_text');
+    await rejects({ ceHours: 2 }, 'chk_announcements_ce_hours'); // a memo has no CE hours
+    await rejects({ priority: 'CRITICAL' }, 'chk_announcements_priority');
+    await rejects({ audienceIds: [1] }, 'chk_announcements_audience'); // hospital-wide names no ids
+    await rejects({ audienceType: 'UNIT' }, 'chk_announcements_audience'); // a unit audience names one
+    await rejects({ status: 'PUBLISHED' }, 'chk_announcements_published'); // no publication time or counts
+    await rejects({ publishedAt: day('2026-10-05'), recipientCount: 1, emailOnlyCount: 0 }, 'chk_announcements_published'); // a draft is not published
+    await rejects({ status: 'CANCELLED', publishedAt: day('2026-10-05'), recipientCount: 1, emailOnlyCount: 0, cancelledAt: day('2026-10-06') }, 'chk_announcements_cancelled'); // no reason
+
+    await inRollback(async (tx) => {
+      const u = await tx.user.create({ data: { email: `ann${Date.now()}@t.sa`, displayName: 'A', passwordHash: 'x' } });
+      // The valid shapes are accepted: a seminar with times, link and CE hours; a published, then cancelled memo.
+      await tx.announcement.create({ data: { ...valid(u.id), kind: 'SEMINAR', priority: 'MEDIUM', startsAt: day('2026-11-01'), endsAt: day('2026-11-02'), onlineUrl: 'https://meet.example/x', ceHours: 1.5, audienceType: 'UNIT', audienceIds: [1] } });
+      const a = await tx.announcement.create({ data: { ...valid(u.id), status: 'PUBLISHED', publishedAt: day('2026-10-05'), recipientCount: 1, emailOnlyCount: 0 } });
+      await tx.announcement.update({ where: { id: a.id }, data: { status: 'CANCELLED', cancelledAt: day('2026-10-06'), cancelledById: u.id, cancelReason: 'Meeting moved' } });
+      // A notification links to an announcement exactly when it is one.
+      await tx.notification.create({ data: { recipientId: u.id, type: 'ANNOUNCEMENT', title: 't', message: 'm', announcementId: a.id } });
+      await tx.$executeRaw`SAVEPOINT s1`;
+      await expect(tx.notification.create({ data: { recipientId: u.id, type: 'ANNOUNCEMENT', title: 't', message: 'm' } })).rejects.toThrow(/chk_notifications_announcement/);
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT s1`;
+      await expect(tx.notification.create({ data: { recipientId: u.id, type: 'SYSTEM', title: 't', message: 'm', announcementId: a.id } })).rejects.toThrow(/chk_notifications_announcement/);
+      await tx.$executeRaw`ROLLBACK TO SAVEPOINT s1`;
+      // A sent announcement is never deleted out from under its notifications.
+      await expect(tx.announcement.delete({ where: { id: a.id } })).rejects.toThrow();
+    });
+  });
+
   it('a deprecated position names an existing, different successor (P1)', async () => {
     const pos = { title: 'P', tier: 'Clinical', isSchedulable: true };
     await inRollback(async (tx) => {

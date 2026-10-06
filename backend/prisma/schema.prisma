@@ -89,6 +89,8 @@ model User {
   dsrDecided         DataSubjectRequest[]        @relation("dsrDecider")
   registerSignOffs   ProcessingRegisterSignOff[]
   logicPromoted      EligibilityLogicVersion[]   @relation("logicPromoter")
+  announcements      Announcement[]              @relation("announcementCreator")
+  announcementsEnded Announcement[]              @relation("announcementCanceller")
   logicRetired       EligibilityLogicVersion[]   @relation("logicRetirer")
   shadowDecisions    EligibilityShadowLog[]
   apiClientsCreated  ApiClient[]                 @relation("apiClientCreator")
@@ -981,6 +983,7 @@ enum NotificationType {
   APPROVAL
   SECURITY
   SYSTEM
+  ANNOUNCEMENT // D-69: one row per recipient account of a published announcement
 }
 
 enum NotificationPriority {
@@ -1023,16 +1026,95 @@ model Notification {
   telegramLastAt    DateTime?         @map("telegram_last_at") @db.Timestamptz
   /// Telegram's message_id of the message that announced this notification.
   telegramMessageId String?           @map("telegram_message_id")
+  /// D-69: set exactly when type = ANNOUNCEMENT (SQL check).
+  announcementId Int?                 @map("announcement_id")
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
 
-  recipient User @relation(fields: [recipientId], references: [id])
+  recipient    User          @relation(fields: [recipientId], references: [id])
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Restrict)
 
   @@unique([recipientId, eventKey])
   @@index([eventKey]) // expiry scan: who already has this event (N3)
   @@index([recipientId, readAt])
   @@index([emailStatus, emailLastAt])
   @@index([telegramStatus, telegramLastAt])
+  @@index([announcementId])
   @@map("notifications")
+}
+
+enum AnnouncementKind {
+  MEMO
+  MEETING
+  SEMINAR
+}
+
+/// D-69. DRAFT → PUBLISHED (a Supervisor to their own units) or DRAFT → PENDING_APPROVAL →
+/// PUBLISHED | REJECTED (every HR / System Admin send); PUBLISHED → CANCELLED. Never edited once sent.
+enum AnnouncementStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PUBLISHED
+  REJECTED
+  CANCELLED
+}
+
+enum AudienceType {
+  HOSPITAL
+  DEPARTMENT
+  UNIT
+  PEOPLE
+}
+
+/// Memos, meeting schedules and seminar notices (D-69, owner decisions 2026-10-05). Written once and
+/// fanned out at publication: one notifications row per recipient account (in-app, e-mail, Telegram
+/// prompt) and one email_outbox row per contact address of staff without an account; both carry
+/// event key `announcement:<id>`. Archived (not deleted) after expires_at; only drafts are deleted.
+/// SQL checks: meeting/seminar times, https online link, audience ids, status timestamps.
+model Announcement {
+  id              Int                  @id @default(autoincrement())
+  kind            AnnouncementKind
+  status          AnnouncementStatus   @default(DRAFT)
+  priority        NotificationPriority @default(LOW)
+  title           String               @db.VarChar(150)
+  body            String               @db.VarChar(5000)
+  titleAr         String?              @map("title_ar") @db.VarChar(150)
+  bodyAr          String?              @map("body_ar") @db.VarChar(5000)
+  /// MEMO: the administration's own memo number.
+  referenceNo     String?              @map("reference_no") @db.VarChar(50)
+  /// MEETING / SEMINAR: start required (SQL check), end after it.
+  startsAt        DateTime?            @map("starts_at") @db.Timestamptz
+  endsAt          DateTime?            @map("ends_at") @db.Timestamptz
+  location        String?              @db.VarChar(200)
+  onlineUrl       String?              @map("online_url") @db.VarChar(500)
+  /// SEMINAR: speaker and continuing-education hours (information only).
+  speaker         String?              @db.VarChar(150)
+  ceHours         Decimal?             @map("ce_hours") @db.Decimal(4, 1)
+  audienceType    AudienceType         @map("audience_type")
+  /// Department, unit or account ids for the audience type; empty for HOSPITAL.
+  audienceIds     Int[]                @default([]) @map("audience_ids")
+  /// Optional narrowing on top of the audience; empty = no filter. Roles apply to accounts only.
+  roleFilter      AppRole[]            @default([]) @map("role_filter")
+  positionFilter  String[]             @default([]) @map("position_filter")
+  specialtyFilter String[]             @default([]) @map("specialty_filter")
+  /// Frozen at publication.
+  recipientCount  Int?                 @map("recipient_count")
+  emailOnlyCount  Int?                 @map("email_only_count")
+  expiresAt       DateTime             @map("expires_at") @db.Timestamptz
+  createdById     Int                  @map("created_by_id")
+  publishedAt     DateTime?            @map("published_at") @db.Timestamptz
+  cancelledAt     DateTime?            @map("cancelled_at") @db.Timestamptz
+  cancelledById   Int?                 @map("cancelled_by_id")
+  cancelReason    String?              @map("cancel_reason") @db.VarChar(1000)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  createdBy     User           @relation("announcementCreator", fields: [createdById], references: [id])
+  cancelledBy   User?          @relation("announcementCanceller", fields: [cancelledById], references: [id])
+  notifications Notification[]
+
+  @@index([status, expiresAt])
+  @@index([createdById, status])
+  @@map("announcements")
 }
 
 /// Telegram messages intercepted by the mock gateway (D-66, replacing the mock

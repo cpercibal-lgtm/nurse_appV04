@@ -45,7 +45,9 @@ export interface ApprovalRequest {
     | { kind: 'TEMPLATE_UPDATE'; templateId: number; code: string; change: Record<string, unknown>; before: Record<string, unknown>; reason: string }
     | { kind: 'CATEGORY_CREATE'; category: { code: string; name: string }; reason: string }
     | { kind: 'CATEGORY_UPDATE'; code: string; change: Record<string, unknown>; before: Record<string, unknown>; reason: string }
-    | { kind: 'BASELINE_IMPORT'; fileHash: string; totals: BaselineReport['totals']; reason: string };
+    | { kind: 'BASELINE_IMPORT'; fileHash: string; totals: BaselineReport['totals']; reason: string }
+    // D-69: an HR / System Admin announcement waiting for a second administrator.
+    | { kind: 'ANNOUNCEMENT'; announcementId: number; announcementKind: 'MEMO' | 'MEETING' | 'SEMINAR'; title: string; audienceType: 'HOSPITAL' | 'DEPARTMENT' | 'UNIT' | 'PEOPLE'; audienceIds: number[]; recipients: number; emailOnly: number };
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED' | 'WITHDRAWN';
   createdAt: string;
   initiatorId: number;

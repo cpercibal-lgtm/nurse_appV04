@@ -6,8 +6,8 @@
 // D-69: with EMAIL_HOURLY_LIMIT set, a run sends only what keeps the last 60
 // minutes under the limit (UltaMail allows 200 per hour per domain); the rest
 // waits as PENDING without using an attempt. Outbox mail (the break-glass
-// alert) goes first, then notifications by priority, so a large send never
-// holds back a security e-mail.
+// alert) goes first, then notifications by priority, then announcement mail,
+// so a large send never holds back a security e-mail.
 //
 // Delivery is at-least-once: a crash after the relay accepted a message but
 // before the row is marked SENT sends it again (same Message-ID, so most
@@ -15,6 +15,7 @@
 
 import type { Env } from '../config/env.js';
 import type { Notification } from '../generated/prisma/client.js';
+import type { Prisma } from '../lib/prisma.js';
 import { renderEmail } from '../lib/email-templates.js';
 import { describeError, logger } from '../lib/logger.js';
 import { senderDomain, type Mailer } from '../lib/mailer.js';
@@ -64,40 +65,57 @@ export async function dispatchEmails(db: Db, mailer: Mailer, cfg: DispatchConfig
   const dueBefore = new Date(now.getTime() - cfg.retryDelaySeconds * 1000);
   let allowance = cfg.hourlyLimit ? Math.max(0, cfg.hourlyLimit - await sentInLastHour(db, now)) : Infinity;
 
-  // Outbox e-mails first: addresses without an account (the break-glass alert).
-  const outbox = allowance <= 0 ? [] : await db.emailOutbox.findMany({
-    where: { status: 'PENDING', OR: [{ lastAt: null }, { lastAt: { lte: dueBefore } }] },
-    orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
-  });
-  for (const m of outbox) {
-    const outcome = await attempt(mailer, cfg, m.attempts, {
-      to: m.toAddress, subject: m.subject, text: m.bodyText, html: m.bodyHtml,
-      messageId: `<outbox-${m.id}@${cfg.domain}>`, urgent: URGENT.has(m.priority),
-    }, { kind: 'outbox', id: m.id });
-    await db.emailOutbox.update({ where: { id: m.id }, data: { status: outcome.status, attempts: { increment: 1 }, lastAt: new Date(), lastError: outcome.error } });
-    count(out, outcome.status);
-    allowance--;
-  }
+  const base = cfg.baseUrl.replace(/\/$/, '');
 
-  // Notification e-mails: one per recipient account, most urgent first (the enum sorts CRITICAL → LOW).
-  const pending = allowance <= 0 ? [] : await db.notification.findMany({
-    where: { emailStatus: 'PENDING', OR: [{ emailLastAt: null }, { emailLastAt: { lte: dueBefore } }] },
-    include: { recipient: { select: { email: true, isActive: true } } },
-    orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
-  });
-  for (const n of pending) {
-    if (!n.recipient.isActive) {
-      await db.notification.update({ where: { id: n.id }, data: { emailStatus: 'SKIPPED' } });
-      out.skipped++;
-      continue;
+  const sendOutbox = async (where: Prisma.EmailOutboxWhereInput) => {
+    if (allowance <= 0) return;
+    const rows = await db.emailOutbox.findMany({
+      where: { AND: [where, { status: 'PENDING', OR: [{ lastAt: null }, { lastAt: { lte: dueBefore } }] }] },
+      orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
+    });
+    for (const m of rows) {
+      const outcome = await attempt(mailer, cfg, m.attempts, {
+        to: m.toAddress, subject: m.subject, text: m.bodyText, html: m.bodyHtml,
+        messageId: `<outbox-${m.id}@${cfg.domain}>`, urgent: URGENT.has(m.priority),
+      }, { kind: 'outbox', id: m.id });
+      await db.emailOutbox.update({ where: { id: m.id }, data: { status: outcome.status, attempts: { increment: 1 }, lastAt: new Date(), lastError: outcome.error } });
+      count(out, outcome.status);
+      allowance--;
     }
-    const outcome = await attempt(mailer, cfg, n.emailAttempts, {
-      to: n.recipient.email, ...renderEmail({ ...n, link: `${cfg.baseUrl.replace(/\/$/, '')}/notifications` }),
-      messageId: `<notification-${n.id}@${cfg.domain}>`, urgent: URGENT.has(n.priority),
-    }, { kind: 'notification', id: n.id });
-    await db.notification.update({ where: { id: n.id }, data: { emailStatus: outcome.status, emailAttempts: { increment: 1 }, emailLastAt: new Date(), emailLastError: outcome.error } });
-    count(out, outcome.status);
-  }
+  };
+
+  const sendNotifications = async (where: Prisma.NotificationWhereInput) => {
+    if (allowance <= 0) return;
+    const rows = await db.notification.findMany({
+      where: { AND: [where, { emailStatus: 'PENDING', OR: [{ emailLastAt: null }, { emailLastAt: { lte: dueBefore } }] }] },
+      include: { recipient: { select: { email: true, isActive: true } } },
+      orderBy: [{ priority: 'asc' }, { id: 'asc' }], take: Math.min(batch, allowance),
+    });
+    for (const n of rows) {
+      if (!n.recipient.isActive) {
+        await db.notification.update({ where: { id: n.id }, data: { emailStatus: 'SKIPPED' } });
+        out.skipped++;
+        continue;
+      }
+      // D-69: an announcement's button opens the announcement itself.
+      const link = n.announcementId ? `${base}/announcements/${n.announcementId}` : `${base}/notifications`;
+      const outcome = await attempt(mailer, cfg, n.emailAttempts, {
+        to: n.recipient.email, ...renderEmail({ ...n, link }),
+        messageId: `<notification-${n.id}@${cfg.domain}>`, urgent: URGENT.has(n.priority),
+      }, { kind: 'notification', id: n.id });
+      await db.notification.update({ where: { id: n.id }, data: { emailStatus: outcome.status, emailAttempts: { increment: 1 }, emailLastAt: new Date(), emailLastError: outcome.error } });
+      count(out, outcome.status);
+      allowance--;
+    }
+  };
+
+  // Order (D-69): outbox mail (the break-glass alert), then notifications most urgent first
+  // (the enum sorts CRITICAL → LOW), then announcements — to accounts, then to staff without one.
+  const announcementMail = { eventKey: { startsWith: 'announcement:' } };
+  await sendOutbox({ NOT: announcementMail });
+  await sendNotifications({ type: { not: 'ANNOUNCEMENT' } });
+  await sendNotifications({ type: 'ANNOUNCEMENT' });
+  await sendOutbox(announcementMail);
   return out;
 }
 
