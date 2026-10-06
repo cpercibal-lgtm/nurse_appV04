@@ -119,17 +119,18 @@ function Detail({ id, onClose, onEdit, onCopy }: { id: number; onClose: () => vo
   }
 
   return (
-    <Drawer open onClose={onClose} size={640} title={shown?.title ?? t('announcements')}
-      extra={a && <Flex gap={8}>
-        {a.status === 'DRAFT' && <Button onClick={() => onEdit(a)}>{t('annEdit')}</Button>}
-        {a.status === 'DRAFT' && <Popconfirm title={t('annDeleteConfirm')} onConfirm={() => remove.mutateAsync(a.id).then(onClose).catch((e) => message.error(describeApiError(e)))}>
-          <Button danger loading={remove.isPending}>{t('annDeleteDraft')}</Button></Popconfirm>}
-        {a.status !== 'DRAFT' && a.status !== 'PENDING_APPROVAL' && <CopyButton a={a} onCopy={onCopy} />}
-        {a.canCancel && <Button danger onClick={() => { setReason(''); setCancelOpen(true); }}>{t('annCancel')}</Button>}
-      </Flex>}>
+    <Drawer open onClose={onClose} size={640} title={shown?.title ?? t('announcements')}>
       {one.isError && <Result status="404" subTitle={t('annNotFound')} />}
       {a && shown && (
         <Flex vertical gap={16}>
+          {/* In the body, not the header: on a phone the buttons wrap instead of running off the screen. */}
+          <Flex gap={8} wrap>
+            {a.status === 'DRAFT' && <Button onClick={() => onEdit(a)}>{t('annEdit')}</Button>}
+            {a.status === 'DRAFT' && <Popconfirm title={t('annDeleteConfirm')} onConfirm={() => remove.mutateAsync(a.id).then(onClose).catch((e) => message.error(describeApiError(e)))}>
+              <Button danger loading={remove.isPending}>{t('annDeleteDraft')}</Button></Popconfirm>}
+            {a.status !== 'DRAFT' && a.status !== 'PENDING_APPROVAL' && <CopyButton a={a} onCopy={onCopy} />}
+            {a.canCancel && <Button danger onClick={() => { setReason(''); setCancelOpen(true); }}>{t('annCancel')}</Button>}
+          </Flex>
           <Flex gap={6} wrap>
             <Tag color={KIND_COLOR[a.kind]}>{t(`annKind_${a.kind}`)}</Tag>
             <Tag color={STATUS_COLOR[a.status]}>{t(`annStatus_${a.status}`)}</Tag>
