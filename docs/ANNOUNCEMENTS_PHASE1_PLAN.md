@@ -1,7 +1,7 @@
 # Announcements — Phase 1 plan
 
-**Status:** APPROVED by the owner 2026-10-05 (decisions in §2). Build in progress on branch `claude/announcements-phase1`.
-**Proposed decision number:** D-69 (next after D-68 in `V04_ARCHITECTURE_PLAN.md`).
+**Status:** APPROVED by the owner 2026-10-05 (decisions in §2). **Built** on branch `claude/announcements-phase1` (steps 1–6, 2026-10-05/06); recorded as D-69 in [V04_ARCHITECTURE_PLAN.md](V04_ARCHITECTURE_PLAN.md). Waiting for the owner's merge and deployment.
+**Decision:** D-69.
 **Base:** `main` = `9d99e5b`, latest migration `20261025100000_position_titles_arabic`.
 
 ---
@@ -253,8 +253,8 @@ Frontend: compose form validation (type-specific required fields), board renders
 2. **Migration + model** (§4). **Done.**
 3. **Permissions + service + routes + approval integration** (§5–§9). **Done.** Steps 3 and 4 were built together: an approval request the queue cannot decide would break the Approvals page (`canDecide()` and the screen's `describe()` assume the known payload kinds), so the announcement payload, approve, reject and withdraw arrived with submit.
 4. *(merged into step 3)*
-5. **Frontend**: board, detail, compose, approvals row, notification link, i18n EN/AR (§10).
-6. **Docs + manual + guidelines** (§13).
+5. **Frontend**: board, detail, compose, approvals row, notification link, i18n EN/AR (§10). **Done.** The detail opens at `/announcements?id=<id>` (pages are routed only from the module list), so the e-mail button links there.
+6. **Docs + manual + guidelines** (§13). **Done:** Guidelines section *Announcements* (3 tasks, 2 workflows), manual regenerated, coverage matrix, D-69, CHANGELOG, database overview.
 
 Then: full backend + frontend suites, local run on a throw-away DB copy, PR for the owner to merge, deploy approval, set `EMAIL_HOURLY_LIMIT=150` on the VPS (owner runs `deploy.sh restart`), verify on live with one test announcement to the owner's own account (marked TEST, then cancelled).
 

@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../../hooks/usePermissions';
 import { describeApiError } from '../../lib/errors';
+import { GuideHelp } from '../guidelines/GuideHelp';
 import { ComposeDrawer } from './ComposeDrawer';
 import {
   KINDS, useAnnouncement, useBoard, useCancel, useDeleteDraft, useManaged, useSent,
@@ -185,7 +186,7 @@ export default function AnnouncementsPage() {
   const copy = (a: Announcement) => { close(); setCompose({ draft: null, copyOf: a }); };
 
   return (
-    <Card title={t('announcements')} extra={sender
+    <Card title={<>{t('announcements')} <GuideHelp section="announcements" /></>} extra={sender
       ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setCompose({ draft: null, copyOf: null })}>{t('annNew')}</Button>
       : null}>
       {!sender && holdsAssignment('SYSTEM_ADMIN') && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('annElevateToSend')} />}

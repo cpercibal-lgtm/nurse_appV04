@@ -297,6 +297,33 @@ export const FLOWS: Flow[] = [
     ],
   },
   {
+    id: 'announcement',
+    title: 'Sending an announcement',
+    caption: 'Memos, meeting schedules and seminar notices (owner decisions 2026-10-05). Nothing is edited once sent: cancel it and send a new one.',
+    nodes: [
+      { kind: 'start', label: 'Announcements → New announcement: type, text, audience', role: 'SUPERVISOR' },
+      { kind: 'step', label: 'Preview: who receives it, e-mail-only staff, delivery time', role: 'SUPERVISOR' },
+      {
+        kind: 'decision', label: 'Who is sending, to whom?', branches: [
+          { label: 'A Supervisor, to their own units', nodes: [{ kind: 'end', label: 'Sent at once' }] },
+          { label: 'An HR Admin or System Admin (any audience)', nodes: [{ kind: 'state', label: 'PENDING in Approvals: a second administrator approves', role: 'SYSTEM' }, { kind: 'end', label: 'Sent after approval' }] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'announcement-delivery',
+    title: 'How an announcement reaches staff',
+    nodes: [
+      { kind: 'start', label: 'Announcement sent', role: 'SYSTEM' },
+      { kind: 'state', label: 'Staff with an account: in-app notice and the Announcements board', role: 'SYSTEM' },
+      { kind: 'state', label: 'E-mail copy with the full text (security e-mail first; at most EMAIL_HOURLY_LIMIT an hour)', role: 'SYSTEM' },
+      { kind: 'state', label: 'Telegram, if linked: a short prompt only — never the content', role: 'SYSTEM' },
+      { kind: 'state', label: 'Staff without an account: the e-mail only, at their contact address', role: 'SYSTEM' },
+      { kind: 'end', label: 'Removed from the board after its date; kept in Archived' },
+    ],
+  },
+  {
     id: 'role-grant',
     title: 'Granting a role',
     nodes: [

@@ -174,6 +174,7 @@ export const START: GuideSection[] = [
           ['New or changed credential type', 'Credentials → Catalog', 'Another hospital-wide administrator'],
           ['New or changed credential category', 'Credentials → Categories', 'Another hospital-wide administrator'],
           ['Hospital baseline import', 'Hospital baseline import', 'Another hospital-wide administrator'],
+          ['Any announcement sent by an HR Admin or System Admin', 'Announcements → Send for approval', 'Another HR Admin or System Admin covering its audience'],
           ['Approving a contract', 'Contracts', 'An HR person who did not create or submit it (not through Approvals)'],
         ],
       },
