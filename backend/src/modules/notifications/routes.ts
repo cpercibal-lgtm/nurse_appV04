@@ -16,7 +16,7 @@ const IdParam = z.object({ id: z.coerce.number().int().positive() });
 
 export function createNotificationsRouter(db: Db) {
   const r = Router();
-  const fields = { id: true, type: true, priority: true, title: true, message: true, titleAr: true, messageAr: true, employeeId: true, readAt: true, createdAt: true } as const;
+  const fields = { id: true, type: true, priority: true, title: true, message: true, titleAr: true, messageAr: true, employeeId: true, announcementId: true, readAt: true, createdAt: true } as const;
 
   r.get('/notifications', async (req, res) => {
     const q = ListQuery.parse(req.query);

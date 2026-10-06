@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { App, Button, Card, Empty, Flex, List, Segmented, Tag, Typography } from 'antd';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { describeApiError } from '../../lib/errors';
 import { useMarkRead, useNotifications, type NotificationRow } from './api';
@@ -32,11 +33,14 @@ export default function NotificationsPage() {
         loading={list.isLoading} dataSource={list.data?.items} locale={{ emptyText: <Empty description={t('noNotifications')} /> }}
         pagination={list.data && list.data.total > 50 ? { current: page, pageSize: 50, total: list.data.total, onChange: setPage } : false}
         renderItem={(n) => (
-          <List.Item actions={n.readAt ? [] : [<Button key="r" size="small" onClick={() => read(n.id)}>{t('markRead')}</Button>]}>
+          <List.Item actions={[
+            ...(n.announcementId ? [<Link key="o" to={`/announcements?id=${n.announcementId}`} onClick={() => { if (!n.readAt) void read(n.id); }}>{t('annOpen')}</Link>] : []),
+            ...(n.readAt ? [] : [<Button key="r" size="small" onClick={() => read(n.id)}>{t('markRead')}</Button>]),
+          ]}>
             <List.Item.Meta
               title={<Flex gap={6} align="center"><Tag color={PRIORITY_COLOR[n.priority]}>{t(`priority_${n.priority}`)}</Tag>
                 <Typography.Text strong={!n.readAt}>{ar && n.titleAr ? n.titleAr : n.title}</Typography.Text></Flex>}
-              description={<>{ar && n.messageAr ? n.messageAr : n.message}<div style={{ fontSize: 12, opacity: 0.65 }}>{new Date(n.createdAt).toLocaleString()}</div></>}
+              description={<><span style={{ whiteSpace: 'pre-line' }}>{ar && n.messageAr ? n.messageAr : n.message}</span><div style={{ fontSize: 12, opacity: 0.65 }}>{new Date(n.createdAt).toLocaleString()}</div></>}
             />
           </List.Item>
         )}

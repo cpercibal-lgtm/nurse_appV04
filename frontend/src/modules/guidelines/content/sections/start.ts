@@ -31,6 +31,7 @@ export const START: GuideSection[] = [
           ['Roster & Scheduling', 'The roster board; employees see their own shifts', 'Everyone (drafting: Supervisor)'],
           ['Attendance', 'Planned versus actual (clock-ins)', 'Everyone (employees see their own)'],
           ['Notifications', 'Your notices — the bell at the top shows how many are unread', 'Everyone'],
+          ['Announcements', 'Memos, meeting schedules and seminar notices sent to you; senders write and send them here', 'Everyone (sending: HR Admin, Supervisor, System Admin while elevated)'],
           ['Audit & Compliance', 'Audit trail and request log', 'System Admin'],
           ['Sign-in history', 'Your own sessions', 'Everyone'],
           ['Two-factor sign-in', 'Authenticator, recovery codes, sign-in e-mail, Telegram', 'Everyone'],
