@@ -4,6 +4,8 @@ import { http } from '../../services/http';
 export interface NotificationRow {
   id: number; type: string; priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; title: string; message: string;
   titleAr: string | null; messageAr: string | null; employeeId: number | null; readAt: string | null; createdAt: string;
+  /** D-69: set on an announcement; the item opens it. */
+  announcementId: number | null;
 }
 export interface NotificationPage { items: NotificationRow[]; total: number; unread: number; page: number; pageSize: number }
 

@@ -19,13 +19,14 @@ The same guide is in the application (side menu → Guidelines) and as a printab
 11. [Roster and scheduling](#11-roster-and-scheduling)
 12. [Attendance](#12-attendance)
 13. [Notifications](#13-notifications)
-14. [Nursing Administration](#14-nursing-administration)
-15. [Audit & Compliance](#15-audit--compliance)
-16. [Employee self-service](#16-employee-self-service)
-17. [Security and your account](#17-security-and-your-account)
-18. [How the hospital system works](#18-how-the-hospital-system-works)
-19. [Troubleshooting](#19-troubleshooting)
-20. [Quick reference](#20-quick-reference)
+14. [Announcements](#14-announcements)
+15. [Nursing Administration](#15-nursing-administration)
+16. [Audit & Compliance](#16-audit--compliance)
+17. [Employee self-service](#17-employee-self-service)
+18. [Security and your account](#18-security-and-your-account)
+19. [How the hospital system works](#19-how-the-hospital-system-works)
+20. [Troubleshooting](#20-troubleshooting)
+21. [Quick reference](#21-quick-reference)
 
 ## 1. Getting started
 
@@ -57,6 +58,7 @@ The AIGH Nursing Workforce system keeps one record of every nurse — contract, 
 | Roster & Scheduling | The roster board; employees see their own shifts | Everyone (drafting: Supervisor) |
 | Attendance | Planned versus actual (clock-ins) | Everyone (employees see their own) |
 | Notifications | Your notices — the bell at the top shows how many are unread | Everyone |
+| Announcements | Memos, meeting schedules and seminar notices sent to you; senders write and send them here | Everyone (sending: HR Admin, Supervisor, System Admin while elevated) |
 | Audit & Compliance | Audit trail and request log | System Admin |
 | Sign-in history | Your own sessions | Everyone |
 | Two-factor sign-in | Authenticator, recovery codes, sign-in e-mail, Telegram | Everyone |
@@ -106,7 +108,7 @@ The AIGH Nursing Workforce system keeps one record of every nurse — contract, 
 - *"Invalid email or password"* — Check Caps Lock and the address. After 5 wrong attempts on one account within 15 minutes the account is paused for up to 15 minutes; after 20 failed attempts from one network, everyone on that network is paused. Stop guessing and use Forgot password?.
 - *The code is refused* — Use the current code (they change every 30 seconds and each works once), or sign in with a recovery code.
 
-**Related.** [Security and your account](#17-security-and-your-account)
+**Related.** [Security and your account](#18-security-and-your-account)
 
 ![Signing in](generated/flows/sign-in.svg)
 
@@ -141,7 +143,7 @@ The AIGH Nursing Workforce system keeps one record of every nurse — contract, 
 
 - *No e-mail arrives* — Check the spam folder. Supervisor, HR and administrator accounts never receive a self-service link: ask HR. If e-mail is not switched on, HR helps you instead.
 
-**Related.** [Security and your account](#17-security-and-your-account) · [Nursing Administration](#14-nursing-administration)
+**Related.** [Security and your account](#18-security-and-your-account) · [Nursing Administration](#15-nursing-administration)
 
 ![Forgotten password](generated/flows/password-reset.svg)
 
@@ -178,7 +180,7 @@ The AIGH Nursing Workforce system keeps one record of every nurse — contract, 
 
 - *The link says it is invalid or expired* — Ask HR to send a new invitation.
 
-**Related.** [Nurses](#5-nurses) · [Employee self-service](#16-employee-self-service)
+**Related.** [Nurses](#5-nurses) · [Employee self-service](#17-employee-self-service)
 
 ![Account by invitation](generated/flows/invitation.svg)
 
@@ -236,6 +238,7 @@ Some changes are too important for one person. They are saved as a request and t
 | New or changed credential type | Credentials → Catalog | Another hospital-wide administrator |
 | New or changed credential category | Credentials → Categories | Another hospital-wide administrator |
 | Hospital baseline import | Hospital baseline import | Another hospital-wide administrator |
+| Any announcement sent by an HR Admin or System Admin | Announcements → Send for approval | Another HR Admin or System Admin covering its audience |
 | Approving a contract | Contracts | An HR person who did not create or submit it (not through Approvals) |
 
 ### 3.1 Approve or reject a request
@@ -269,7 +272,7 @@ Some changes are too important for one person. They are saved as a request and t
 - *No Approve button, only "Your request — waiting for another administrator"* — You asked for it. Someone else must decide, or you can Withdraw it.
 - *Approval refused because the item changed* — The record changed after the request; ask the requester to submit a new one.
 
-**Related.** [Nursing Administration](#14-nursing-administration) · [Credentials](#7-credentials)
+**Related.** [Nursing Administration](#15-nursing-administration) · [Credentials](#7-credentials)
 
 ![Approval by a second administrator (four-eyes)](generated/flows/four-eyes.svg)
 
@@ -296,7 +299,7 @@ Some changes are too important for one person. They are saved as a request and t
 
 **Next step.** Submit a corrected request if needed.
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
 ## 4. Dashboard
 
@@ -327,7 +330,7 @@ The first page after sign-in: a welcome line and whether the system (API) and it
 
 **Next step.** If either is red, tell the system administrator; other pages will not load data.
 
-**Related.** [Troubleshooting](#19-troubleshooting)
+**Related.** [Troubleshooting](#20-troubleshooting)
 
 ## 5. Nurses
 
@@ -544,7 +547,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Next step.** Deactivate the login account in Nursing Administration → Accounts if there is one.
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
 ### 5.7 Send a login invitation
 
@@ -579,7 +582,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 - *"current approved or active contract"* — Approve the contract first.
 - *"already has a login account" / "e-mail in use"* — Use Accounts to manage the existing login.
 
-**Related.** [Getting started](#1-getting-started) · [Nursing Administration](#14-nursing-administration) · [Contracts](#6-contracts)
+**Related.** [Getting started](#1-getting-started) · [Nursing Administration](#15-nursing-administration) · [Contracts](#6-contracts)
 
 ![Account by invitation](generated/flows/invitation.svg)
 
@@ -734,7 +737,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 - *Delete only deactivated the type* — Contracts use it (see the Contracts column). That is intended: the old contracts keep showing it.
 - *A contract type code is refused as existing* — Codes are unique, including deactivated types. Edit the existing type and switch it Active instead.
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
 ### 6.4 Upload the signed contract copy
 
@@ -891,7 +894,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 - *No Evidence / SCFHS / Verify buttons* — You are a supervisor (compliance view), or the record is outside your HR scope.
 
-**Related.** [Eligibility](#8-eligibility) · [Employee self-service](#16-employee-self-service)
+**Related.** [Eligibility](#8-eligibility) · [Employee self-service](#17-employee-self-service)
 
 ### 7.2 Record a credential for a nurse
 
@@ -924,7 +927,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 - *The nurse is not offered* — The nurse is outside your HR scope, or the search needs more of the job number or name.
 - *"This credential type expires: record its expiry date before verifying"* — The expiry date was left empty. Record the credential again with its expiry date.
 
-**Related.** [Employee self-service](#16-employee-self-service) · [Eligibility](#8-eligibility)
+**Related.** [Employee self-service](#17-employee-self-service) · [Eligibility](#8-eligibility)
 
 ![Adding a credential](generated/flows/credential-new.svg)
 
@@ -978,7 +981,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 - *Upload refused* — PDF, JPEG, PNG or WebP, at most 10 MB; the file must pass the virus scan. A revoked credential takes no evidence.
 - *No View / Download button* — Only CLEAN files can be opened, and only by the holder and HR.
 
-**Related.** [Employee self-service](#16-employee-self-service)
+**Related.** [Employee self-service](#17-employee-self-service)
 
 ### 7.5 C. Verify a credential
 
@@ -1041,7 +1044,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 - *No SCFHS button* — The credential type is not set to "Check with SCFHS" (Catalog).
 
-**Related.** [Eligibility](#8-eligibility) · [Nursing Administration](#14-nursing-administration)
+**Related.** [Eligibility](#8-eligibility) · [Nursing Administration](#15-nursing-administration)
 
 ![SCFHS licence check](generated/flows/scfhs-check.svg)
 
@@ -1082,7 +1085,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 - *"A renewal must state the new expiry date"* — Enter the new expiry date in the details.
 - *Approve refused: evidence required* — The holder (or HR) uploads the new document first.
 
-**Related.** [Eligibility](#8-eligibility) · [Notifications](#13-notifications) · [Roster and scheduling](#11-roster-and-scheduling) · [Employee self-service](#16-employee-self-service)
+**Related.** [Eligibility](#8-eligibility) · [Notifications](#13-notifications) · [Roster and scheduling](#11-roster-and-scheduling) · [Employee self-service](#17-employee-self-service)
 
 ![Credential renewal](generated/flows/credential-renewal.svg)
 
@@ -1251,7 +1254,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 **Next step.** Verify.
 
-**Related.** [Employee self-service](#16-employee-self-service)
+**Related.** [Employee self-service](#17-employee-self-service)
 
 ## 8. Eligibility
 
@@ -1896,7 +1899,7 @@ The weekly roster board of a unit. Supervisors draft shifts from the nurses who 
 
 **Next step.** —
 
-**Related.** [Employee self-service](#16-employee-self-service)
+**Related.** [Employee self-service](#17-employee-self-service)
 
 ## 12. Attendance
 
@@ -1964,7 +1967,7 @@ Planned versus actual: for a unit and date, every published shift with its clock
 
 **Next step.** A wrong event: tell your supervisor (corrections are not in V04).
 
-**Related.** [Employee self-service](#16-employee-self-service)
+**Related.** [Employee self-service](#17-employee-self-service)
 
 ## 13. Notifications
 
@@ -1992,6 +1995,7 @@ Your action queue: each notice tells you something needs you — a credential or
 | SCFHS: <credential> of <nurse> | HR in scope | Check the record against SCFHS |
 | Personal data request | HR | Work it in Data protection |
 | Break-glass account activated | The recipients configured for break-glass alerts | Verify the emergency |
+| Memo, meeting or seminar announcement | The audience the sender chose | Open announcement |
 | Eligibility drift corrected; Document storage problem | System administrators | Review Background jobs |
 
 ### 13.1 Read and clear notifications
@@ -2019,7 +2023,138 @@ Your action queue: each notice tells you something needs you — a credential or
 
 ![Expiry reminders](generated/flows/reminders.svg)
 
-## 14. Nursing Administration
+## 14. Announcements
+
+Memos, meeting schedules and seminar notices from Nursing Administration and supervisors. The Board lists those sent to you; senders write, preview and send them here.
+
+**Who:** Everyone reads what is sent to them; HR Admin, Supervisor and System Admin (while elevated) send  
+**Screen:** `/announcements`  
+**Where:** Side menu → Announcements. A notice in Notifications, and the button in the e-mail, open the announcement itself.
+
+> **Note:** Staff with an account get the announcement in the app and by e-mail; if they linked Telegram, a short prompt with no content. Staff without an account get the e-mail only, at the contact address on their staff record (no link to the app; an online meeting link is written in the e-mail).
+
+> **Important:** Do not include patient information. A sent announcement cannot be edited: cancel it and send a new one.
+
+![Sending an announcement](generated/flows/announcement.svg)
+
+*Memos, meeting schedules and seminar notices (owner decisions 2026-10-05). Nothing is edited once sent: cancel it and send a new one.*
+
+![How an announcement reaches staff](generated/flows/announcement-delivery.svg)
+
+**Who may send to whom (owner decisions 2026-10-05)**
+
+| Sender | Audience they can choose | Sent |
+| :--- | :--- | :--- |
+| Supervisor | Their own units, or people in them | At once |
+| HR Admin | Units and departments in their scope; the whole hospital with hospital-wide scope; people | After a second HR Admin or System Admin approves (Approvals) |
+| System Admin (while elevated) | Any audience | After a second administrator approves |
+| Employee | — | Cannot send |
+
+**The three types**
+
+| Type | Fields | Default priority | On the board until |
+| :--- | :--- | :--- | :--- |
+| Memo | Title, text, memo / reference number | Low (High can be chosen) | 30 days |
+| Meeting | Start (required), end, place, online link | Medium | The day after the meeting |
+| Seminar | Start (required), end, place, online link, speaker, CE hours | Low | The day after the seminar |
+
+### 14.1 Read announcements
+
+**Status:** Implemented  
+**Roles:** Employee, Supervisor, HR Admin, System Admin
+
+**Purpose.** See memos, meetings and seminars sent to you.
+
+**Who can perform it.** Everyone (only announcements addressed to you).
+
+**Steps.**
+
+1. Open Announcements (side menu), or click Open announcement on the notice in Notifications, or the button in the e-mail.
+2. The Board shows current announcements; filter by type, or switch to Archived for past ones.
+3. Click one to read it: time (Riyadh), place, Join online for an online meeting, sender. In Arabic you see the Arabic text when the sender wrote one.
+
+**System result.** Nothing changes; the notice in Notifications can be marked read.
+
+**Approval.** None.
+
+**Next step.** Attend the meeting or seminar; follow the memo.
+
+**Common problems.**
+
+- *"This announcement is not available to you."* — It was not sent to you, or the link is wrong. Ask the sender.
+- *It disappeared from the Board.* — Its board date passed (look in Archived), or it was cancelled — opening it from the notice shows why.
+
+**Related.** [Notifications](#13-notifications)
+
+![How an announcement reaches staff](generated/flows/announcement-delivery.svg)
+
+### 14.2 Write and send an announcement
+
+**Status:** Implemented  
+**Roles:** Supervisor, HR Admin, System Admin
+
+**Purpose.** Tell staff about a memo, a meeting or a seminar, in the app, by e-mail and with a Telegram prompt.
+
+**Who can perform it.** HR Admin and Supervisor within their scope; System Admin while elevated.
+
+**Before you start.**
+
+- Have the text ready, in English and (recommended) Arabic.
+- For a meeting or seminar: the date, time and place or online link.
+
+**Steps.**
+
+1. Announcements → New announcement.
+2. Choose the type (Memo, Meeting, Seminar) and fill in the title and text; open Arabic text to add the Arabic version.
+3. For a meeting or seminar, set the start (and end), place and online link; for a seminar, the speaker and CE hours.
+4. Under Send to, choose the audience: units (a supervisor sees only their own), departments, the whole hospital, or people by name. Narrow the audience by role, position or specialty if needed.
+5. Leave "Remove from the board on" empty for the default, or choose a date.
+6. Click Preview and send. Check how many people receive it, how many only by e-mail, and the e-mail delivery time.
+7. Click Send (a supervisor to their own units) or Send for approval (HR Admin and System Admin).
+
+**System result.** Sent: on the recipients' Board and in their Notifications, e-mails queued. Sent for approval: it waits in Nursing Administration → Approvals; Sent by me shows "Waiting for approval".
+
+**Approval.** Every HR Admin or System Admin announcement needs a second HR Admin or System Admin whose scope covers the audience (Approvals). A supervisor's announcement to their own units needs none.
+
+**Next step.** Sent by me shows its status. A rejected one can be copied to a new announcement and corrected.
+
+**Common problems.**
+
+- *"This audience is outside your assigned scope."* — Choose units you supervise or manage. The whole hospital needs hospital-wide HR scope; someone without a unit can only be chosen by hospital-wide HR.
+- *"Nobody is in this audience."* — No account or staff member matches: change the units, people or filters.
+- *The e-mail delivery time is long.* — E-mail is limited per hour by the mail provider (EMAIL_HOURLY_LIMIT); security e-mails go first. The in-app notice is immediate.
+- *A mistake after sending.* — Cancel it (with a reason) and send a corrected one; withdraw a pending one in Approvals to edit it again.
+
+**Related.** [Approvals (four-eyes)](#3-approvals-four-eyes) · [Notifications](#13-notifications)
+
+![Sending an announcement](generated/flows/announcement.svg)
+
+*Memos, meeting schedules and seminar notices (owner decisions 2026-10-05). Nothing is edited once sent: cancel it and send a new one.*
+
+### 14.3 Cancel an announcement
+
+**Status:** Implemented  
+**Roles:** Supervisor, HR Admin, System Admin
+
+**Purpose.** Withdraw an announcement already sent — a postponed meeting, a mistake.
+
+**Who can perform it.** The sender, or an HR Admin / System Admin whose scope covers its audience.
+
+**Steps.**
+
+1. Open the announcement (Board, Sent by me, or All announcements).
+2. Click Cancel announcement.
+3. Write the reason (at least 10 characters) and confirm.
+
+**System result.** E-mails and Telegram prompts not yet delivered are stopped; it leaves the Board; people who open it see "Cancelled" and the reason. Audited.
+
+**Approval.** None.
+
+**Next step.** Send a new announcement if needed (Copy to a new announcement keeps the text).
+
+**Related.** [Notifications](#13-notifications)
+
+## 15. Nursing Administration
 
 Accounts, roles, approvals, hospital set-up, data protection and system tools. HR Admins see the people and data tabs; System Admins also see the system tabs, and the people tabs only while elevated.
 
@@ -2055,7 +2190,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 | API clients | Other systems allowed to call the API (FHIR reads, badge events) | System Admin | — | Yes |
 | Access matrix | Who may do what, by area (read only) | Everyone in Administration | — | — |
 
-### 14.1 Create a login account
+### 15.1 Create a login account
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -2079,7 +2214,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Related.** [Roles and permissions](#2-roles-and-permissions) · [Nurses](#5-nurses)
 
-### 14.2 Reset, change e-mail, reset two-factor, deactivate
+### 15.2 Reset, change e-mail, reset two-factor, deactivate
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -2110,9 +2245,9 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 - *Deactivate refused* — It would leave no usable System Admin.
 
-**Related.** [Security and your account](#17-security-and-your-account)
+**Related.** [Security and your account](#18-security-and-your-account)
 
-### 14.3 Grant or revoke a role
+### 15.3 Grant or revoke a role
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -2144,7 +2279,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 ![Granting a role](generated/flows/role-grant.svg)
 
-### 14.4 Import the hospital baseline
+### 15.4 Import the hospital baseline
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -2170,7 +2305,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 ![Hospital baseline import](generated/flows/baseline-import.svg)
 
-### 14.5 Answer personal-data requests
+### 15.5 Answer personal-data requests
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -2193,11 +2328,11 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Next step.** —
 
-**Related.** [Employee self-service](#16-employee-self-service)
+**Related.** [Employee self-service](#17-employee-self-service)
 
 ![Personal-data request (PDPL)](generated/flows/pdpl-request.svg)
 
-### 14.6 Maintain the processing register
+### 15.6 Maintain the processing register
 
 **Status:** Implemented  
 **Roles:** System Admin, HR Admin
@@ -2217,7 +2352,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Next step.** —
 
-### 14.7 Review a new version of the eligibility rules
+### 15.7 Review a new version of the eligibility rules
 
 **Status:** Implemented  
 **Roles:** HR Admin
@@ -2240,7 +2375,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Related.** [Eligibility](#8-eligibility)
 
-### 14.8 Elevate System Admin rights
+### 15.8 Elevate System Admin rights
 
 **Status:** Implemented  
 **Roles:** System Admin
@@ -2261,11 +2396,11 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Next step.** The task you elevated for.
 
-**Related.** [Security and your account](#17-security-and-your-account) · [Audit & Compliance](#15-audit--compliance)
+**Related.** [Security and your account](#18-security-and-your-account) · [Audit & Compliance](#16-audit--compliance)
 
 ![System Admin elevation](generated/flows/pam.svg)
 
-### 14.9 Check background jobs and business health
+### 15.9 Check background jobs and business health
 
 **Status:** Implemented  
 **Roles:** System Admin
@@ -2285,9 +2420,9 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Next step.** —
 
-**Related.** [Troubleshooting](#19-troubleshooting)
+**Related.** [Troubleshooting](#20-troubleshooting)
 
-### 14.10 Register an API client
+### 15.10 Register an API client
 
 **Status:** Implemented  
 **Roles:** System Admin
@@ -2310,7 +2445,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 **Related.** [Attendance](#12-attendance)
 
-## 15. Audit & Compliance
+## 16. Audit & Compliance
 
 The tamper-evident record of every change (who, what, when, before → after) and the log of every API request. It is written by the database, never by hand, and only System Admins read it.
 
@@ -2318,7 +2453,7 @@ The tamper-evident record of every change (who, what, when, before → after) an
 **Screen:** `/audit`  
 **Where:** Side menu → Audit & Compliance. Elevate first.
 
-### 15.1 Search the audit trail and verify the chain
+### 16.1 Search the audit trail and verify the chain
 
 **Status:** Implemented  
 **Roles:** System Admin
@@ -2339,9 +2474,9 @@ The tamper-evident record of every change (who, what, when, before → after) an
 
 **Next step.** —
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
-### 15.2 Search the request log
+### 16.2 Search the request log
 
 **Status:** Implemented  
 **Roles:** System Admin
@@ -2361,9 +2496,9 @@ The tamper-evident record of every change (who, what, when, before → after) an
 
 **Next step.** —
 
-**Related.** [Troubleshooting](#19-troubleshooting)
+**Related.** [Troubleshooting](#20-troubleshooting)
 
-## 16. Employee self-service
+## 17. Employee self-service
 
 What every nurse can do for themselves: see their profile and keep their phone numbers current, add and renew credentials with evidence, see their own eligibility, contract, shifts and clock-ins, and make personal-data requests.
 
@@ -2379,7 +2514,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 ![Personal-data request (PDPL)](generated/flows/pdpl-request.svg)
 
-### 16.1 Check your profile and update your phones
+### 17.1 Check your profile and update your phones
 
 **Status:** Implemented  
 **Roles:** Employee
@@ -2402,7 +2537,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 **Related.** [Nurses](#5-nurses)
 
-### 16.2 Add a credential and upload its evidence
+### 17.2 Add a credential and upload its evidence
 
 **Status:** Implemented  
 **Roles:** Employee
@@ -2435,7 +2570,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 ![Adding a credential](generated/flows/credential-new.svg)
 
-### 16.3 Renew your credential
+### 17.3 Renew your credential
 
 **Status:** Implemented  
 **Roles:** Employee
@@ -2467,7 +2602,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 *The current credential stays usable until its own expiry while the renewal is reviewed.*
 
-### 16.4 Make a personal-data request
+### 17.4 Make a personal-data request
 
 **Status:** Implemented  
 **Roles:** Employee
@@ -2488,11 +2623,11 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 **Next step.** —
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
 ![Personal-data request (PDPL)](generated/flows/pdpl-request.svg)
 
-### 16.5 Your contract, shifts and clock-ins
+### 17.5 Your contract, shifts and clock-ins
 
 **Status:** Implemented  
 **Roles:** Employee
@@ -2515,7 +2650,7 @@ What every nurse can do for themselves: see their profile and keep their phone n
 
 **Related.** [Contracts](#6-contracts) · [Roster and scheduling](#11-roster-and-scheduling) · [Attendance](#12-attendance)
 
-## 17. Security and your account
+## 18. Security and your account
 
 Keep your account safe: password, two-factor sign-in with an authenticator app and recovery codes, your sign-in e-mail, Telegram, and your sign-in history. System Admins also use elevation here.
 
@@ -2529,7 +2664,7 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 ![System Admin elevation](generated/flows/pam.svg)
 
-### 17.1 Change your password
+### 18.1 Change your password
 
 **Status:** Implemented  
 **Roles:** Employee, Supervisor, HR Admin, System Admin
@@ -2552,7 +2687,7 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 **Related.** [Getting started](#1-getting-started)
 
-### 17.2 Set up two-factor sign-in
+### 18.2 Set up two-factor sign-in
 
 **Status:** Implemented  
 **Roles:** Employee, Supervisor, HR Admin, System Admin
@@ -2578,9 +2713,9 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 - *Lost phone* — Sign in with a recovery code and set up the new phone, or ask HR to Reset two-factor.
 
-**Related.** [Nursing Administration](#14-nursing-administration)
+**Related.** [Nursing Administration](#15-nursing-administration)
 
-### 17.3 Change your sign-in e-mail
+### 18.3 Change your sign-in e-mail
 
 **Status:** Implemented  
 **Roles:** Employee, Supervisor, HR Admin, System Admin
@@ -2601,7 +2736,7 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 **Next step.** —
 
-### 17.4 Connect Telegram
+### 18.4 Connect Telegram
 
 **Status:** Partially implemented — Telegram is simulated in the demonstration system until the hospital's bot is set up.  
 **Roles:** Employee, Supervisor, HR Admin, System Admin
@@ -2623,7 +2758,7 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 **Related.** [Notifications](#13-notifications)
 
-### 17.5 Check your sign-in history
+### 18.5 Check your sign-in history
 
 **Status:** Implemented  
 **Roles:** Employee, Supervisor, HR Admin, System Admin
@@ -2643,7 +2778,7 @@ Keep your account safe: password, two-factor sign-in with an authenticator app a
 
 **Next step.** A session you do not recognise: change your password and tell your administrator.
 
-## 18. How the hospital system works
+## 19. How the hospital system works
 
 The complete flow, from the hospital's master data to the nurse on the ward. Each stage depends on the one before it: a nurse with no approved contract or no verified required credential is ineligible, and an ineligible nurse cannot be published on the roster.
 
@@ -2680,7 +2815,7 @@ The complete flow, from the hospital's master data to the nurse on the ward. Eac
 | 13. Monitoring and notices | System → everyone | Nursing KPIs, Notifications | Each notice acted on |
 | 14. Audit and governance | System Admin | Audit & Compliance | Chain verified |
 
-## 19. Troubleshooting
+## 20. Troubleshooting
 
 Common questions and what to do. When reporting a problem, give the page, what you clicked, the exact message and the time — the administrators can find the request in the log.
 
@@ -2716,7 +2851,7 @@ Common questions and what to do. When reporting a problem, give the page, what y
 | DOCUMENT_NOT_CLEAN | The file did not pass scanning |
 | TRANSITION_NOT_ALLOWED | That action does not apply to the record's current status |
 
-## 20. Quick reference
+## 21. Quick reference
 
 Statuses, codes and limits on one page.
 

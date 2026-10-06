@@ -243,7 +243,7 @@ describeDb('announcements (D-69)', () => {
       expect(sent.map((m) => m.messageId)).toEqual([`<notification-${routine.id}@aigh.sa>`]); // the low-priority routine notice still goes first
       await dispatchEmails(db, mailer, cfg);
       const toAccount = sent.find((m) => m.to === nurseAEmail)!;
-      expect(toAccount.text).toContain(`Open: https://nurse.aigh.sa/announcements/${a.id}`);
+      expect(toAccount.text).toContain(`Open: https://nurse.aigh.sa/announcements?id=${a.id}`);
       expect(sent.at(-1)!.to).toBe(sharedAddress.toLowerCase()); // staff without an account last
     });
 

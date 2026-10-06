@@ -16,7 +16,7 @@ const all = [...START, ...PEOPLE, ...CREDENTIALS, ...OPERATIONS, ...ADMIN, ...SE
 /** Reading order (the brief's structure, with roles and approvals right after getting started). */
 const ORDER = [
   'getting-started', 'roles', 'approvals', 'dashboard', 'nurses', 'contracts', 'credentials', 'eligibility', 'workforce', 'kpi',
-  'scheduling', 'attendance', 'notifications', 'administration', 'audit', 'self-service', 'security', 'hospital-workflow',
+  'scheduling', 'attendance', 'notifications', 'announcements', 'administration', 'audit', 'self-service', 'security', 'hospital-workflow',
   'troubleshooting', 'quick-reference',
 ];
 

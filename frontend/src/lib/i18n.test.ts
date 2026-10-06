@@ -65,6 +65,10 @@ const FAMILIES: Record<string, string[]> = {
   approvalStatus_: ['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'WITHDRAWN'],
   fieldType_: ['text', 'date', 'date_hijri', 'select', 'number', 'country', 'reference'],
   nationalityRule_: ['ALL', 'ONLY', 'EXCEPT'], // credential types by nationality (owner decision 2026-10-04)
+  annKind_: ['MEMO', 'MEETING', 'SEMINAR'], // announcements (D-69)
+  annStatus_: ['DRAFT', 'PENDING_APPROVAL', 'PUBLISHED', 'REJECTED', 'CANCELLED'],
+  annAudience_: ['HOSPITAL', 'DEPARTMENT', 'UNIT', 'PEOPLE'],
+  annRole_: ['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR'],
 };
 
 describe('translations', () => {

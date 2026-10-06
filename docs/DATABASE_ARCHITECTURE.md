@@ -22,6 +22,7 @@ How data gets into an empty database — bootstrap, hospital baseline import, da
 | **Workforce (operational)** | People and their records | `employees`, `contracts`, `credentials`, `document_versions`, `credential_waivers`, `eligibility_states`, `shift_assignments`, `attendance_events` | HR, Supervisors and employees through the application, under the rules in [WORKFORCE.md](WORKFORCE.md) and [CLINICAL_ELIGIBILITY.md](CLINICAL_ELIGIBILITY.md) |
 | **Access** | Accounts and their rights | `users`, `role_assignments`, `approval_requests`, `privileged_sessions`, `refresh_sessions`, `break_glass_events` | The bootstrap (first two administrators), then administrators through the application ([RBAC.md](RBAC.md)) |
 | **Platform** | Evidence and plumbing | `audit_entries`, `notifications`, `idempotency_keys`, `worker_leases`, `job_runs`, `login_throttle`, `email_outbox` | The application only |
+| **Communication** | Announcements to staff (D-69) | `announcements` (recipients are `notifications` and `email_outbox` rows) | HR Admin, Supervisor and elevated System Admin through the application; HR / System Admin sends approved by a second administrator |
 
 **System configuration stays in code**, because it is logic, not hospital data, and changing it must go through code review and tests: the roles (`AppRole` enum), the permission table (`permissions.ts`, checked against [RBAC.md](RBAC.md)), workflow states (enums), shift times (`config/shifts.ts`), position tiers (spec §3.1.1) and the onboarding default position of rule E6. Decision P2 of the migration plan.
 

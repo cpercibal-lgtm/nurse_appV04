@@ -6,7 +6,7 @@ import { lazy, type ComponentType, type LazyExoticComponent, type ReactNode } fr
 import {
   AuditOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, DashboardOutlined,
   FileProtectOutlined, FundOutlined, IdcardOutlined, SafetyCertificateOutlined, ScheduleOutlined,
-  SettingOutlined, TeamOutlined, ApartmentOutlined, HistoryOutlined, UserOutlined, SafetyOutlined, LockOutlined, BookOutlined,
+  SettingOutlined, TeamOutlined, ApartmentOutlined, HistoryOutlined, UserOutlined, SafetyOutlined, LockOutlined, BookOutlined, NotificationOutlined,
 } from '@ant-design/icons';
 import type { TranslationKey } from '../lib/i18n';
 import type { AppRole } from '../types/api';
@@ -43,6 +43,7 @@ export const MODULES: AppModule[] = [
   page('/scheduling', 'scheduling', <ScheduleOutlined />, () => import('../modules/scheduling/SchedulingPage')),
   page('/attendance', 'attendance', <ClockCircleOutlined />, () => import('../modules/attendance/AttendancePage')),
   page('/notifications', 'notifications', <BellOutlined />, () => import('../modules/notifications/NotificationsPage')),
+  page('/announcements', 'announcements', <NotificationOutlined />, () => import('../modules/announcements/AnnouncementsPage')), // D-69: everyone reads; senders write
   page('/audit', 'audit', <AuditOutlined />, () => import('../modules/audit/AuditPage'), { requires: ['SYSTEM_ADMIN'] }), // D-20
   page('/sessions', 'signInHistory', <HistoryOutlined />, () => import('../modules/auth/SessionsPage')),
   page('/security', 'twoFactor', <SafetyOutlined />, () => import('../modules/auth/SecurityPage')),

@@ -98,7 +98,7 @@ export async function dispatchEmails(db: Db, mailer: Mailer, cfg: DispatchConfig
         continue;
       }
       // D-69: an announcement's button opens the announcement itself.
-      const link = n.announcementId ? `${base}/announcements/${n.announcementId}` : `${base}/notifications`;
+      const link = n.announcementId ? `${base}/announcements?id=${n.announcementId}` : `${base}/notifications`;
       const outcome = await attempt(mailer, cfg, n.emailAttempts, {
         to: n.recipient.email, ...renderEmail({ ...n, link }),
         messageId: `<notification-${n.id}@${cfg.domain}>`, urgent: URGENT.has(n.priority),

@@ -200,7 +200,7 @@ Eligibility in every response is the **live engine for the shift date** (L7), no
 
 | Method | Endpoint | Purpose | Permission | Source |
 | :--- | :--- | :--- | :--- | :--- |
-| GET | `/api/v1/notifications?unread&page&pageSize` | Own notifications with the unread count | EMP (own only, N2) | spec §7.1 |
+| GET | `/api/v1/notifications?unread&page&pageSize` | Own notifications with the unread count; `announcementId` on an announcement (D-69) | EMP (own only, N2) | spec §7.1 |
 | POST | `/api/v1/notifications/:id/read` · `/read-all` | Acknowledge own; another user's id is 404 | EMP (recipient only) | spec §7.1 |
 | GET | `/api/v1/audit?resource&resourceId&actor&action&priority&from&to&page` | Search, newest first; BIGINT ids as strings; actor names resolved | **SA only (D-20)** | spec §9.1 |
 | GET | `/api/v1/pdpl/register` | Processing register (spec §8.3.2, D-54): lawful basis, purpose, retention per sensitive category → `{items[{id, dataCategory, lawfulBasis, purpose, retentionRule, isActive, updatedAt}]}` | HR, SA | D-54 |
@@ -254,7 +254,7 @@ Memos, meeting schedules and seminar notices. Plan and owner decisions: [ANNOUNC
 | POST | `/api/v1/announcements/:id/submit` [I] | Supervisor to own units, or break-glass → `{id, status: PUBLISHED}`; any other → `{id, status: PENDING_APPROVAL, approvalRequestId}` (Approvals, action type `ANNOUNCEMENT_PUBLISH:<id>`). `NO_RECIPIENTS`, `EVENT_IN_PAST`, `ANNOUNCEMENT_EXPIRED` | HR, SUP, SA | owner Q1–Q2 |
 | POST | `/api/v1/announcements/:id/cancel` | `{reason ≥ 10}` → `{id, status: CANCELLED, emailsStopped, telegramStopped}`: undelivered e-mail and Telegram rows become SKIPPED | HR, SUP, SA (sender, or manager in scope) | D-69 |
 
-Publication writes one `notifications` row per recipient account (type `ANNOUNCEMENT`, e-mail button → `/announcements/:id`, Telegram prompt without content) and one `email_outbox` row per contact address of staff without an account (no link). Approve / reject / withdraw go through `/api/v1/approvals/:id/…` (§2.3).
+Publication writes one `notifications` row per recipient account (type `ANNOUNCEMENT`, e-mail button → `/announcements?id=:id`, Telegram prompt without content) and one `email_outbox` row per contact address of staff without an account (no link). Approve / reject / withdraw go through `/api/v1/approvals/:id/…` (§2.3).
 
 ### 2.12 Interoperability — FHIR R4 (`modules/interop`, D-61)
 
