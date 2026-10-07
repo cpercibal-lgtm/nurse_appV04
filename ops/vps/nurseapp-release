@@ -31,11 +31,13 @@ case "${1:-}" in
       fi
     done
     tar -xf "$WORK/bundle.tar" -C "$WORK" --no-same-owner --no-same-permissions
+    rm -f "$WORK/bundle.tar"   # unpacked: don't hold its ~0.5 GB twice
     [[ -x "$WORK/ops/vps/deploy.sh" && -f "$WORK/images.tar.gz" ]] || { echo "bundle is incomplete" >&2; exit 1; }
     chmod 755 "$WORK"/ops/vps/*.sh "$WORK"/ops/backup/scripts/*.sh 2>/dev/null || true
     rsync -a --delete "$WORK/ops/" "$OPT/"
     chmod -R u=rwX,go=rX "$OPT"   # umask 077 left it root-only; the backup kit runs as postgres
     "$DEPLOY" load "$WORK/images.tar.gz"
+    rm -rf "$WORK"   # exec replaces this shell, so the EXIT trap would never run (each release left ~1 GB in /var/tmp)
     exec "$DEPLOY" release "$SHA"
     ;;
   *) echo "allowed: release <commit> | rollback | status" >&2; exit 2 ;;
