@@ -12,6 +12,23 @@
 *.kbx~
 trustdb.gpg
 random_seed
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*deploy_key*
+*.npmrc
+# MFA recovery codes the app lets a person download (aigh-recovery-codes.txt)
+aigh-recovery-codes*.txt
+
+# --- database dumps and exports (personal data; keep in backup storage) -----
+*.dump
+*.backup
+*.sql.gz
+*.bak
+*.bak-*
 
 # --- backup drill output (large opaque binaries; keep in backup storage) ----
 *.tar.gz.gpg
@@ -39,3 +56,19 @@ backend/src/generated/
 .*.cts
 .*.mts
 .scratch/
+
+# --- test and tool output ---------------------------------------------------
+playwright-report/
+test-results/
+.vite/
+*.tgz
+
+# --- editors and operating systems -------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/settings.local.json

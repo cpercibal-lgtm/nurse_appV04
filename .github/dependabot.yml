@@ -1,0 +1,35 @@
+# Dependabot: weekly pull requests for outdated dependencies (security fixes come
+# as soon as an advisory is published, when "Dependabot security updates" is on).
+# Minor and patch updates are grouped per ecosystem to keep the number of pull
+# requests small; every pull request runs CI before it can be merged.
+version: 2
+updates:
+  - package-ecosystem: npm            # the workspace: root, backend, frontend (one lockfile)
+    directory: /
+    schedule: { interval: weekly, day: sunday, time: "06:00", timezone: Asia/Riyadh }
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    labels: [dependencies]
+
+  - package-ecosystem: npm            # the HTTPS session test (ops/e2e)
+    directory: /ops/e2e
+    schedule: { interval: monthly }
+    groups:
+      e2e:
+        patterns: ["*"]
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: sunday, time: "06:00", timezone: Asia/Riyadh }
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: [dependencies]
+
+  - package-ecosystem: docker         # base images of the API and web images
+    directories: [/backend, /frontend]
+    schedule: { interval: weekly, day: sunday, time: "06:00", timezone: Asia/Riyadh }
+    labels: [dependencies]

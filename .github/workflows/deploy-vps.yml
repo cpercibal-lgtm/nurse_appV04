@@ -7,6 +7,8 @@ name: Deploy (VPS)
 # deploy key may run there (nurseapp-release): migrations, role check,
 # blue/green switch. Does nothing until the VPS_HOST variable is set.
 
+# Only a CI run of a push to main in this repository releases: workflow_run's branch filter
+# also matches a pull request from a fork whose branch is called main.
 on:
   workflow_run:
     workflows: [CI]
@@ -26,7 +28,7 @@ env:
 
 jobs:
   deploy:
-    if: vars.VPS_HOST != '' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    if: vars.VPS_HOST != '' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-24.04
     environment: production   # required reviewers are set on this environment in GitHub
     steps:

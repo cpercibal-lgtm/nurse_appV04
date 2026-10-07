@@ -1,0 +1,34 @@
+# Code owners: GitHub asks these people to review a pull request that touches the
+# matching paths. The last matching line wins, so the general rule comes first.
+# With one maintainer, keep "Require review from Code Owners" OFF in branch
+# protection (nobody can approve their own pull request); turn it on once a
+# second maintainer is added below.
+
+*                                   @cpercibal2018-cmyk
+
+# Release, server and database operations: production access, backups, roles.
+/.github/                           @cpercibal2018-cmyk
+/ops/                               @cpercibal2018-cmyk
+/docker-compose.yml                 @cpercibal2018-cmyk
+/backend/Dockerfile                 @cpercibal2018-cmyk
+/frontend/Dockerfile                @cpercibal2018-cmyk
+/frontend/nginx/                    @cpercibal2018-cmyk
+
+# Database schema, migrations and the hospital baseline.
+/backend/prisma/                    @cpercibal2018-cmyk
+
+# Security-sensitive code: sign-in, sessions, MFA, roles, approvals, audit, encryption, uploads.
+/backend/src/config/                @cpercibal2018-cmyk
+/backend/src/lib/                   @cpercibal2018-cmyk
+/backend/src/modules/auth/          @cpercibal2018-cmyk
+/backend/src/modules/users/         @cpercibal2018-cmyk
+/backend/src/modules/administration/ @cpercibal2018-cmyk
+/backend/src/modules/audit/         @cpercibal2018-cmyk
+/backend/src/modules/pdpl/          @cpercibal2018-cmyk
+/backend/src/modules/documents/     @cpercibal2018-cmyk
+
+# Dependencies (also updated by Dependabot).
+/package.json                       @cpercibal2018-cmyk
+/package-lock.json                  @cpercibal2018-cmyk
+/backend/package.json               @cpercibal2018-cmyk
+/frontend/package.json              @cpercibal2018-cmyk

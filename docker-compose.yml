@@ -17,7 +17,7 @@ services:
       POSTGRES_PASSWORD: aigh_dev_only
       POSTGRES_DB: nurseapp
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # this computer only: the password above is a published dev default
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -31,7 +31,7 @@ services:
     profiles: ["clamav"]
     restart: unless-stopped
     ports:
-      - "3310:3310"
+      - "127.0.0.1:3310:3310"
     volumes:
       - clamavdb:/var/lib/clamav
 
