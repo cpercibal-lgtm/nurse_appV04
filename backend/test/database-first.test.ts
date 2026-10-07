@@ -157,7 +157,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
     expect((await db.unit.aggregate({ where: baselineUnits, _sum: { bedCount: true } }))._sum.bedCount).toBe(582);
     expect(await db.bedCapacityLog.count({ where: { unit: baselineUnits } })).toBe(47);
     expect(await db.position.count()).toBe(25); // 16 + 9 from the 2026 roster (owner, 2026-10-07)
-    expect(await db.position.count({ where: { replacedBy: { not: null } } })).toBe(2);
+    expect(await db.position.count({ where: { replacedBy: { not: null } } })).toBe(3); // AHN, CI, HD (owner, 2026-10-07)
     expect(await db.credentialCategory.count()).toBe(5);
     expect(await db.credentialTemplate.count()).toBe(17);
     expect(await db.credentialTemplateField.count()).toBe(71);
