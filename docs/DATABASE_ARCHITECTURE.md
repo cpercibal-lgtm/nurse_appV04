@@ -118,7 +118,7 @@ There is **no seed**. `npx prisma migrate deploy` creates the structure; nothing
 | 3. Everyday work | The application screens and API | Everything else | Permissions, scope, four-eyes where required |
 | Development only | `npm run fixtures:demo -w backend` | Demo accounts, the baseline, the fictional workforce | Refuses production, a database with accounts, and names not marked `_dev` / `_test` / `_demo` |
 
-The baseline file is hospital data kept as a **data file**, not code: 5 departments, 47 units (582 beds), 16 positions, 5 categories, 16 credential types with 68 fields, as recorded in [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md).
+The baseline file is hospital data kept as a **data file**, not code: 5 departments, 47 units (582 beds), 25 positions, 5 categories, 17 credential types with 71 fields. The original 16 positions, 16 types and 68 fields are recorded in [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md); the 9 positions from the 2026 roster (provisional titles) came with migration `20261027090000_roster_positions`.
 
 ## 8. Database roles
 
