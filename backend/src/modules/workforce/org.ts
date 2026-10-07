@@ -31,15 +31,18 @@ export const UnitsQuery = z.object({
   departmentId: z.coerce.number().int().positive().optional(),
   includeInactive: z.enum(['true', 'false']).default('false'),
 });
-/** MoH Ada'a critical area for nurse-to-bed KPI A (D-11); null = not a critical area. */
+/** MoH Ada'a critical area for nurse-to-bed KPI A (D-11); null = not a critical area.
+ *  patientCareArea / inpatientBeds (units) and countsAsNurse (positions) are the KPI basis (D-70). */
 export const CriticalAreaValue = z.enum(['ICU', 'ER', 'OR']);
 export const UnitCreateBody = z.strictObject({
   code: Code, name: Name, nameAr: NameAr.optional(), description: Description.optional(),
   departmentId: z.number().int().positive(), bedCount: Beds.default(0), criticalArea: CriticalAreaValue.nullable().default(null),
+  patientCareArea: z.boolean().default(true), inpatientBeds: z.boolean().default(false),
 });
 export const UnitUpdateBody = z.strictObject({
   name: Name.optional(), nameAr: NameAr.nullable().optional(), description: Description.nullable().optional(),
   departmentId: z.number().int().positive().optional(), isActive: z.boolean().optional(), criticalArea: CriticalAreaValue.nullable().optional(),
+  patientCareArea: z.boolean().optional(), inpatientBeds: z.boolean().optional(),
 });
 export const BedCountBody = z.strictObject({ bedCount: Beds, reason: Reason });
 // Row values are checked per row (W5 reports REJECTED rows instead of failing the batch).
@@ -53,11 +56,11 @@ export const ImportBody = z.strictObject({ csv: z.string().min(1).max(500_000), 
 export const TIERS = ['Executive', 'Administrative', 'Management', 'Specialist', 'Advanced Practice', 'Clinical Lead', 'Clinical', 'Clinical Specialist', 'Support'] as const;
 export const PositionCreateBody = z.strictObject({
   code: Code, title: Name, titleAr: NameAr.optional(), tier: z.enum(TIERS), description: Description.optional(),
-  isSchedulable: z.boolean(), displayOrder: z.number().int().min(0).default(0),
+  isSchedulable: z.boolean(), countsAsNurse: z.boolean().default(false), displayOrder: z.number().int().min(0).default(0),
 });
 export const PositionUpdateBody = z.strictObject({
   title: Name.optional(), titleAr: NameAr.nullable().optional(), tier: z.enum(TIERS).optional(), description: Description.nullable().optional(),
-  isSchedulable: z.boolean().optional(), isActive: z.boolean().optional(), displayOrder: z.number().int().min(0).optional(),
+  isSchedulable: z.boolean().optional(), countsAsNurse: z.boolean().optional(), isActive: z.boolean().optional(), displayOrder: z.number().int().min(0).optional(),
 });
 
 const ShiftType = z.enum(['Morning', 'Evening', 'Night']);

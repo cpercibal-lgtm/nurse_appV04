@@ -53,7 +53,7 @@ The reference is silent or open on these; the owner settled them. They add detai
 | §8.3.1–8.3.4 | PDPL: fields a credential type marks sensitive (Iqama, passport, SCFHS registration — marked in the hospital baseline) are encrypted with the employee's own key (AES-256-GCM, wrapped by `PDPL_FIELD_ENCRYPTION_KEY`) and found only by exact number through an HMAC blind index (`PDPL_BLIND_INDEX_PEPPER`); a value is stored only while the processing register has an active lawful basis for its category; ID-shaped numbers are masked in every log line | D-54 |
 | §8.3.2, §8.3.4 | Key rotation and DPO sign-off: each encryption key and the blind-index pepper can be replaced without downtime — the old key is kept beside the new one while `npm run keys:rotate` re-wraps employee keys and stored files, re-seals authenticator seeds and rebuilds the search index (digests carry their key id); System health shows an unfinished rotation. The Data Protection Officer's sign-off of the processing register is recorded with the register as reviewed, due yearly and after any change | D-56 |
 | §8.3.3 | Data-subject rights: an employee asks under **My data** for a copy (ACCESS), an export (PORTABILITY), a correction (RECTIFICATION) or erasure (ERASURE); HR can log a request received on paper. HR within scope reviews and answers within 30 days (overdue requests show in System health). An approved access or portability request gives a JSON package of everything held about the employee, downloadable for 30 days. **Erasure** is approved only by a System Admin other than whoever logged it, typing the job number to confirm: the employee's key is destroyed (crypto-shredding), their number-search rows are removed and their identity scans deleted from the vault; ordinary employment records stay. The request records when the key was destroyed and when the last backup holding the old ciphertext expires (`BACKUP_RETENTION_DAYS` + 1 day). Requests are never deleted | D-55 |
-| K1 | The Ada'a nurse-to-bed KPI is kept, labelled "thresholds not verified — MoH Ada'a card not in the repository" | D-11 |
+| K1 | The Ada'a nurse-to-bed KPIs follow the MoH Ada'a indicator profiles ([reference](reference/MOH_ADAA_NURSE_TO_BED_KPI.md)): nurses only, average per shift over a shift or a month, patient-care areas, inpatient beds | D-11, D-70 |
 
 ## 3. Open conflicts
 
@@ -75,7 +75,7 @@ The reference (and the owner, so far) gives no rule for these. V04 builds nothin
 | HR access to the audit trail | System Admin only (D-20) |
 | Password reset | Built (D-50): self-service by e-mail for staff accounts (30-minute link); HR / System Admin sends the link for HR, supervisor and admin accounts (24 hours); break-glass never |
 | Unique contact e-mail | Not enforced (D-19) |
-| Ada'a KPI thresholds | Values from V03, source card not in the repository (D-11) |
+| Ada'a KPI basis | Units behind 72 of the hospital's 358 operational beds; whether Assistant Nurses (AN) hold an SCFHS nursing licence; whether ICU Extension's beds are staffed (D-70) |
 | Badge-feed contract (auth, format, delivery) | Not built (D-33) |
 | Approval notification rules | None beyond the approval queue itself |
 | Staff accepting or declining a published shift (e.g. from Telegram) | Not built (D-66): what a decline changes on a published roster, who is told, what it does to coverage, and any deadline are not decided |

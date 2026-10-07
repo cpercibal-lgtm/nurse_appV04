@@ -17,7 +17,7 @@ How data gets into an empty database — bootstrap, hospital baseline import, da
 
 | Domain | Kind of data | Tables | Who changes it |
 | :--- | :--- | :--- | :--- |
-| **Hospital master data** | The hospital's own structure and catalogue | `departments`, `units` (with `bed_count` and KPI `critical_area`), `bed_capacity_logs`, `positions` (with `replaced_by`), `coverage_targets`, `credential_categories`, `credential_templates`, `credential_template_fields` | Hospital-wide HR / System Admin (structure, catalogue — catalogue changes need a second administrator); unit-scoped HR for beds and coverage targets. Initially through the [baseline import](#7-how-data-enters-the-database) |
+| **Hospital master data** | The hospital's own structure and catalogue | `departments`, `units` (with `bed_count` and the KPI settings `critical_area`, `patient_care_area`, `inpatient_beds`), `bed_capacity_logs`, `positions` (with `replaced_by` and KPI `counts_as_nurse`), `coverage_targets`, `credential_categories`, `credential_templates`, `credential_template_fields` | Hospital-wide HR / System Admin (structure, catalogue — catalogue changes need a second administrator); unit-scoped HR for beds and coverage targets. Initially through the [baseline import](#7-how-data-enters-the-database) |
 | **Credential policy** | Which credential each unit/position requires | `credential_requirements`; grace days on `credential_templates` | HR / System Admin with the unit in scope. Not seeded: it is the hospital's policy (U2) |
 | **Workforce (operational)** | People and their records | `employees`, `contracts`, `credentials`, `document_versions`, `credential_waivers`, `eligibility_states`, `shift_assignments`, `attendance_events` | HR, Supervisors and employees through the application, under the rules in [WORKFORCE.md](WORKFORCE.md) and [CLINICAL_ELIGIBILITY.md](CLINICAL_ELIGIBILITY.md) |
 | **Access** | Accounts and their rights | `users`, `role_assignments`, `approval_requests`, `privileged_sessions`, `refresh_sessions`, `break_glass_events` | The bootstrap (first two administrators), then administrators through the application ([RBAC.md](RBAC.md)) |
@@ -94,6 +94,7 @@ Values kept out of the audit trail on purpose: salary and the emergency contact 
 | `20260925090000_field_not_issue_and_expiry` | Check: one field cannot be both the issue and the expiry date (found in the first browser check) |
 | `20260925200000_approval_withdrawal` | `ApprovalStatus.WITHDRAWN` and `approval_requests.withdrawn_at`: the initiator may withdraw their own pending request (owner decision 2026-09-24) |
 | `20260926090000_drop_field_defs_legacy` | Drops `credential_templates.field_defs_legacy`, the unread JSON rollback copy (go-live preparation, owner decision 2026-09-24) |
+| `20261030090000_kpi_counting_basis` | `positions.counts_as_nurse`, `units.patient_care_area`, `units.inpatient_beds` — what the MoH Ada'a nurse-to-bed KPIs count (D-70), filled with the owner's 2026-10-07 values (one audit entry each) |
 
 **Rules**
 
@@ -118,7 +119,7 @@ There is **no seed**. `npx prisma migrate deploy` creates the structure; nothing
 | 3. Everyday work | The application screens and API | Everything else | Permissions, scope, four-eyes where required |
 | Development only | `npm run fixtures:demo -w backend` | Demo accounts, the baseline, the fictional workforce | Refuses production, a database with accounts, and names not marked `_dev` / `_test` / `_demo` |
 
-The baseline file is hospital data kept as a **data file**, not code: 6 departments, 55 units (618 beds), 25 positions, 5 categories, 17 credential types with 71 fields. The original 16 positions, 16 types and 68 fields are recorded in [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md); the 9 positions from the 2026 roster (provisional titles) came with migration `20261027090000_roster_positions`; the wards, new units and active beds of 2026-10-07 with `20261029090000_units_restructure`.
+The baseline file is hospital data kept as a **data file**, not code: 6 departments, 55 units (618 beds), 25 positions, 5 categories, 17 credential types with 71 fields. The original 16 positions, 16 types and 68 fields are recorded in [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md); the 9 positions from the 2026 roster (provisional titles) came with migration `20261027090000_roster_positions`; the wards, new units and active beds of 2026-10-07 with `20261029090000_units_restructure`; the nurse-to-bed KPI settings with `20261030090000_kpi_counting_basis`.
 
 ## 8. Database roles
 

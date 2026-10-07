@@ -64,6 +64,11 @@ function UnitsTab({ canWrite }: { canWrite: boolean }) {
           { title: t('department'), render: (_, u) => deptName.get(u.departmentId) ?? u.departmentId },
           { title: t('beds'), dataIndex: 'bedCount', align: 'end' },
           { title: t('criticalArea'), render: (_, u) => u.criticalArea ?? '—' },
+          {
+            title: t('kpiBasis'), render: (_, u) => (
+              <>{u.inpatientBeds && <Tag color="blue">{t('inpatientBeds')}</Tag>}{!u.patientCareArea && <Tag>{t('notPatientCare')}</Tag>}</>
+            ),
+          },
           { title: t('status'), render: (_, u) => activeTag(u.isActive, t) },
           {
             title: '', render: (_, u) => (
@@ -90,7 +95,7 @@ function UnitsTab({ canWrite }: { canWrite: boolean }) {
         <Form form={unitForm} layout="vertical" onFinish={async (v) => {
           const out = editing === 'new'
             ? await run({ kind: 'unit', body: v })
-            : await run({ kind: 'unit', id: (editing as UnitRow).id, body: { name: v.name, description: v.description ?? null, departmentId: v.departmentId, isActive: v.isActive, criticalArea: v.criticalArea ?? null } });
+            : await run({ kind: 'unit', id: (editing as UnitRow).id, body: { name: v.name, description: v.description ?? null, departmentId: v.departmentId, isActive: v.isActive, criticalArea: v.criticalArea ?? null, patientCareArea: v.patientCareArea, inpatientBeds: v.inpatientBeds } });
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}
@@ -102,6 +107,8 @@ function UnitsTab({ canWrite }: { canWrite: boolean }) {
           <Form.Item name="criticalArea" label={t('criticalArea')} extra={t('criticalAreaHint')}>
             <Select allowClear options={(['ICU', 'ER', 'OR'] as const).map((a) => ({ value: a, label: a }))} />
           </Form.Item>
+          <Form.Item name="patientCareArea" label={t('patientCareArea')} extra={t('patientCareAreaHint')} valuePropName="checked" initialValue={true}><Switch /></Form.Item>
+          <Form.Item name="inpatientBeds" label={t('inpatientBeds')} extra={t('inpatientBedsHint')} valuePropName="checked" initialValue={false}><Switch /></Form.Item>
           {editing === 'new'
             ? <Form.Item name="bedCount" label={t('beds')} initialValue={0}><InputNumber min={0} max={500} precision={0} style={{ width: '100%' }} /></Form.Item>
             : <Form.Item name="isActive" label={t('status')} valuePropName="checked"><Switch checkedChildren={t('active')} unCheckedChildren={t('inactive')} /></Form.Item>}
@@ -204,16 +211,17 @@ function PositionsTab({ canWrite }: { canWrite: boolean }) {
           { title: t('code'), dataIndex: 'code' }, { title: t('title'), dataIndex: 'title' },
           { title: t('titleArabic'), dataIndex: 'titleAr', render: (v: string | null) => (v ? <span dir="rtl" lang="ar">{v}</span> : '—') }, { title: t('tier'), dataIndex: 'tier' },
           { title: t('schedulable'), render: (_, p) => (p.isSchedulable ? <Tag color="blue">{t('yes')}</Tag> : <Tag>{t('no')}</Tag>) },
+          { title: t('countsAsNurse'), render: (_, p) => (p.countsAsNurse ? <Tag color="blue">{t('yes')}</Tag> : <Tag>{t('no')}</Tag>) },
           { title: t('status'), render: (_, p) => <>{activeTag(p.isActive, t)}{p.replacedBy && <Tag>→ {p.replacedBy}</Tag>}</> },
           ...(canWrite ? [{ title: '', render: (_: unknown, p: PositionRow) => <Button size="small" onClick={() => { form.setFieldsValue(p); setEditing(p); }}>{t('edit')}</Button> }] : []),
         ]} />
       <Modal title={editing === 'new' ? t('addPosition') : editing ? `${t('edit')}: ${editing.code}` : ''} open={editing !== null} onCancel={() => setEditing(null)}
         onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={pending} forceRender>
         <Alert type="warning" showIcon title={t('schedulableHint')} style={{ marginBottom: 12 }} />
-        <Form form={form} layout="vertical" initialValues={{ isSchedulable: true }} onFinish={async (v) => {
+        <Form form={form} layout="vertical" initialValues={{ isSchedulable: true, countsAsNurse: false }} onFinish={async (v) => {
           const { code, replacedBy: _r, ...rest } = v;
           const out = editing === 'new' ? await run({ kind: 'position', body: { code, ...rest, titleAr: rest.titleAr?.trim() || undefined, isActive: undefined } })
-            : await run({ kind: 'position', code: (editing as PositionRow).code, body: { title: rest.title, titleAr: rest.titleAr?.trim() || null, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, isActive: rest.isActive, displayOrder: rest.displayOrder } });
+            : await run({ kind: 'position', code: (editing as PositionRow).code, body: { title: rest.title, titleAr: rest.titleAr?.trim() || null, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, countsAsNurse: rest.countsAsNurse, isActive: rest.isActive, displayOrder: rest.displayOrder } });
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}
@@ -223,6 +231,7 @@ function PositionsTab({ canWrite }: { canWrite: boolean }) {
           <Form.Item name="description" label={t('description')}><Input.TextArea rows={2} maxLength={500} /></Form.Item>
           <Form.Item name="displayOrder" label={t('displayOrder')} initialValue={0}><InputNumber min={0} precision={0} /></Form.Item>
           <Form.Item name="isSchedulable" label={t('schedulable')} valuePropName="checked"><Switch /></Form.Item>
+          <Form.Item name="countsAsNurse" label={t('countsAsNurse')} extra={t('countsAsNurseHint')} valuePropName="checked"><Switch /></Form.Item>
           {editing !== 'new' && <Form.Item name="isActive" label={t('status')} valuePropName="checked"><Switch checkedChildren={t('active')} unCheckedChildren={t('inactive')} /></Form.Item>}
         </Form>
       </Modal>

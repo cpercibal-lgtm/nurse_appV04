@@ -38,10 +38,12 @@ const DepartmentRow = z.strictObject({ code: Code, name: Name, nameAr: NameAr.op
 const UnitRow = z.strictObject({
   code: Code, name: Name, nameAr: NameAr.optional(), description: Description.optional(),
   departmentCode: Code, bedCount: Beds, criticalArea: CriticalAreaValue.optional(),
+  // Nurse-to-bed KPI B basis (MoH Ada'a): left out = a patient-care area without inpatient beds.
+  patientCareArea: z.boolean().default(true), inpatientBeds: z.boolean().default(false),
 });
 const PositionRow = z.strictObject({
   code: Code, title: Name, titleAr: NameAr.optional(), tier: z.enum(TIERS), description: Description.optional(),
-  isSchedulable: z.boolean(), isActive: z.boolean().default(true), displayOrder: Order.default(0), replacedBy: Code.optional(),
+  isSchedulable: z.boolean(), countsAsNurse: z.boolean().default(false), isActive: z.boolean().default(true), displayOrder: Order.default(0), replacedBy: Code.optional(),
 });
 const CategoryRow = z.strictObject({ code: TemplateCode, name: Name, description: Description.optional(), displayOrder: Order.default(0) });
 const TemplateRow = z.strictObject({
@@ -151,7 +153,8 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
     const s = dbUnit.get(r.code);
     if (!s) { push('units', r.code, 'CREATE'); continue; }
     const diff = differences(
-      { name: r.name, nameAr: orNull(r.nameAr), description: orNull(r.description), departmentCode: r.departmentCode, bedCount: r.bedCount, criticalArea: orNull(r.criticalArea) },
+      { name: r.name, nameAr: orNull(r.nameAr), description: orNull(r.description), departmentCode: r.departmentCode, bedCount: r.bedCount, criticalArea: orNull(r.criticalArea),
+        patientCareArea: r.patientCareArea, inpatientBeds: r.inpatientBeds },
       { ...s, departmentCode: s.department.code },
     );
     push('units', r.code, diff.length ? 'CONFLICT' : 'UNCHANGED', diff);
@@ -167,7 +170,7 @@ export async function previewBaseline(tx: DbClient, file: BaselineFile): Promise
     const s = dbPos.get(r.code);
     if (!s) { push('positions', r.code, 'CREATE'); continue; }
     const diff = differences(
-      { title: r.title, titleAr: orNull(r.titleAr), tier: r.tier, description: orNull(r.description), isSchedulable: r.isSchedulable, isActive: r.isActive, displayOrder: r.displayOrder, replacedBy: orNull(r.replacedBy) },
+      { title: r.title, titleAr: orNull(r.titleAr), tier: r.tier, description: orNull(r.description), isSchedulable: r.isSchedulable, countsAsNurse: r.countsAsNurse, isActive: r.isActive, displayOrder: r.displayOrder, replacedBy: orNull(r.replacedBy) },
       s,
     );
     push('positions', r.code, diff.length ? 'CONFLICT' : 'UNCHANGED', diff);
@@ -232,7 +235,8 @@ export async function applyBaseline(tx: DbClient, actorUserId: number, file: Bas
   const deptId = new Map((await tx.department.findMany({ select: { id: true, code: true } })).map((d) => [d.code, d.id]));
   for (const r of file.units.filter((x) => isNew('units', x.code))) {
     const unit = await tx.unit.create({
-      data: { code: r.code, name: r.name, nameAr: r.nameAr ?? null, description: r.description ?? null, departmentId: deptId.get(r.departmentCode)!, bedCount: r.bedCount, criticalArea: r.criticalArea ?? null },
+      data: { code: r.code, name: r.name, nameAr: r.nameAr ?? null, description: r.description ?? null, departmentId: deptId.get(r.departmentCode)!, bedCount: r.bedCount, criticalArea: r.criticalArea ?? null,
+        patientCareArea: r.patientCareArea, inpatientBeds: r.inpatientBeds },
     });
     // W4: every bed count has a history, starting with the import.
     await tx.bedCapacityLog.create({ data: { unitId: unit.id, previousCount: 0, newCount: r.bedCount, reason: `Baseline import (approval #${approvalRequestId ?? 'break-glass'})`, changedById: actorUserId } });
@@ -240,7 +244,7 @@ export async function applyBaseline(tx: DbClient, actorUserId: number, file: Bas
   // Positions in two passes, so a replacement may appear later in the file.
   const newPositions = file.positions.filter((x) => isNew('positions', x.code));
   for (const r of newPositions) {
-    await tx.position.create({ data: { code: r.code, title: r.title, titleAr: r.titleAr ?? null, tier: r.tier, description: r.description ?? null, isSchedulable: r.isSchedulable, isActive: r.isActive, displayOrder: r.displayOrder } });
+    await tx.position.create({ data: { code: r.code, title: r.title, titleAr: r.titleAr ?? null, tier: r.tier, description: r.description ?? null, isSchedulable: r.isSchedulable, countsAsNurse: r.countsAsNurse, isActive: r.isActive, displayOrder: r.displayOrder } });
   }
   for (const r of newPositions.filter((x) => x.replacedBy)) await tx.position.update({ where: { code: r.code }, data: { replacedBy: r.replacedBy } });
   for (const r of file.credentialCategories.filter((x) => isNew('credentialCategories', x.code))) {

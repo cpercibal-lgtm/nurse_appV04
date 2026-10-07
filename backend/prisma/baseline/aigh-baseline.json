@@ -72,7 +72,8 @@
       "name": "ER Coordinator",
       "description": "Patient flow and resource management",
       "departmentCode": "EMAC",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "ED_NAV",
@@ -101,7 +102,8 @@
       "name": "OR Coordinator",
       "description": "Surgical scheduling and theater flow",
       "departmentCode": "SURG",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "PACU",
@@ -144,7 +146,8 @@
       "description": "Intensive care for critically ill adults",
       "departmentCode": "CRIT",
       "bedCount": 37,
-      "criticalArea": "ICU"
+      "criticalArea": "ICU",
+      "inpatientBeds": true
     },
     {
       "code": "ICU_EXT",
@@ -160,14 +163,16 @@
       "description": "Neonatal intensive care",
       "departmentCode": "CRIT",
       "bedCount": 7,
-      "criticalArea": "ICU"
+      "criticalArea": "ICU",
+      "inpatientBeds": true
     },
     {
       "code": "SCABU",
       "name": "SCABU / Nursery",
       "description": "Special care baby unit and nursery",
       "departmentCode": "CRIT",
-      "bedCount": 8
+      "bedCount": 8,
+      "inpatientBeds": true
     },
     {
       "code": "PICU",
@@ -175,7 +180,8 @@
       "description": "Pediatric intensive care",
       "departmentCode": "CRIT",
       "bedCount": 8,
-      "criticalArea": "ICU"
+      "criticalArea": "ICU",
+      "inpatientBeds": true
     },
     {
       "code": "CCU",
@@ -183,7 +189,8 @@
       "description": "Cardiac intensive care",
       "departmentCode": "CRIT",
       "bedCount": 14,
-      "criticalArea": "ICU"
+      "criticalArea": "ICU",
+      "inpatientBeds": true
     },
     {
       "code": "BURN_ICU",
@@ -191,14 +198,16 @@
       "description": "Specialized care for burn trauma",
       "departmentCode": "CRIT",
       "bedCount": 5,
-      "criticalArea": "ICU"
+      "criticalArea": "ICU",
+      "inpatientBeds": true
     },
     {
       "code": "ASU",
       "name": "Acute Stabilization Unit",
       "description": "Acute stabilization",
       "departmentCode": "CRIT",
-      "bedCount": 8
+      "bedCount": 8,
+      "inpatientBeds": true
     },
     {
       "code": "HDU",
@@ -212,35 +221,40 @@
       "name": "Ward 3A – Female Medical",
       "description": "Female medical ward (roster 3A)",
       "departmentCode": "GNSP",
-      "bedCount": 23
+      "bedCount": 23,
+      "inpatientBeds": true
     },
     {
       "code": "WARD_3B",
       "name": "Ward 3B – Male Medical",
       "description": "Male medical ward (roster 3B)",
       "departmentCode": "GNSP",
-      "bedCount": 23
+      "bedCount": 23,
+      "inpatientBeds": true
     },
     {
       "code": "WARD_4A",
       "name": "Ward 4A – Male Surgical",
       "description": "Male surgical ward (roster 4A)",
       "departmentCode": "GNSP",
-      "bedCount": 23
+      "bedCount": 23,
+      "inpatientBeds": true
     },
     {
       "code": "WARD_4B",
       "name": "Ward 4B – Female Surgical",
       "description": "Female surgical ward (roster 4B)",
       "departmentCode": "GNSP",
-      "bedCount": 23
+      "bedCount": 23,
+      "inpatientBeds": true
     },
     {
       "code": "WARD_5B",
       "name": "Ward 5B – Orthopaedic",
       "description": "Orthopaedic ward (roster 5B)",
       "departmentCode": "GNSP",
-      "bedCount": 23
+      "bedCount": 23,
+      "inpatientBeds": true
     },
     {
       "code": "AKU",
@@ -254,14 +268,16 @@
       "name": "Rehabilitation",
       "description": "Rehabilitation and physical therapy",
       "departmentCode": "GNSP",
-      "bedCount": 25
+      "bedCount": 25,
+      "inpatientBeds": true
     },
     {
       "code": "PEDIA",
       "name": "Pediatric Inpatient",
       "description": "Inpatient pediatric care",
       "departmentCode": "GNSP",
-      "bedCount": 20
+      "bedCount": 20,
+      "inpatientBeds": true
     },
     {
       "code": "LND",
@@ -275,7 +291,8 @@
       "name": "Obstetrics & Gynecology",
       "description": "Obstetrics and gynecology",
       "departmentCode": "GNSP",
-      "bedCount": 28
+      "bedCount": 28,
+      "inpatientBeds": true
     },
     {
       "code": "NBS",
@@ -296,7 +313,8 @@
       "name": "Jail Ward",
       "description": "Secured unit for incarcerated patients",
       "departmentCode": "GNSP",
-      "bedCount": 11
+      "bedCount": 11,
+      "inpatientBeds": true
     },
     {
       "code": "RRT",
@@ -345,7 +363,8 @@
       "name": "Laboratory",
       "description": "Clinical pathology diagnostics",
       "departmentCode": "GNSP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "DIABETIC",
@@ -366,70 +385,80 @@
       "name": "Nursing Admin",
       "description": "Nursing staff management",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "HR",
       "name": "Human Resources",
       "description": "Human resources and payroll",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "IC",
       "name": "Infection Control",
       "description": "Infection control",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "PAT_EXP",
       "name": "Patient Experience",
       "description": "Patient satisfaction and feedback",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "PAT_AFFAIRS",
       "name": "Patient Affairs",
       "description": "Admissions and patient rights",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "ACADEMIC",
       "name": "Academic Affairs",
       "description": "Medical education and training",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "BIZ_CENTER",
       "name": "Business Center",
       "description": "Finance and billing",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "IDARA",
       "name": "Idara",
       "description": "General management office",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "STORE",
       "name": "Store",
       "description": "Supply chain and inventory",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     },
     {
       "code": "HOME_CARE",
       "name": "Home Care",
       "description": "Coordination of home-based medical care",
       "departmentCode": "CORP",
-      "bedCount": 0
+      "bedCount": 0,
+      "patientCareArea": false
     }
   ],
   "positions": [
@@ -480,6 +509,7 @@
       "tier": "Management",
       "description": "Temporary leadership of a unit to ensure continuity of care and management.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 5
     },
@@ -500,6 +530,7 @@
       "tier": "Advanced Practice",
       "description": "Advanced practice nurse capable of diagnostics and prescribing.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 7
     },
@@ -510,6 +541,7 @@
       "tier": "Management",
       "description": "Unit-specific management, staff oversight, and quality control.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 8
     },
@@ -520,6 +552,7 @@
       "tier": "Clinical Lead",
       "description": "Shift-lead responsible for patient assignments and immediate unit needs.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 9
     },
@@ -530,6 +563,7 @@
       "tier": "Clinical",
       "description": "Frontline registered nurse providing direct bedside patient care.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 10
     },
@@ -570,6 +604,7 @@
       "tier": "Clinical Specialist",
       "description": "Specialist midwifery practitioner. Legacy position retained for existing records.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 14
     },
@@ -600,6 +635,7 @@
       "tier": "Clinical",
       "description": "Roster code \"SN ANES\" (Intensive Care Unit). Title not yet confirmed. Confirm with the hospital and correct it in Workforce -> Positions.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 17
     },
@@ -610,6 +646,7 @@
       "tier": "Clinical",
       "description": "Roster code ICN (Intensive Care Unit). Title confirmed by the owner, 2026-10-07.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 18
     },
@@ -640,6 +677,7 @@
       "tier": "Clinical",
       "description": "Roster code PN (Intensive Care Unit). Title confirmed by the owner, 2026-10-07.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 21
     },
@@ -650,6 +688,7 @@
       "tier": "Clinical",
       "description": "Roster code CH (Diabetic Center; the RRT roster). Title confirmed by the owner, 2026-10-07.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": true,
       "displayOrder": 23
     },
@@ -660,6 +699,7 @@
       "tier": "Management",
       "description": "Roster code HD means Head Nurse (owner, 2026-10-07). Deprecated — migrate to HN.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": false,
       "displayOrder": 97,
       "replacedBy": "HN"
@@ -671,6 +711,7 @@
       "tier": "Management",
       "description": "Deprecated — migrate to ACTING_HEAD.",
       "isSchedulable": true,
+      "countsAsNurse": true,
       "isActive": false,
       "displayOrder": 99,
       "replacedBy": "ACTING_HEAD"

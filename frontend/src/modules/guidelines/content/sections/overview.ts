@@ -56,7 +56,7 @@ export const OVERVIEW: GuideSection[] = [
           ['Sign-in is refused or paused', 'Wrong password 5 times pauses the account for up to 15 minutes. Use Forgot password? (staff) or ask HR.'],
           ['I lost my phone', 'Use a recovery code, or ask HR to reset two-factor sign-in.'],
           ['ELIGIBLE but nothing was checked', 'The unit has no requirements configured (grey note): HR must enter the unit\'s policy.'],
-          ['KPI looks wrong', 'Only published shifts count; check beds and critical areas in Workforce.'],
+          ['KPI looks wrong', 'Only published shifts of nurse positions count; check beds, critical areas, patient-care areas, inpatient beds and Nurse (KPI) positions in Workforce.'],
           ['Attendance shows everyone missing', 'The badge system is not connected yet; real clock-ins will appear once it is.'],
         ],
       },

@@ -228,6 +228,10 @@ model Unit {
   bedCount     Int           @default(0) @map("bed_count")
   /// KPI A area (MoH Ada'a critical areas) — set by HR; replaces the unit-code map that was in kpi.ts.
   criticalArea CriticalArea? @map("critical_area")
+  /// KPI B numerator: nurses rostered here count (MoH Ada'a excludes non-patient-care areas) — set by HR.
+  patientCareArea Boolean    @default(true) @map("patient_care_area")
+  /// KPI B denominator: this unit's beds are hospital operational (inpatient) beds — set by HR.
+  inpatientBeds   Boolean    @default(false) @map("inpatient_beds")
   isActive     Boolean       @default(true) @map("is_active")
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz
@@ -266,6 +270,8 @@ model Position {
   tier          String
   description   String?
   isSchedulable Boolean  @map("is_schedulable")
+  /// Holders count as nurses in the nurse-to-bed KPIs (MoH Ada'a counts nurses only) — set by HR.
+  countsAsNurse Boolean  @default(false) @map("counts_as_nurse")
   isActive      Boolean  @default(true) @map("is_active")
   displayOrder  Int      @default(0) @map("display_order")
   /// A deprecated position names its successor (e.g. AHN -> ACTING_HEAD); history keeps the old code.

@@ -1418,6 +1418,7 @@ The hospital's structure: departments, units and their beds, positions, and how 
 | Positions (schedulable or not) | Eligibility (non-schedulable positions cannot be rostered), requirements per position |
 | Beds | Hospital total and the nurse-to-bed KPIs |
 | Critical area (ICU / ER / OR) | Which units count towards KPI A |
+| Patient-care area, Inpatient beds (units); Nurse (positions) | What KPI B and both KPIs count: nurses only, in patient-care areas, against inpatient beds |
 | Coverage targets | Roster board (eligible / target, shortage), auto-fill |
 
 ### 9.1 Add or edit a unit
@@ -1433,8 +1434,9 @@ The hospital's structure: departments, units and their beds, positions, and how 
 
 1. Workforce → Units → Add unit (or Edit on a row).
 2. Code (unique), name, department, description; critical area ICU / ER / OR only for those units.
-3. New unit: initial beds. Existing unit: Active on/off.
-4. Submit.
+3. Patient-care area: off for offices and other units whose nurses do not care for patients. Inpatient beds: on only for wards whose beds are hospital operational beds (not ER, OR, day surgery, outpatient or services).
+4. New unit: initial beds. Existing unit: Active on/off.
+5. Submit.
 
 **System result.** Saved and audited. The hospital total is recalculated live.
 
@@ -1532,8 +1534,9 @@ The hospital's structure: departments, units and their beds, positions, and how 
 **Steps.**
 
 1. Workforce → Positions → Add position (or Edit).
-2. Code, title, Arabic title (shown when the interface is Arabic), tier, description, display order, Schedulable, Active.
-3. Submit.
+2. Code, title, Arabic title (shown when the interface is Arabic), tier, description, display order, Schedulable, Nurse (KPI), Active.
+3. Nurse (KPI): on for licensed nursing positions, off for technicians, care assistants and roles without direct patient care.
+4. Submit.
 
 **System result.** Changing Schedulable re-evaluates everyone in the position. Deprecated positions show "→ replacement".
 
@@ -1691,34 +1694,35 @@ The hospital's structure: departments, units and their beds, positions, and how 
 
 ## 10. Nursing KPIs
 
-Nurse-to-bed indicators for a date and shift. KPI A rates the ICU, ER and OR critical areas and averages them; KPI B is hospital-wide. Nurses = published roster assignments on that date and shift; beds = active units.
+The MoH Ada'a nurse-to-bed indicators, for one shift or a month. KPI A rates the ICU, ER and OR critical areas (each 1–4) and averages them; KPI B (QFR-55) is hospital-wide. Nurses = the average number of nurses on duty per shift (published roster, nurse positions only); KPI B counts nurses in patient-care areas against inpatient beds.
 
 **Who:** HR Admin, System Admin, Supervisor  
 **Screen:** `/kpi`  
 **Where:** Side menu → Nursing KPIs.
 
-> **Important:** The band thresholds (Standard, Distress, Failing, Failed) are V03's reading of the MoH Ada'a indicator card, which is not in the repository. The page says so: treat the bands as indicative until the source is confirmed.
+> **Note:** Definitions and levels follow the MoH Ada'a indicator profiles "Nurse to Bed Ratio (Critical Areas)" and QFR-55 "Hospital's Nurse to Bed Ratio (Hospital-Wide)". What is counted is set in Workforce: Nurse (KPI) on positions; critical area, Patient-care area and Inpatient beds on units. The page lists what was counted.
 
 ### 10.1 Read the nurse-to-bed KPIs
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin, Supervisor
 
-**Purpose.** See staffing against beds for a shift.
+**Purpose.** See staffing against beds for a shift, or for a month as the Ada'a cards report it.
 
 **Who can perform it.** HR Admin, System Admin, Supervisor.
 
 **Steps.**
 
 1. Open Nursing KPIs.
-2. Choose the date and the shift.
+2. One shift: choose the date and the shift. Month: choose the month (a month still running counts the shifts up to today).
 3. KPI A: each critical area with ratio, nurses on duty, beds and code (1–4), and the average band. KPI B: the hospital ratio and band.
+4. What is counted: the nurse positions and the units behind the figures.
 
-**System result.** Nothing changes. Only published shifts count — drafts do not.
+**System result.** Nothing changes. Only published shifts of nurse positions count — drafts do not. Beds are the counts as they are now.
 
 **Approval.** None.
 
-**Next step.** Low staffing: Scheduling. Wrong beds or critical areas: Workforce.
+**Next step.** Low staffing: Scheduling. Wrong beds, critical areas, patient-care areas, inpatient beds or nurse positions: Workforce.
 
 **Related.** [Workforce](#9-workforce) · [Roster and scheduling](#11-roster-and-scheduling)
 
@@ -2837,7 +2841,7 @@ Common questions and what to do. When reporting a problem, give the page, what y
 | Sign-in is refused or paused | Wrong password 5 times pauses the account for up to 15 minutes. Use Forgot password? (staff) or ask HR. |
 | I lost my phone | Use a recovery code, or ask HR to reset two-factor sign-in. |
 | ELIGIBLE but nothing was checked | The unit has no requirements configured (grey note): HR must enter the unit's policy. |
-| KPI looks wrong | Only published shifts count; check beds and critical areas in Workforce. |
+| KPI looks wrong | Only published shifts of nurse positions count; check beds, critical areas, patient-care areas, inpatient beds and Nurse (KPI) positions in Workforce. |
 | Attendance shows everyone missing | The badge system is not connected yet; real clock-ins will appear once it is. |
 
 **Messages you may see**

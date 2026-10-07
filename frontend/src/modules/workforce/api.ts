@@ -7,8 +7,8 @@ export const SHIFTS: ShiftType[] = ['Morning', 'Evening', 'Night'];
 
 export interface DepartmentRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; isActive: boolean }
 export type CriticalArea = 'ICU' | 'ER' | 'OR';
-export interface UnitRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; departmentId: number; bedCount: number; criticalArea: CriticalArea | null; isActive: boolean }
-export interface PositionRow { code: string; title: string; titleAr: string | null; tier: string; description: string | null; isSchedulable: boolean; isActive: boolean; displayOrder: number; replacedBy: string | null }
+export interface UnitRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; departmentId: number; bedCount: number; criticalArea: CriticalArea | null; patientCareArea: boolean; inpatientBeds: boolean; isActive: boolean }
+export interface PositionRow { code: string; title: string; titleAr: string | null; tier: string; description: string | null; isSchedulable: boolean; countsAsNurse: boolean; isActive: boolean; displayOrder: number; replacedBy: string | null }
 export interface CoverageTarget { id: number; unitId: number; shiftType: ShiftType; minimumStaff: number }
 export interface BedLog { id: number; previousCount: number; newCount: number; reason: string; changedAt: string; changedBy: string | null }
 export interface Summary { unitCount: number; totalBeds: number; byDepartment: Array<{ id: number; code: string; name: string; units: number; beds: number }> }
@@ -18,7 +18,9 @@ export interface ImportResult {
 }
 export type Band = 'Standard' | 'Distress' | 'Failing' | 'Failed';
 export interface Kpi {
-  date: string; shift: ShiftType; thresholdSource: string; areaUnits: Record<string, string>;
+  period: { date?: string; shift?: ShiftType; month?: string; from: string; to: string; shifts: number };
+  source: string;
+  basis: { nursePositions: string[]; areaUnits: Record<string, string>; nonPatientCareUnits: string[]; inpatientBedUnits: string[] };
   kpiA: { averageCode: number; band: Band; areas: Array<{ area: string; nurses: number; beds: number; code: number; band: Band; ratioLabel: string }> };
   kpiB: { nurses: number; beds: number; band: Band; ratioLabel: string };
 }
@@ -33,7 +35,12 @@ export const useCoverage = () => useQuery({ queryKey: ['coverage'], queryFn: () 
 export const useBedHistory = (unitId: number | null) => useQuery({
   queryKey: ['bed-history', unitId], enabled: unitId !== null, queryFn: () => http.get<Paged<BedLog>>(`/units/${unitId}/bed-history`),
 });
-export const useKpi = (date: string, shift: ShiftType) => useQuery({ queryKey: ['kpi', date, shift], queryFn: () => http.get<Kpi>(`/kpi/nurse-to-bed?date=${date}&shift=${shift}`) });
+/** One shift, or one month (the MoH Ada'a cards report monthly). */
+export type KpiPeriod = { date: string; shift: ShiftType } | { month: string };
+export const useKpi = (p: KpiPeriod) => useQuery({
+  queryKey: ['kpi', p],
+  queryFn: () => http.get<Kpi>(`/kpi/nurse-to-bed?${'month' in p ? `month=${p.month}` : `date=${p.date}&shift=${p.shift}`}`),
+});
 
 type Action =
   | { kind: 'department'; id?: number; body: object }

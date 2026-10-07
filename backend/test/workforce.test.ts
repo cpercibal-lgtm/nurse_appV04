@@ -140,22 +140,64 @@ describeDb('workforce, employees and contracts', () => {
       expect((await hr.get(`/coverage-targets?unitId=${org.unitA.id}`)).body.items).toHaveLength(0);
     });
 
-    it('the KPI answers with bands and says its thresholds are not sourced in the repository (D-11)', async () => {
+    it("the KPI follows the Ada'a cards: nurses only, average per shift, patient-care areas, inpatient beds (D-70)", async () => {
       const sup = await signIn(app, (await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] })).email);
-      const res = await sup.get(`/kpi/nurse-to-bed?date=${today()}&shift=Morning`);
-      expect(res.status).toBe(200);
-      expect(res.body.kpiA.areas).toHaveLength(3);
-      expect(res.body.thresholdSource).toMatch(/not in the repository/);
+      const date = '2031-03-10';
+      const kpi = async (q: string) => { const r = await sup.get(`/kpi/nurse-to-bed?${q}`); expect(r.status).toBe(200); return r.body; };
+      const shift = () => kpi(`date=${date}&shift=Morning`);
+      const month = () => kpi('month=2031-03');
+      const icuOf = (k: { kpiA: { areas: Array<{ area: string; nurses: number; beds: number }> } }) => k.kpiA.areas.find((a) => a.area === 'ICU')!;
+      const before = await shift();
+      const beforeMonth = await month();
+      expect(before.kpiA.areas).toHaveLength(3);
+      expect(before.source).toMatch(/Ada'a/);
+      expect(before.period).toMatchObject({ date, shift: 'Morning', from: date, to: date, shifts: 1 });
+      expect(beforeMonth.period).toMatchObject({ month: '2031-03', from: '2031-03-01', to: '2031-03-31', shifts: 93 });
 
-      // KPI A areas come from units.critical_area, set by system-wide HR — not from unit codes in the code.
-      const icu = await hr.post('/units', { code: uniq('KICU').toUpperCase().slice(0, 20), name: 'KPI ICU', departmentId: org.dept.id, bedCount: 4, criticalArea: 'ICU' });
-      expect(icu.body.criticalArea).toBe('ICU');
-      const withIcu = await sup.get(`/kpi/nurse-to-bed?date=${today()}&shift=Morning`);
-      expect(withIcu.body.areaUnits[icu.body.code]).toBe('ICU');
-      expect(withIcu.body.kpiA.areas.find((a: { area: string }) => a.area === 'ICU').beds).toBe(res.body.kpiA.areas.find((a: { area: string }) => a.area === 'ICU').beds + 4);
-      expect((await hr.patch(`/units/${icu.body.id}`, { criticalArea: null })).body.criticalArea).toBeNull();
-      expect((await sup.get(`/kpi/nurse-to-bed?date=${today()}&shift=Morning`)).body.areaUnits[icu.body.code]).toBeUndefined();
-      expect((await (await signIn(app, (await makeUser(db)).email)).get(`/kpi/nurse-to-bed?date=${today()}&shift=Morning`)).status).toBe(403);
+      // What counts is set on screen by system-wide HR — not unit or position codes in the code.
+      const code = (p: string) => uniq(p).toUpperCase().slice(0, 20);
+      const nurse = await hr.post('/positions', { code: code('KN'), title: 'KPI nurse', tier: 'Clinical', isSchedulable: true, countsAsNurse: true });
+      const tech = await hr.post('/positions', { code: code('KT'), title: 'KPI technician', tier: 'Support', isSchedulable: true });
+      expect([nurse.body.countsAsNurse, tech.body.countsAsNurse]).toEqual([true, false]);
+      const icu = await hr.post('/units', { code: code('KICU'), name: 'KPI ICU', departmentId: org.dept.id, bedCount: 4, criticalArea: 'ICU', inpatientBeds: true });
+      const office = await hr.post('/units', { code: code('KOFF'), name: 'KPI office', departmentId: org.dept.id, patientCareArea: false });
+      expect([icu.body.inpatientBeds, icu.body.patientCareArea, office.body.patientCareArea]).toEqual([true, true, false]);
+      const staff = async (positionCode: string, unitId: number) => db.employee.create({
+        data: { jobNumber: uniq('J'), firstName: 'Kpi', lastName: 'Staff', fullName: 'x', contactEmail: 't@x.sa', positionCode, unitId },
+      });
+      const [n1, t1, n2] = [await staff(nurse.body.code, icu.body.id), await staff(tech.body.code, icu.body.id), await staff(nurse.body.code, office.body.id)];
+      const published = (employeeId: number, unitId: number, d = date) => ({ employeeId, unitId, shiftDate: toDbDate(d), shiftType: 'Morning' as const, status: 'Published' as const });
+      await db.shiftAssignment.createMany({ data: [published(n1.id, icu.body.id), published(t1.id, icu.body.id), published(n2.id, office.body.id)] });
+
+      const after = await shift();
+      expect(after.basis.areaUnits[icu.body.code]).toBe('ICU');
+      expect(after.basis.nursePositions).toContain(nurse.body.code);
+      expect(after.basis.nursePositions).not.toContain(tech.body.code);
+      expect(after.basis.nonPatientCareUnits).toContain(office.body.code);
+      expect(after.basis.inpatientBedUnits).toContain(icu.body.code);
+      // ICU: the nurse counts, the technician does not.
+      expect(icuOf(after).nurses).toBeCloseTo(icuOf(before).nurses + 1, 5);
+      expect(icuOf(after).beds).toBe(icuOf(before).beds + 4);
+      // Hospital-wide: the office nurse is left out; the ICU beds are inpatient beds.
+      expect(after.kpiB.nurses).toBeCloseTo(before.kpiB.nurses + 1, 5);
+      expect(after.kpiB.beds).toBe(before.kpiB.beds + 4);
+
+      // The month: one nurse on every Morning shift of March is a third of a nurse per shift.
+      await db.shiftAssignment.createMany({ data: Array.from({ length: 31 }, (_, i) => `2031-03-${String(i + 1).padStart(2, '0')}`).filter((d) => d !== date).map((d) => published(n1.id, icu.body.id, d)) });
+      expect(Math.abs(icuOf(await month()).nurses - icuOf(beforeMonth).nurses - 31 / 93)).toBeLessThanOrEqual(0.1);
+
+      // HR changes the basis; the KPI follows at once.
+      expect((await hr.patch(`/units/${office.body.id}`, { patientCareArea: true })).body.patientCareArea).toBe(true);
+      expect((await hr.patch(`/units/${icu.body.id}`, { inpatientBeds: false, criticalArea: null })).body.inpatientBeds).toBe(false);
+      expect((await hr.patch(`/positions/${nurse.body.code}`, { countsAsNurse: false })).body.countsAsNurse).toBe(false);
+      const changed = await shift();
+      expect(changed.basis.areaUnits[icu.body.code]).toBeUndefined();
+      expect(changed.kpiB.beds).toBe(before.kpiB.beds);
+      expect(changed.kpiB.nurses).toBeCloseTo(before.kpiB.nurses, 5);
+
+      expect((await sup.get('/kpi/nurse-to-bed?month=2031-13')).status).toBe(400);
+      expect((await sup.get(`/kpi/nurse-to-bed?date=${date}`)).status).toBe(400);
+      expect((await (await signIn(app, (await makeUser(db)).email)).get(`/kpi/nurse-to-bed?date=${date}&shift=Morning`)).status).toBe(403);
     });
   });
 

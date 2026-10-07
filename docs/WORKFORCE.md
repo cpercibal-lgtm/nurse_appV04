@@ -12,7 +12,7 @@ Sources: reference spec §2.9 (organisation), §3.1 and §3.1.1 (onboarding, pos
 | Positions | Tier from the §3.1.1 list; deactivation refused while held by active employees (W6); changing "schedulable" re-evaluates every holder (W7) | System-wide |
 | Coverage targets | Minimum staff per unit and shift (Morning / Evening / Night); `null` = **unspecified**, never zero (W8). No formula (D-16) | HR / System Admin with the unit in scope |
 
-**Nurse-to-bed KPI (D-11).** KPI A averages the ICU, ER and OR ratings (each coded 1–4); KPI B is hospital-wide. Nurses = published assignments on the chosen date and shift; beds = active units. The cut-lines are V03's reading of the MoH Ada'a indicator card, which is **not in the repository**; the page and every response say so (`thresholdSource`). Which units count as ICU, ER or OR is each unit's **KPI critical area**, set by system-wide HR on the unit (D-42).
+**Nurse-to-bed KPIs (D-11, D-70).** Defined by the MoH Ada'a indicator profiles ([reference](reference/MOH_ADAA_NURSE_TO_BED_KPI.md)). KPI A scores the ICU, ER and OR areas separately (codes 1–4) and averages the codes; KPI B (QFR-55) is hospital-wide. Nurses = Published assignments of positions with **Nurse (KPI)** on, averaged per shift over one shift or a month (the month so far while it runs). Which units are ICU, ER or OR is each unit's **KPI critical area** (D-42). KPI B counts nurses only in units with **Patient-care area** on, against the beds of units with **Inpatient beds** on. All four settings belong to system-wide HR; the page and the response list what was counted (`basis`).
 
 ## 2. Employees
 
