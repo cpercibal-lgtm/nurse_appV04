@@ -123,6 +123,18 @@ Images are built by GitHub Actions — **never on the server**: the VPS needs no
 
 The deploy key can run only `nurseapp-release` (`release <commit>` with a bundle on standard input, `rollback`, `status`): no shell, no forwarding. It still installs code that runs as root — treat it as a production credential: only in the protected environment, rotated when people leave. The bundle is checked (only `ops/…` and `images.tar.gz`, no links, no `..`) before anything is written.
 
+`nurseapp-release` is copied to `/usr/local/sbin` by `setup-host.sh` only; a release does not replace it (it is the check that guards releases). After a change to it, install it once from the released scripts:
+
+```bash
+sudo install -m 0755 -o root -g root /opt/nurseapp/vps/nurseapp-release /usr/local/sbin/nurseapp-release
+```
+
+Each release unpacks its bundle in `/var/tmp/nurseapp-release.*` and deletes it before switching colours. Releases before 2026-10-07 left theirs behind (about 1 GB each); delete them once, while no release is running:
+
+```bash
+sudo find /var/tmp -maxdepth 1 -type d -name 'nurseapp-release.*' -mmin +60 -exec rm -rf {} +
+```
+
 ## 7. The first administrators, and database access
 
 Once the first release is live (the site answers), sign in to the VPS with your key and run:

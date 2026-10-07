@@ -98,9 +98,12 @@ docker save "nurseapp/api:$SHA" "nurseapp/migrate:$SHA" "nurseapp/web:$SHA" | gz
 for image in api migrate web; do docker rmi "nurseapp/$image:$SHA" >/dev/null; done   # must come from the bundle
 tar -cf "$WORK/bundle.tar" -C "$WORK/bundle" ops images.tar.gz
 tar -cf "$WORK/evil.tar" -C "$WORK/bundle" ops/vps/deploy.sh && tar -rf "$WORK/evil.tar" -C / etc/hostname
+release_dirs() { compgen -G '/var/tmp/nurseapp-release.*' | sort || true; }
+before="$(release_dirs)"
 if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/evil.tar" 2>/dev/null; then echo "a bundle with a foreign path was accepted" >&2; exit 1; fi
 if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" "release;id" < /dev/null 2>/dev/null; then echo "a bad command was accepted" >&2; exit 1; fi
 NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/bundle.tar"
+[[ "$(release_dirs)" == "$before" ]] || { echo "nurseapp-release left its work folder in /var/tmp" >&2; exit 1; }
 # PostgreSQL runs the backup kit as postgres: the released scripts must be readable by others.
 for p in "$WORK/opt" "$WORK/opt/backup/scripts" "$WORK/opt/backup/scripts/wal-archive.sh"; do
   [[ "$(stat -c %a "$p")" == 755 ]] || { echo "released $p is not readable by the postgres user" >&2; exit 1; }
