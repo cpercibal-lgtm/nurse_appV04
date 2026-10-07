@@ -100,7 +100,7 @@ describeRoles(`database roles (spec §10.7)${allowed ? '' : ' — skipped: the t
       const out = await bootstrapAdministrators(runtime, input, createPasswordService(4));
       const baseline = parseBaseline(JSON.parse(readFileSync(resolve(__dirname, '../prisma/baseline/aigh-baseline.json'), 'utf8')));
       await runtime.$transaction((tx) => applyBaseline(tx, out.systemAdminId, baseline, 'Role separation test', null), { timeout: 120_000 });
-      expect(await runtime.unit.count()).toBe(47);
+      expect(await runtime.unit.count()).toBe(55);
 
       const hr = await signIn(testApp(runtime), input.hrAdmin.email, input.hrAdmin.password);
       expect((await hr.get('/credential-templates')).body.items).toHaveLength(17); // the baseline's 16 + National ID (owner decision 2026-10-04)

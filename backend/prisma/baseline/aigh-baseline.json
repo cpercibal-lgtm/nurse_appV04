@@ -27,6 +27,11 @@
       "code": "CORP",
       "name": "Administrative & Corporate Services",
       "description": "Nursing admin, HR, infection control and support services"
+    },
+    {
+      "code": "OPD",
+      "name": "Outpatient Department",
+      "description": "Outpatient clinics"
     }
   ],
   "units": [
@@ -110,7 +115,21 @@
       "name": "Day Surgery",
       "description": "Same-day surgical procedures",
       "departmentCode": "SURG",
-      "bedCount": 9
+      "bedCount": 23
+    },
+    {
+      "code": "DAY_CARE",
+      "name": "Day Care Unit",
+      "description": "Day care beds",
+      "departmentCode": "SURG",
+      "bedCount": 5
+    },
+    {
+      "code": "DS_CLUSTER",
+      "name": "Day Surgery – Cluster",
+      "description": "Day surgery beds of the health cluster",
+      "departmentCode": "SURG",
+      "bedCount": 21
     },
     {
       "code": "PLASTER",
@@ -124,7 +143,7 @@
       "name": "ICU Main",
       "description": "Intensive care for critically ill adults",
       "departmentCode": "CRIT",
-      "bedCount": 79,
+      "bedCount": 37,
       "criticalArea": "ICU"
     },
     {
@@ -140,15 +159,22 @@
       "name": "Neonatal Intensive Care",
       "description": "Neonatal intensive care",
       "departmentCode": "CRIT",
-      "bedCount": 15,
+      "bedCount": 7,
       "criticalArea": "ICU"
+    },
+    {
+      "code": "SCABU",
+      "name": "SCABU / Nursery",
+      "description": "Special care baby unit and nursery",
+      "departmentCode": "CRIT",
+      "bedCount": 8
     },
     {
       "code": "PICU",
       "name": "Pediatric Intensive Care",
       "description": "Pediatric intensive care",
       "departmentCode": "CRIT",
-      "bedCount": 15,
+      "bedCount": 8,
       "criticalArea": "ICU"
     },
     {
@@ -156,7 +182,7 @@
       "name": "Coronary Care Unit",
       "description": "Cardiac intensive care",
       "departmentCode": "CRIT",
-      "bedCount": 10,
+      "bedCount": 14,
       "criticalArea": "ICU"
     },
     {
@@ -164,7 +190,7 @@
       "name": "Burn ICU",
       "description": "Specialized care for burn trauma",
       "departmentCode": "CRIT",
-      "bedCount": 6,
+      "bedCount": 5,
       "criticalArea": "ICU"
     },
     {
@@ -172,7 +198,7 @@
       "name": "Acute Stabilization Unit",
       "description": "Acute stabilization",
       "departmentCode": "CRIT",
-      "bedCount": 6
+      "bedCount": 8
     },
     {
       "code": "HDU",
@@ -182,11 +208,39 @@
       "bedCount": 6
     },
     {
-      "code": "INP_WARDS",
-      "name": "Inpatient Wards",
-      "description": "General and specialized acute care (3A–5B)",
+      "code": "WARD_3A",
+      "name": "Ward 3A – Female Medical",
+      "description": "Female medical ward (roster 3A)",
       "departmentCode": "GNSP",
-      "bedCount": 98
+      "bedCount": 23
+    },
+    {
+      "code": "WARD_3B",
+      "name": "Ward 3B – Male Medical",
+      "description": "Male medical ward (roster 3B)",
+      "departmentCode": "GNSP",
+      "bedCount": 23
+    },
+    {
+      "code": "WARD_4A",
+      "name": "Ward 4A – Male Surgical",
+      "description": "Male surgical ward (roster 4A)",
+      "departmentCode": "GNSP",
+      "bedCount": 23
+    },
+    {
+      "code": "WARD_4B",
+      "name": "Ward 4B – Female Surgical",
+      "description": "Female surgical ward (roster 4B)",
+      "departmentCode": "GNSP",
+      "bedCount": 23
+    },
+    {
+      "code": "WARD_5B",
+      "name": "Ward 5B – Orthopaedic",
+      "description": "Orthopaedic ward (roster 5B)",
+      "departmentCode": "GNSP",
+      "bedCount": 23
     },
     {
       "code": "AKU",
@@ -200,14 +254,14 @@
       "name": "Rehabilitation",
       "description": "Rehabilitation and physical therapy",
       "departmentCode": "GNSP",
-      "bedCount": 17
+      "bedCount": 25
     },
     {
       "code": "PEDIA",
       "name": "Pediatric Inpatient",
       "description": "Inpatient pediatric care",
       "departmentCode": "GNSP",
-      "bedCount": 15
+      "bedCount": 20
     },
     {
       "code": "LND",
@@ -221,7 +275,7 @@
       "name": "Obstetrics & Gynecology",
       "description": "Obstetrics and gynecology",
       "departmentCode": "GNSP",
-      "bedCount": 17
+      "bedCount": 28
     },
     {
       "code": "NBS",
@@ -234,7 +288,7 @@
       "code": "OPD_DENTAL",
       "name": "OPD / Dental",
       "description": "Outpatient clinics",
-      "departmentCode": "GNSP",
+      "departmentCode": "OPD",
       "bedCount": 23
     },
     {
@@ -242,7 +296,7 @@
       "name": "Jail Ward",
       "description": "Secured unit for incarcerated patients",
       "departmentCode": "GNSP",
-      "bedCount": 12
+      "bedCount": 11
     },
     {
       "code": "RRT",
@@ -274,10 +328,17 @@
     },
     {
       "code": "BLOOD_BANK",
-      "name": "Blood Bank",
+      "name": "Blood Bank Unit",
       "description": "Blood storage and donation",
       "departmentCode": "GNSP",
       "bedCount": 2
+    },
+    {
+      "code": "BLOOD_COLL",
+      "name": "Blood Collection Unit",
+      "description": "Blood collection",
+      "departmentCode": "GNSP",
+      "bedCount": 0
     },
     {
       "code": "LAB",

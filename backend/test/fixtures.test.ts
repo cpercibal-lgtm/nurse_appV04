@@ -33,7 +33,7 @@ describeDb('demo fixtures on an empty database (P9)', () => {
     await loadDemoFixtures(db, PASSWORD, createPasswordService(4), '2026-09-23');
     expect([await db.user.count(), await db.employee.count(), await db.contract.count(), await db.credential.count(), await db.credentialRequirement.count(), await db.roleAssignment.count()])
       .toEqual([5, 8, 8, 7, 6, 3]);
-    expect([await db.unit.count(), await db.credentialTemplateField.count()]).toEqual([47, 71]);
+    expect([await db.unit.count(), await db.credentialTemplateField.count()]).toEqual([55, 71]);
     // Stored statuses follow the dates (the old seed stored "Valid" for expired credentials).
     const creds = await db.credential.findMany({ include: { employee: { select: { jobNumber: true } }, template: { select: { code: true } } } });
     const status = (job: string, code: string) => creds.find((c) => c.employee.jobNumber === job && c.template.code === code)!.status;

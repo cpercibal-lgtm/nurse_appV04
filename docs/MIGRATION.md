@@ -6,7 +6,7 @@ How V04 replaces `nurse_appV03`, what happens to V03's data, and where each open
 
 **No data migration is required.** V03 has no production data: its server re-seeded the database on every container start (`prisma db push` + seed), and the browser store held demo data only ([DATABASE_CONSOLIDATION.md §7](history/DATABASE_CONSOLIDATION.md#7-data-migration-from-v03)). V04 starts from an empty database ([DATABASE_ARCHITECTURE.md §7](DATABASE_ARCHITECTURE.md#7-how-data-enters-the-database)):
 
-- **Hospital baseline** (5 departments, 47 units / 582 beds, 16 positions, the credential catalogue) is entered through the four-eyes baseline import from `backend/prisma/baseline/aigh-baseline.json` and is then HR's to change in the app.
+- **Hospital baseline** (6 departments, 55 units / 618 beds, 25 positions, the credential catalogue) is entered through the four-eyes baseline import from `backend/prisma/baseline/aigh-baseline.json` and is then HR's to change in the app.
 - **Demo data** (V03's fictional employees, contracts, credentials, one account per role) is a development fixture (`npm run fixtures:demo`), never production. The V04 seed that used to load both was retired by the database-first migration ([DATABASE_MIGRATION.md](DATABASE_MIGRATION.md)); its content is in [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md).
 
 **If a V03 database must be preserved after all,** that is a new requirement (not established). It would need a one-time export → validate → import through the V04 services (so every rule, audit entry and eligibility state is produced), not a table copy. Real employees are otherwise entered through onboarding; there is no bulk employee import (REQUIREMENT NOT ESTABLISHED — only units have a CSV import).
