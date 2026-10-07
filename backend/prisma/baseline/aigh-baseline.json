@@ -513,6 +513,96 @@
       "displayOrder": 14
     },
     {
+      "code": "ECG",
+      "title": "Electrocardiography Technician",
+      "titleAr": "فني تخطيط القلب",
+      "tier": "Support",
+      "description": "Roster code ECG (Emergency Department). Title not yet confirmed. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 15
+    },
+    {
+      "code": "QMPS",
+      "title": "Quality Management & Patient Safety Nurse",
+      "titleAr": "ممرض الجودة وسلامة المرضى",
+      "tier": "Specialist",
+      "description": "Roster code QMPS (Nursing Administration). The function is Quality Management and Patient Safety; the title (nurse or coordinator) is to be confirmed. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 16
+    },
+    {
+      "code": "SN_ANES",
+      "title": "Staff Nurse – Anaesthesia",
+      "titleAr": "ممرض التخدير",
+      "tier": "Clinical",
+      "description": "Roster code \"SN ANES\" (Intensive Care Unit). Title not yet confirmed. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 17
+    },
+    {
+      "code": "ICN",
+      "title": "Intensive Care Nurse (provisional)",
+      "titleAr": "ممرض العناية المركزة (مؤقت)",
+      "tier": "Clinical",
+      "description": "Roster code ICN (Intensive Care Unit). Provisional: it may instead mean Infection Control Nurse. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 18
+    },
+    {
+      "code": "OT",
+      "title": "Orthopaedic Plaster Technician (provisional)",
+      "titleAr": "فني جبائر العظام (مؤقت)",
+      "tier": "Support",
+      "description": "Roster code OT (Plaster Unit). Provisional: meaning not confirmed by the roster. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 19
+    },
+    {
+      "code": "AN",
+      "title": "Assistant Nurse (provisional)",
+      "titleAr": "ممرض مساعد (مؤقت)",
+      "tier": "Support",
+      "description": "Roster code AN (Diabetic Center, Outpatient Department). Provisional: meaning not confirmed by the roster. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 20
+    },
+    {
+      "code": "PN",
+      "title": "Practical Nurse (provisional)",
+      "titleAr": "ممرض عملي (مؤقت)",
+      "tier": "Clinical",
+      "description": "Roster code PN (Intensive Care Unit). Provisional: meaning not confirmed by the roster. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 21
+    },
+    {
+      "code": "HD",
+      "title": "HD – title to be confirmed",
+      "titleAr": "HD – المسمى قيد التأكيد",
+      "tier": "Support",
+      "description": "Roster code HD (Plaster Unit). Meaning unknown: temporary title. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 22
+    },
+    {
+      "code": "CH",
+      "title": "CH – title to be confirmed",
+      "titleAr": "CH – المسمى قيد التأكيد",
+      "tier": "Clinical",
+      "description": "Roster code CH (Diabetic Center, Rapid Response Team). Meaning unknown: temporary title. Confirm with the hospital and correct it in Workforce -> Positions.",
+      "isSchedulable": true,
+      "isActive": true,
+      "displayOrder": 23
+    },
+    {
       "code": "AHN",
       "title": "Acting/Assistant Head Nurse",
       "titleAr": "رئيس تمريض بالإنابة أو مساعد",

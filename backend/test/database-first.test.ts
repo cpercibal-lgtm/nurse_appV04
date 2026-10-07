@@ -142,7 +142,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
     const preview = await hr.post('/admin/baseline-import/preview', { file: BASELINE });
     expect(preview.status).toBe(200);
     expect(preview.body.canImport).toBe(true);
-    expect(preview.body.totals).toMatchObject({ CREATE: 5 + 47 + 16 + 5 + 17, UNCHANGED: 0, CONFLICT: 0, REJECTED: 0, beds: 582, fields: 71 });
+    expect(preview.body.totals).toMatchObject({ CREATE: 5 + 47 + 25 + 5 + 17, UNCHANGED: 0, CONFLICT: 0, REJECTED: 0, beds: 582, fields: 71 });
 
     const req = await hr.post('/admin/baseline-import', { file: BASELINE, reason: 'Initial hospital configuration from the approved baseline' });
     expect(req.status).toBe(202);
@@ -156,7 +156,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
     expect(await db.unit.count({ where: baselineUnits })).toBe(47);
     expect((await db.unit.aggregate({ where: baselineUnits, _sum: { bedCount: true } }))._sum.bedCount).toBe(582);
     expect(await db.bedCapacityLog.count({ where: { unit: baselineUnits } })).toBe(47);
-    expect(await db.position.count()).toBe(16);
+    expect(await db.position.count()).toBe(25); // 16 + 9 from the 2026 roster (owner, 2026-10-07)
     expect(await db.position.count({ where: { replacedBy: { not: null } } })).toBe(2);
     expect(await db.credentialCategory.count()).toBe(5);
     expect(await db.credentialTemplate.count()).toBe(17);
@@ -192,7 +192,7 @@ describeDb('B. the hospital baseline import (P7)', () => {
 
   it('is idempotent: the same file again creates nothing', async () => {
     const preview = await ctx.hr.post('/admin/baseline-import/preview', { file: BASELINE });
-    expect(preview.body.totals).toMatchObject({ CREATE: 0, UNCHANGED: 90, CONFLICT: 0, REJECTED: 0 });
+    expect(preview.body.totals).toMatchObject({ CREATE: 0, UNCHANGED: 5 + 47 + 25 + 5 + 17, CONFLICT: 0, REJECTED: 0 });
     expect((await ctx.hr.post('/admin/baseline-import', { file: BASELINE, reason: 'Run the same baseline a second time' })).body.error.code).toBe('NOTHING_TO_IMPORT');
     expect(await db.credentialTemplate.count()).toBe(17);
   });
