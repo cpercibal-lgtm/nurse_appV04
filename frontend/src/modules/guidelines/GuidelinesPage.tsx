@@ -157,7 +157,7 @@ export default function GuidelinesPage() {
       title={<Space><BookOutlined />{t('guidelines')}</Space>}
       extra={<Button icon={<DownloadOutlined />} href={MANUAL_PDF} download>{screens.sm ? t('guidelinesDownloadPdf') : 'PDF'}</Button>}
     >
-      <div ref={top} />
+      <div ref={top} className="guide-anchor" />
       {language === 'ar' && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('guidelinesEnglishOnly')} />}
       <Flex gap={12} wrap align="center" style={{ marginBottom: 12 }}>
         <Input.Search allowClear size="large" style={{ flex: '1 1 320px' }} placeholder={t('guidelinesSearch')} value={query}

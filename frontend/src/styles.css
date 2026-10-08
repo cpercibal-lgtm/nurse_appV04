@@ -117,3 +117,6 @@ body {
 :root:not([data-theme='dark']) .ant-tag.ant-tag-cyan:not(.ant-tag-solid) { color: #006d75; }
 /* Show-password icon: a 24 × 24 px target (WCAG 2.5.8). */
 .ant-input-password-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
+/* Guidelines scrolls a section or a task into view: stop below the sticky header (60 px), not under it
+   (the search box and task titles were partly hidden; found by the accessibility scan). */
+.guide-anchor, [id^='task-'] { scroll-margin-top: 76px; }

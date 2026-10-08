@@ -61,3 +61,5 @@ E2E_BASE_URL=http://localhost:5274 E2E_EMAIL=… E2E_PASSWORD=… E2E_BROWSERS=c
 ```
 
 It creates one department per browser (code `E2E…`), so point it only at a test or development database, never at production.
+
+**`run.sh` from Git Bash on Windows:** set `MSYS_NO_PATHCONV=1` (Git Bash otherwise rewrites the certificate subject `/CN=…` as a path) and, if `OPENSSL_CONF` points to a missing file (some PostgreSQL ODBC installs do), `OPENSSL_CONF=$(cygpath -m /mingw64/etc/ssl/openssl.cnf)`; build the images first and pass their tag (`TAG=…`), because Docker does not accept the `/c/…` build path with path conversion off. Firefox and WebKit then need the hosts-file line, as in CI.

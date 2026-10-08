@@ -69,7 +69,8 @@ function record(browserName, where, violations) {
     for (const n of v.nodes) {
       // Grouped by what to fix: the element, and for contrast its colours and ratio.
       const c = n.any.find((a) => a.id === 'color-contrast')?.data;
-      const key = n.target.join(' ') + (c ? ` — ${c.fgColor} on ${c.bgColor} = ${c.contrastRatio}:1 (needs ${c.expectedContrastRatio})` : ` — ${n.html.slice(0, 140)}`);
+      const why = (n.failureSummary ?? '').replace(/\s+/g, ' ').replace(/^Fix (any|all) of the following: /, '').slice(0, 200);
+      const key = n.target.join(' ') + (c ? ` — ${c.fgColor} on ${c.bgColor} = ${c.contrastRatio}:1 (needs ${c.expectedContrastRatio})` : ` — ${n.html.slice(0, 120)} — ${why}`);
       const s = f.samples.get(key) ?? { count: 0, pages: new Set() };
       s.count += 1;
       s.pages.add(where);
@@ -121,7 +122,10 @@ for (const name of BROWSERS) {
       for (const busy of ['.ant-skeleton', '.ant-spin-spinning']) {
         await page.locator(busy).first().waitFor({ state: 'detached', timeout: 15_000 }).catch(() => undefined);
       }
-      await page.waitForTimeout(300); // let the last rendering finish before the scan
+      // Fonts loaded and two frames rendered: Firefox once measured the Guidelines search button before the
+      // flexible search box had its final width (a one-off target-size finding).
+      await page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+      await page.waitForTimeout(300);
     }
     async function scan(where) {
       // Judge the final colours, not a frame of a 0.2 s fade (a button turning disabled once measured 2.65:1
@@ -150,8 +154,9 @@ for (const name of BROWSERS) {
     }
 
     test('signs in (password, then the authenticator when the account has one)', STEP, async () => {
-      const health = await context.request.get(`${BASE}/api/v1/health`);
-      assert.equal(health.status(), 200, 'the API is up');
+      // Through the browser, which resolves the test host (context.request runs in Node and would need the hosts file).
+      const health = await page.goto(`${BASE}/api/v1/health`);
+      assert.equal(health?.status(), 200, 'the API is up');
       await page.goto(`${BASE}/login`);
       await settled();
       await scan('/login');
@@ -228,8 +233,13 @@ for (const name of BROWSERS) {
       await page.locator('.app-avatar').hover();
       await page.locator('[data-menu-id$="-logout"]').click(); // by its key: works in either language
       await page.waitForURL((u) => u.pathname === '/login', { timeout: 15_000 });
-      await page.goto(`${BASE}/nurses`);
-      await page.waitForURL((u) => u.pathname === '/login', { timeout: 15_000 });
+      // Typed into the address bar, as a user would. Not page.goto: the app redirects to /login before the
+      // page has finished loading, which Firefox reports as an aborted goto (wording varies by version).
+      const loaded = page.waitForEvent('load', { timeout: 15_000 });
+      await page.evaluate((url) => { window.location.href = url; }, `${BASE}/nurses`);
+      await loaded; // a new document for /nurses was loaded …
+      await page.waitForURL((u) => u.pathname === '/login', { timeout: 15_000 }); // … and sent to sign-in
+      await page.locator('#email').waitFor({ timeout: 15_000 });
       await assertHealthy('after sign-out');
     });
   });
