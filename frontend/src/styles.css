@@ -120,3 +120,8 @@ body {
 /* Guidelines scrolls a section or a task into view: stop below the sticky header (60 px), not under it
    (the search box and task titles were partly hidden; found by the accessibility scan). */
 .guide-anchor, [id^='task-'] { scroll-margin-top: 76px; }
+
+/* Skip link (WCAG 2.4.1): off-screen until it receives keyboard focus; the target takes focus without a ring. */
+.skip-link { position: absolute; inset-inline-start: 8px; top: -64px; z-index: 1100; padding: 10px 16px; border-radius: 6px; background: #0b5d3b; color: #fff; font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 8px; outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px #0b5d3b; }
+.app-content:focus { outline: none; }

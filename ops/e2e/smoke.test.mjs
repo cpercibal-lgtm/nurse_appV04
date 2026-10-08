@@ -189,6 +189,18 @@ for (const name of BROWSERS) {
       assertNoNewViolations();
     });
 
+    test('a skip link comes first, shows when focused, and moves focus to the main content (WCAG 2.4.1)', STEP, async () => {
+      await page.goto(`${BASE}/`);
+      await settled();
+      const link = page.locator('a.skip-link');
+      assert.equal(await page.evaluate(() => document.querySelector('a')?.className), 'skip-link', 'the skip link is the first link on the page');
+      await link.focus();
+      const box = await link.boundingBox();
+      assert.ok(box && box.y >= 0, 'it is on screen while it has focus');
+      await link.press('Enter');
+      assert.equal(await page.evaluate(() => document.activeElement?.id), 'main-content', 'focus moved to the main content');
+    });
+
     test('creates a department that is still there after a reload', STEP, async () => {
       const code = `E2E${name.slice(0, 2).toUpperCase()}${Date.now().toString(36).toUpperCase()}`.slice(0, 20);
       await page.goto(`${BASE}/workforce`);

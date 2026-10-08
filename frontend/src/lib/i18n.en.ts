@@ -69,6 +69,7 @@ export const en = {
   baselineNothing: 'Everything in this file already exists unchanged — nothing to import.',
   baselineBlocked: 'Resolve the conflicting and rejected rows before importing. Conflicts are changed through the normal screens, never by the import.',
   toggleMenu: 'Show or hide the menu',
+  skipToContent: 'Skip to main content',
   appName: 'AIGH Nursing Workforce',
   dashboard: 'Dashboard',
   nurses: 'Nurses',

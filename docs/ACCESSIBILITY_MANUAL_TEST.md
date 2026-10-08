@@ -20,7 +20,7 @@ Keys: **Tab / Shift+Tab** move, **Enter / Space** activate, **Arrows** move insi
 |---|---|---|---|
 | K1 | Open the sign-in page. Press Tab once. | A visible focus ring appears on the first control. | Focus ring missing or hidden by the header. |
 | K2 | Sign in with e-mail, password and the 6-digit code, using only the keyboard. | You reach the dashboard. Enter submits. | A control you cannot reach; focus lost after the code step. |
-| K3 | **Skip to content.** After a page loads, press Tab repeatedly. | A "skip to main content" link exists, **or** you can reach the page content without tabbing through the whole side menu every time. | **Expected to fail today:** the app has no skip link (WCAG 2.4.1). Record how many Tab presses it takes. |
+| K3 | **Skip to content.** After a page loads, press Tab once. Press Enter. | A "Skip to main content" link appears at the top and is the first Tab stop; Enter moves focus to the page content, past the side menu (WCAG 2.4.1). In Arabic it appears on the right. | The link not appearing, or focus staying in the menu. (CI checks that the link exists and works; you check that it is clear.) |
 | K4 | Walk the side menu with Tab and Enter. | Every item is reachable, the current page is announced or marked, Enter opens it. | A collapsed menu hiding items from the keyboard. |
 | K5 | **Onboard an employee:** Nurses → Onboard employee. Fill every field, choose from every dropdown, submit once with a required field missing, then correct it. | Dropdowns open with Enter or Down arrow and close with Esc; the error is reachable; the save works. | Focus jumping to the top of the page; a date picker you cannot operate. |
 | K6 | Open a **dialog** (Edit unit). Tab through it. Press Esc. | Focus stays inside while it is open. Esc closes it, and focus **returns to the button that opened it**. | Focus escaping to the page behind; focus landing at the top of the page after closing. |
@@ -71,7 +71,6 @@ Start NVDA (Ctrl+Alt+N). Useful keys: **Down arrow** reads the next line, **Tab*
 
 ## Known gaps to confirm
 
-- **No "skip to content" link** (K3). If confirmed, add one; it is a small change.
 - **Focus and announcement after a page change** (S4): confirm what NVDA says when you navigate.
 - **Messages** (S9, S10): confirm they are in a live region.
 

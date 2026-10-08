@@ -71,6 +71,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AntApp>
+      {/* WCAG 2.4.1: the first Tab stop lets keyboard and screen-reader users jump past the menu. */}
+      <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); document.getElementById('main-content')?.focus(); }}>{t('skipToContent')}</a>
       <Layout style={{ minHeight: '100vh' }}>
         <Sider
           trigger={null}
@@ -122,7 +124,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </Dropdown>
             </Flex>
           </Header>
-          <Content style={{ margin: 20 }}>{children}</Content>
+          <Content id="main-content" tabIndex={-1} className="app-content" style={{ margin: 20 }}>{children}</Content>
         </Layout>
         <ChangePasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
       </Layout>
