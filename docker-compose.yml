@@ -28,6 +28,8 @@ services:
 
   clamav:
     image: clamav/clamav:1.4
+    environment:
+      FRESHCLAM_CHECKS: "12"   # signature checks per day (image default 1 = signatures up to a day old; go-live-check wants ≤ 24 h)
     profiles: ["clamav"]
     restart: unless-stopped
     ports:
