@@ -8,6 +8,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { refreshEligibility } from '../eligibility/state.service.js';
@@ -158,11 +159,14 @@ export function createOrgService(db: Db) {
       });
     },
 
-    async updateDepartment(auth: AuthContext, id: number, body: z.infer<typeof DepartmentUpdateBody>, requestId?: string) {
+    // `expected` on the updates below: the version the caller loaded (If-Match); a newer one is refused (STALE_RECORD).
+    async updateDepartment(auth: AuthContext, id: number, body: z.infer<typeof DepartmentUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT id FROM departments WHERE id = ${id} FOR UPDATE`;
         const before = await tx.department.findUnique({ where: { id } });
         if (!before) throw notFound('Department not found');
+        assertUnchanged(expected, before);
         if (body.isActive === false && before.isActive && (await tx.unit.count({ where: { departmentId: id, isActive: true } })) > 0) {
           throw conflict('DEPARTMENT_HAS_ACTIVE_UNITS', 'Deactivate or move its active units first (W1)');
         }
@@ -207,11 +211,13 @@ export function createOrgService(db: Db) {
       });
     },
 
-    async updateUnit(auth: AuthContext, id: number, body: z.infer<typeof UnitUpdateBody>, requestId?: string) {
+    async updateUnit(auth: AuthContext, id: number, body: z.infer<typeof UnitUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT id FROM units WHERE id = ${id} FOR UPDATE`;
         const before = await tx.unit.findUnique({ where: { id } });
         if (!before) throw notFound('Unit not found');
+        assertUnchanged(expected, before);
         if (body.departmentId !== undefined && body.departmentId !== before.departmentId) {
           const dept = await tx.department.findUnique({ where: { id: body.departmentId } });
           if (!dept || !dept.isActive) throw unprocessable('DEPARTMENT_NOT_ACTIVE', 'The department does not exist or is inactive');
@@ -229,11 +235,13 @@ export function createOrgService(db: Db) {
       });
     },
 
-    async setBedCount(auth: AuthContext, id: number, body: z.infer<typeof BedCountBody>, requestId?: string) {
+    async setBedCount(auth: AuthContext, id: number, body: z.infer<typeof BedCountBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM units WHERE id = ${id} FOR UPDATE`;
         const unit = await tx.unit.findUnique({ where: { id } });
         if (!unit) throw notFound('Unit not found');
         await assertUnitInScope(tx, auth, id);
+        assertUnchanged(expected, unit);
         if (unit.bedCount === body.bedCount) return { status: 'UNCHANGED' as const, bedCount: unit.bedCount };
         await setBeds(tx, auth, unit, body.bedCount, body.reason);
         await appendAudit(tx, { actorUserId: auth.user.id, action: 'BED_CAPACITY_CHANGED', resource: 'unit', resourceId: id, changes: { previous: unit.bedCount, next: body.bedCount, reason: body.reason }, requestId });
@@ -348,11 +356,13 @@ export function createOrgService(db: Db) {
       });
     },
 
-    async updatePosition(auth: AuthContext, code: string, body: z.infer<typeof PositionUpdateBody>, requestId?: string) {
+    async updatePosition(auth: AuthContext, code: string, body: z.infer<typeof PositionUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT code FROM positions WHERE code = ${code} FOR UPDATE`;
         const before = await tx.position.findUnique({ where: { code } });
         if (!before) throw notFound('Position not found');
+        assertUnchanged(expected, before);
         if (body.isActive === false && before.isActive && (await activeEmployees(tx, { positionCode: code })) > 0) {
           throw conflict('POSITION_IN_USE', 'Active employees hold this position — reassign them first (W6)');
         }

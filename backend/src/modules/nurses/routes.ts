@@ -3,6 +3,7 @@
 
 import { Router, type Response } from 'express';
 import { z } from 'zod';
+import { ifMatch } from '../../lib/concurrency.js';
 import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
@@ -17,7 +18,7 @@ export function createNursesRouter(db: Db, nurses: NurseService) {
   r.get('/employees', authorize('employees.read'), async (req, res) => { res.json(await nurses.list(authOf(res), ListQuery.parse(req.query))); });
   r.get('/employees/me', async (_req, res) => { res.json(await nurses.me(authOf(res))); });
   // Own record only (D-35): no permission, the caller's employee id is the target.
-  r.patch('/employees/me/contact', async (req, res) => { res.json(await nurses.updateOwnContact(authOf(res), OwnContactBody.parse(req.body), rid(res))); });
+  r.patch('/employees/me/contact', async (req, res) => { res.json(await nurses.updateOwnContact(authOf(res), OwnContactBody.parse(req.body), rid(res), ifMatch(req))); });
   r.get('/employees/onboarding-defaults', authorize('employees.write'), async (_req, res) => { res.json(await nurses.onboardingDefaults()); });
   r.post('/employees/onboard', authorize('employees.write'), idempotent(db, 'employees.onboard'), async (req, res) => {
     res.status(201).json(await nurses.onboard(authOf(res), OnboardBody.parse(req.body), rid(res)));
@@ -25,7 +26,7 @@ export function createNursesRouter(db: Db, nurses: NurseService) {
   // Own-or-scoped checks happen in the service.
   r.get('/employees/:id', async (req, res) => { res.json(await nurses.get(authOf(res), IdParam.parse(req.params).id)); });
   r.patch('/employees/:id', authorize('employees.write'), async (req, res) => {
-    res.json(await nurses.update(authOf(res), IdParam.parse(req.params).id, UpdateBody.parse(req.body), rid(res)));
+    res.json(await nurses.update(authOf(res), IdParam.parse(req.params).id, UpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.post('/employees/:id/position', authorize('employees.position'), async (req, res) => {
     res.json(await nurses.assignPosition(authOf(res), IdParam.parse(req.params).id, PositionBody.parse(req.body), rid(res)));

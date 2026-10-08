@@ -2842,6 +2842,7 @@ Common questions and what to do. When reporting a problem, give the page, what y
 | I lost my phone | Use a recovery code, or ask HR to reset two-factor sign-in. |
 | ELIGIBLE but nothing was checked | The unit has no requirements configured (grey note): HR must enter the unit's policy. |
 | KPI looks wrong | Only published shifts of nurse positions count; check beds, critical areas, patient-care areas, inpatient beds and Nurse (KPI) positions in Workforce. |
+| "Someone else saved a change to this record" | Another person saved the same record after you opened it, so your change was not saved (theirs would have been lost). The record has been reloaded: check their change, then make yours again. |
 | "The application has been updated" | A new version was released while the page was open. The page normally reloads by itself; if this message shows, press Reload. |
 | Attendance shows everyone missing | The badge system is not connected yet; real clock-ins will appear once it is. |
 

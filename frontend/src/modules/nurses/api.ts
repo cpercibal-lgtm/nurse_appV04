@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../../services/http';
+import { isStaleRecord } from '../../lib/errors';
 import type { Paged } from '../../types/api';
 
 /** HR and own profile get every field; a Supervisor gets the baseline (§8.1, D-36). */
@@ -8,6 +9,8 @@ export interface EmployeeRow {
   jobTitle: string | null; specialty: string | null; unitId: number | null; unit: { code: string; name: string } | null;
   positionCode: string; position: { code: string; title: string }; status: string; hireDate: string | null;
   view: 'FULL' | 'BASELINE';
+  /** The version for edits (If-Match); in the full view only. */
+  updatedAt?: string;
   contactEmail: string; primaryPhone: string | null; actualWorkPlace: string | null;
   fileNo?: string | null; rankGrade?: string | null; nationality?: string | null;
   /** The listed nationality (ISO 3166-1 alpha-3); `nationality` is only unmatched free text from before the list. */
@@ -41,8 +44,10 @@ export const useMyEmployee = () => useQuery({ queryKey: ['employees', 'me'], que
 export function useUpdateOwnContact() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { primaryPhone?: string | null; emergencyContactPhone?: string | null }) => http.patch<EmployeeRow>('/employees/me/contact', body),
+    mutationFn: ({ version, ...body }: { version?: string; primaryPhone?: string | null; emergencyContactPhone?: string | null }) =>
+      http.patch<EmployeeRow>('/employees/me/contact', body, { ifMatch: version }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['employees'] }),
   });
 }
 
@@ -56,7 +61,7 @@ export const useEmployee = (id: number | null) => useQuery({ queryKey: ['employe
 
 type Action =
   | { kind: 'onboard'; body: object; key: string }
-  | { kind: 'update'; id: number; body: object }
+  | { kind: 'update'; id: number; version?: string; body: object }
   | { kind: 'position'; id: number; positionCode: string; reason: string }
   | { kind: 'assign'; id: number; key: string; body: AssignmentTarget & { reason: string } }
   | { kind: 'delete'; id: number; reason: string };
@@ -67,13 +72,14 @@ export function useEmployeeAction() {
     mutationFn: (a: Action): Promise<unknown> => {
       switch (a.kind) {
         case 'onboard': return http.post<{ employeeId: number; contractId: number }>('/employees/onboard', a.body, { idempotencyKey: a.key });
-        case 'update': return http.patch(`/employees/${a.id}`, a.body);
+        case 'update': return http.patch(`/employees/${a.id}`, a.body, { ifMatch: a.version });
         case 'position': return http.post(`/employees/${a.id}/position`, { positionCode: a.positionCode, reason: a.reason });
         case 'assign': return http.post<AssignmentResult>(`/employees/${a.id}/assignment`, a.body, { idempotencyKey: a.key });
         case 'delete': return http.delete(`/employees/${a.id}`, { reason: a.reason });
       }
     },
     onSuccess: () => Promise.all(['employees', 'contracts', 'eligibility', 'roster', 'assignment-preview'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['employees'] }),
   });
 }
 

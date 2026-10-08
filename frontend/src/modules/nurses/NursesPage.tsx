@@ -9,7 +9,7 @@ import { Alert, App, Button, Card, DatePicker, Descriptions, Drawer, Flex, Form,
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../../hooks/usePermissions';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { toHijriShort } from '../../lib/hijri';
 import { phoneRule } from '../../lib/phone';
 import { useUnits } from '../administration/api';
@@ -137,10 +137,12 @@ export default function NursesPage() {
   const unitOptions = [{ value: null, label: t('unassigned') }, ...(units.data?.items ?? []).map((u) => ({ value: u.id as number | null, label: `${u.code} — ${u.name}` }))];
   const positionOptions = (positions.data?.items ?? []).map((p) => ({ value: p.code, label: `${p.code} — ${i18n.language === 'ar' && p.titleAr ? p.titleAr : p.title}` }));
 
-  async function run<T>(a: Parameters<typeof action.mutateAsync>[0], ok: string): Promise<T | undefined> {
+  // onStale: someone else saved the record first; the edit form closes so the refreshed record shows.
+  async function run<T>(a: Parameters<typeof action.mutateAsync>[0], ok: string, onStale?: () => void): Promise<T | undefined> {
     try { const out = await action.mutateAsync(a); message.success(ok); return out as T; } catch (e) {
       if (a.kind === 'onboard') setOnboarding((k) => (k ? keyAfterError(k, e) : k)); // a refusal is not replayed on the next submit
-      message.error(describeApiError(e)); return undefined;
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); onStale?.(); } else message.error(describeApiError(e));
+      return undefined;
     }
   }
 
@@ -230,7 +232,7 @@ export default function NursesPage() {
         )}
         {e && editing && (
           <Form form={editForm} layout="vertical" onFinish={async (v) => {
-            if (await run({ kind: 'update', id: e.id, body: toBody(v) }, t('saved')) !== undefined) setEditing(false);
+            if (await run({ kind: 'update', id: e.id, version: e.updatedAt, body: toBody(v) }, t('saved'), () => setEditing(false)) !== undefined) setEditing(false);
           }}>
             <EmployeeFields units={unitOptions} positions={positionOptions} onboarding={false} legacyNationality={e.nationalityCode ? null : e.nationality} legacyRankGrade={e.rankGradeCode ? null : e.rankGrade} legacySpecialty={e.specialtyCode ? null : e.specialty} legacyJobPost={e.jobPostCityId ? null : e.jobPostLocation}
               legacyFacility={e.facilityId ? null : e.actualWorkPlace} savedFacilityId={e.facilityId ?? null} />

@@ -100,6 +100,7 @@ export const en = {
   pageErrorTitle: 'This page could not be shown',
   pageErrorHint: 'Reload to try again. If it happens again, tell the System Administrator what you were doing.',
   reloadPage: 'Reload',
+  staleRecord: 'Someone else saved a change to this record after you opened it. It has been reloaded: check their change, then make yours again.',
   apiStatus: 'API status',
   databaseStatus: 'Database',
   up: 'Up',

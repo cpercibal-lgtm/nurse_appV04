@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../../services/http';
+import { isStaleRecord } from '../../lib/errors';
 import type { Paged } from '../../types/api';
 
 export type ShiftType = 'Morning' | 'Evening' | 'Night';
 export const SHIFTS: ShiftType[] = ['Morning', 'Evening', 'Night'];
 
-export interface DepartmentRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; isActive: boolean }
+export interface DepartmentRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; isActive: boolean; updatedAt: string }
 export type CriticalArea = 'ICU' | 'ER' | 'OR';
-export interface UnitRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; departmentId: number; bedCount: number; criticalArea: CriticalArea | null; patientCareArea: boolean; inpatientBeds: boolean; isActive: boolean }
-export interface PositionRow { code: string; title: string; titleAr: string | null; tier: string; description: string | null; isSchedulable: boolean; countsAsNurse: boolean; isActive: boolean; displayOrder: number; replacedBy: string | null }
+export interface UnitRow { id: number; code: string; name: string; nameAr: string | null; description: string | null; departmentId: number; bedCount: number; criticalArea: CriticalArea | null; patientCareArea: boolean; inpatientBeds: boolean; isActive: boolean; updatedAt: string }
+export interface PositionRow { code: string; title: string; titleAr: string | null; tier: string; description: string | null; isSchedulable: boolean; countsAsNurse: boolean; isActive: boolean; displayOrder: number; replacedBy: string | null; updatedAt: string }
 export interface CoverageTarget { id: number; unitId: number; shiftType: ShiftType; minimumStaff: number }
 export interface BedLog { id: number; previousCount: number; newCount: number; reason: string; changedAt: string; changedBy: string | null }
 export interface Summary { unitCount: number; totalBeds: number; byDepartment: Array<{ id: number; code: string; name: string; units: number; beds: number }> }
@@ -42,12 +43,13 @@ export const useKpi = (p: KpiPeriod) => useQuery({
   queryFn: () => http.get<Kpi>(`/kpi/nurse-to-bed?${'month' in p ? `month=${p.month}` : `date=${p.date}&shift=${p.shift}`}`),
 });
 
+// `version`: the updatedAt the edit started from (If-Match); a record changed since is refused, not overwritten.
 type Action =
-  | { kind: 'department'; id?: number; body: object }
-  | { kind: 'unit'; id?: number; body: object }
-  | { kind: 'beds'; id: number; bedCount: number; reason: string }
+  | { kind: 'department'; id?: number; version?: string; body: object }
+  | { kind: 'unit'; id?: number; version?: string; body: object }
+  | { kind: 'beds'; id: number; version: string; bedCount: number; reason: string }
   | { kind: 'import'; csv: string; dryRun: boolean }
-  | { kind: 'position'; code?: string; body: object }
+  | { kind: 'position'; code?: string; version?: string; body: object }
   | { kind: 'coverage'; unitId: number; shiftType: ShiftType; minimumStaff: number | null };
 
 export function useWorkforceAction() {
@@ -55,15 +57,17 @@ export function useWorkforceAction() {
   return useMutation({
     mutationFn: (a: Action): Promise<unknown> => {
       switch (a.kind) {
-        case 'department': return a.id ? http.patch(`/departments/${a.id}`, a.body) : http.post('/departments', a.body);
-        case 'unit': return a.id ? http.patch(`/units/${a.id}`, a.body) : http.post('/units', a.body);
-        case 'beds': return http.put(`/units/${a.id}/bed-capacity`, { bedCount: a.bedCount, reason: a.reason });
+        case 'department': return a.id ? http.patch(`/departments/${a.id}`, a.body, { ifMatch: a.version }) : http.post('/departments', a.body);
+        case 'unit': return a.id ? http.patch(`/units/${a.id}`, a.body, { ifMatch: a.version }) : http.post('/units', a.body);
+        case 'beds': return http.put(`/units/${a.id}/bed-capacity`, { bedCount: a.bedCount, reason: a.reason }, { ifMatch: a.version });
         case 'import': return http.post<ImportResult>('/units/import', { csv: a.csv, dryRun: a.dryRun }, { idempotencyKey: crypto.randomUUID() });
-        case 'position': return a.code ? http.patch(`/positions/${a.code}`, a.body) : http.post('/positions', a.body);
+        case 'position': return a.code ? http.patch(`/positions/${a.code}`, a.body, { ifMatch: a.version }) : http.post('/positions', a.body);
         case 'coverage': return http.put('/coverage-targets', { unitId: a.unitId, shiftType: a.shiftType, minimumStaff: a.minimumStaff });
       }
     },
     onSuccess: () => Promise.all(['departments', 'units', 'positions', 'coverage', 'bed-history', 'eligibility'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    // Someone else saved first: show their version, so the user can redo the change on top of it.
+    onError: (e) => isStaleRecord(e) && Promise.all(['departments', 'units', 'positions'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
   });
 }
 

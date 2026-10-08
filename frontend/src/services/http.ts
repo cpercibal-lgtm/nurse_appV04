@@ -50,11 +50,14 @@ export interface RequestOptions {
   idempotencyKey?: string;
   /** A file sent as the raw body (evidence uploads); its name travels in X-File-Name. */
   file?: File;
+  /** Edits: the version of the record as loaded (its updatedAt). A record changed since is refused (409 STALE_RECORD). */
+  ifMatch?: string;
 }
 
 async function send(method: Method, path: string, body?: unknown, opts: RequestOptions = {}): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
+  if (opts.ifMatch) headers['If-Match'] = `"${opts.ifMatch}"`;
   if (opts.file) {
     headers['Content-Type'] = opts.file.type || 'application/octet-stream';
     headers['X-File-Name'] = encodeURIComponent(opts.file.name);
@@ -139,7 +142,7 @@ export const http = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('POST', path, body, opts),
   put: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('PUT', path, body, opts),
-  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+  patch: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('PATCH', path, body, opts),
   /** A body is allowed where the API asks for a reason (e.g. soft-deleting an employee). */
   delete: <T = void>(path: string, body?: unknown) => request<T>('DELETE', path, body),
   /** Uploads a file as the raw request body. */

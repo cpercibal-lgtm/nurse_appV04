@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Alert, App, Button, Card, Drawer, Flex, Form, Input, InputNumber, Modal, Select, Space, Statistic, Switch, Table, Tabs, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '../../hooks/usePermissions';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { GuideHelp } from '../guidelines/GuideHelp';
 import { RankGradesTab } from './RankGradesTab';
 import { SpecialtiesTab } from './SpecialtiesTab';
@@ -22,8 +22,12 @@ function useRun() {
   const { message } = App.useApp();
   const { t } = useTranslation();
   const action = useWorkforceAction();
-  const run = async (a: Parameters<typeof action.mutateAsync>[0], ok = t('saved')) => {
-    try { const out = await action.mutateAsync(a); message.success(ok); return out; } catch (e) { message.error(describeApiError(e)); return undefined; }
+  // onStale: someone else saved the record first; the edit dialog closes so it reopens with their version.
+  const run = async (a: Parameters<typeof action.mutateAsync>[0], ok = t('saved'), onStale?: () => void) => {
+    try { const out = await action.mutateAsync(a); message.success(ok); return out; } catch (e) {
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); onStale?.(); } else message.error(describeApiError(e));
+      return undefined;
+    }
   };
   return { run, pending: action.isPending };
 }
@@ -84,7 +88,7 @@ function UnitsTab({ canWrite }: { canWrite: boolean }) {
 
       <Modal title={beds ? `${t('changeBeds')}: ${beds.code}` : ''} open={beds !== null} onCancel={() => setBeds(null)} onOk={() => bedForm.submit()}
         okText={t('submit')} cancelText={t('cancel')} confirmLoading={pending} forceRender>
-        <Form form={bedForm} layout="vertical" onFinish={async (v) => { if (beds && await run({ kind: 'beds', id: beds.id, ...v }) !== undefined) setBeds(null); }}>
+        <Form form={bedForm} layout="vertical" onFinish={async (v) => { if (beds && await run({ kind: 'beds', id: beds.id, version: beds.updatedAt, ...v }, undefined, () => setBeds(null)) !== undefined) setBeds(null); }}>
           <Form.Item name="bedCount" label={t('beds')} rules={[{ required: true }]}><InputNumber min={0} max={500} precision={0} style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="reason" label={t('reason')} rules={[{ required: true, min: 3, whitespace: true }]}><Input maxLength={200} /></Form.Item>
         </Form>
@@ -95,7 +99,7 @@ function UnitsTab({ canWrite }: { canWrite: boolean }) {
         <Form form={unitForm} layout="vertical" onFinish={async (v) => {
           const out = editing === 'new'
             ? await run({ kind: 'unit', body: v })
-            : await run({ kind: 'unit', id: (editing as UnitRow).id, body: { name: v.name, description: v.description ?? null, departmentId: v.departmentId, isActive: v.isActive, criticalArea: v.criticalArea ?? null, patientCareArea: v.patientCareArea, inpatientBeds: v.inpatientBeds } });
+            : await run({ kind: 'unit', id: (editing as UnitRow).id, version: (editing as UnitRow).updatedAt, body: { name: v.name, description: v.description ?? null, departmentId: v.departmentId, isActive: v.isActive, criticalArea: v.criticalArea ?? null, patientCareArea: v.patientCareArea, inpatientBeds: v.inpatientBeds } }, undefined, () => setEditing(null));
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}
@@ -184,7 +188,7 @@ function DepartmentsTab({ canWrite }: { canWrite: boolean }) {
         onOk={() => form.submit()} okText={t('submit')} cancelText={t('cancel')} confirmLoading={pending} forceRender>
         <Form form={form} layout="vertical" onFinish={async (v) => {
           const out = editing === 'new' ? await run({ kind: 'department', body: v })
-            : await run({ kind: 'department', id: (editing as DepartmentRow).id, body: { name: v.name, description: v.description ?? null, isActive: v.isActive } });
+            : await run({ kind: 'department', id: (editing as DepartmentRow).id, version: (editing as DepartmentRow).updatedAt, body: { name: v.name, description: v.description ?? null, isActive: v.isActive } }, undefined, () => setEditing(null));
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}
@@ -221,7 +225,7 @@ function PositionsTab({ canWrite }: { canWrite: boolean }) {
         <Form form={form} layout="vertical" initialValues={{ isSchedulable: true, countsAsNurse: false }} onFinish={async (v) => {
           const { code, replacedBy: _r, ...rest } = v;
           const out = editing === 'new' ? await run({ kind: 'position', body: { code, ...rest, titleAr: rest.titleAr?.trim() || undefined, isActive: undefined } })
-            : await run({ kind: 'position', code: (editing as PositionRow).code, body: { title: rest.title, titleAr: rest.titleAr?.trim() || null, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, countsAsNurse: rest.countsAsNurse, isActive: rest.isActive, displayOrder: rest.displayOrder } });
+            : await run({ kind: 'position', code: (editing as PositionRow).code, version: (editing as PositionRow).updatedAt, body: { title: rest.title, titleAr: rest.titleAr?.trim() || null, tier: rest.tier, description: rest.description ?? null, isSchedulable: rest.isSchedulable, countsAsNurse: rest.countsAsNurse, isActive: rest.isActive, displayOrder: rest.displayOrder } }, undefined, () => setEditing(null));
           if (out !== undefined) setEditing(null);
         }}>
           {editing === 'new' && <Form.Item name="code" label={t('code')} rules={[{ required: true }]}><Input maxLength={20} /></Form.Item>}

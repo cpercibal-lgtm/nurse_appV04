@@ -102,6 +102,7 @@ export const ar: Record<keyof typeof en, string> = {
   pageErrorTitle: 'تعذر عرض هذه الصفحة',
   pageErrorHint: 'أعد التحميل للمحاولة مرة أخرى. إذا تكرر ذلك، فأخبر مسؤول النظام بما كنت تفعله.',
   reloadPage: 'إعادة التحميل',
+  staleRecord: 'حفظ شخص آخر تغييرًا على هذا السجل بعد أن فتحته. تمت إعادة تحميله: راجع تغييره، ثم أجرِ تغييرك مرة أخرى.',
   apiStatus: 'حالة الخادم',
   databaseStatus: 'قاعدة البيانات',
   up: 'يعمل',

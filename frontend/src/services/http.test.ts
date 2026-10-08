@@ -33,6 +33,14 @@ describe('http client', () => {
     expect((fetchMock.mock.calls[0]![1] as RequestInit).headers).toMatchObject({ 'Idempotency-Key': 'k-1' });
   });
 
+  it('sends the record version as a quoted If-Match on an edit, and nothing without one', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, {})).mockResolvedValueOnce(json(200, {}));
+    await http.patch('/units/3', { name: 'x' }, { ifMatch: '2026-10-08T11:19:39.123Z' });
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).headers).toMatchObject({ 'If-Match': '"2026-10-08T11:19:39.123Z"' });
+    await http.patch('/units/3', { name: 'y' });
+    expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).not.toHaveProperty('If-Match');
+  });
+
   it('turns the error envelope into an ApiError with code, message and request id', async () => {
     fetchMock.mockResolvedValueOnce(json(409, { error: { code: 'CONTRACT_PERIOD_OVERLAP', message: 'Overlaps' } }, { 'X-Request-Id': 'r-1' }));
     const err = await http.get('/x').catch((e: unknown) => e);

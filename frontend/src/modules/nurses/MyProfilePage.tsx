@@ -34,7 +34,7 @@ export default function MyProfilePage() {
           initialValues={{ primaryPhone: e.primaryPhone ?? '', emergencyContactPhone: e.emergencyContactPhone ?? '' }}
           onFinish={async (v) => {
             try {
-              await save.mutateAsync({ primaryPhone: v.primaryPhone || null, emergencyContactPhone: v.emergencyContactPhone || null });
+              await save.mutateAsync({ version: me.data?.updatedAt, primaryPhone: v.primaryPhone || null, emergencyContactPhone: v.emergencyContactPhone || null });
               message.success(t('saved'));
             } catch (err) { message.error(describeApiError(err)); }
           }}>

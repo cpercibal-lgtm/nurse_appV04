@@ -3,6 +3,7 @@
 
 import { Router, type Response } from 'express';
 import { z } from 'zod';
+import { ifMatch } from '../../lib/concurrency.js';
 import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
@@ -33,7 +34,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await org.createDepartment(authOf(res), DepartmentCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/departments/:id', authorize('workforce.write'), async (req, res) => {
-    res.json(await org.updateDepartment(authOf(res), IdParam.parse(req.params).id, DepartmentUpdateBody.parse(req.body), rid(res)));
+    res.json(await org.updateDepartment(authOf(res), IdParam.parse(req.params).id, DepartmentUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
 
   // ── Units and beds (W2–W5). Literal paths before /units/:id. ──
@@ -49,10 +50,10 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await org.createUnit(authOf(res), UnitCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/units/:id', authorize('workforce.write'), async (req, res) => {
-    res.json(await org.updateUnit(authOf(res), IdParam.parse(req.params).id, UnitUpdateBody.parse(req.body), rid(res)));
+    res.json(await org.updateUnit(authOf(res), IdParam.parse(req.params).id, UnitUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.put('/units/:id/bed-capacity', authorize('workforce.write'), async (req, res) => {
-    res.json(await org.setBedCount(authOf(res), IdParam.parse(req.params).id, BedCountBody.parse(req.body), rid(res)));
+    res.json(await org.setBedCount(authOf(res), IdParam.parse(req.params).id, BedCountBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.get('/units/:id/bed-history', authorize('workforce.bedHistory'), async (req, res) => {
     res.json(await org.bedHistory(authOf(res), IdParam.parse(req.params).id));
@@ -134,7 +135,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await org.createPosition(authOf(res), PositionCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/positions/:code', authorize('workforce.write'), async (req, res) => {
-    res.json(await org.updatePosition(authOf(res), CodeParam.parse(req.params).code, PositionUpdateBody.parse(req.body), rid(res)));
+    res.json(await org.updatePosition(authOf(res), CodeParam.parse(req.params).code, PositionUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
 
   // ── Coverage targets (§6.3, W8) ──

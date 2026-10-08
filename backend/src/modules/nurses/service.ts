@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import type { Employee } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { dbDate, isIsoDate, riyadhDate, toDbDate } from '../../lib/dates.js';
 import { toHijriIso } from '../../lib/hijri.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
@@ -297,13 +298,15 @@ export function createNurseService(db: Db) {
     },
 
     /** D-35: an employee updates their own phone numbers; nothing else on the record. */
-    async updateOwnContact(auth: AuthContext, body: z.infer<typeof OwnContactBody>, requestId?: string) {
+    async updateOwnContact(auth: AuthContext, body: z.infer<typeof OwnContactBody>, requestId?: string, expected: Date | null = null) {
       if (Object.keys(body).length === 0) throw new HttpError(400, 'NO_CHANGES', 'Nothing to update');
       if (auth.user.employeeId === null) throw new HttpError(404, 'NO_EMPLOYEE_RECORD', 'Your account is not linked to an employee record');
       const id = auth.user.employeeId;
       return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM employees WHERE id = ${id} FOR UPDATE`;
         const before = await tx.employee.findFirst({ where: { id, deletedAt: null } });
         if (!before) throw notFound('Employee not found');
+        assertUnchanged(expected, before);
         await tx.employee.update({ where: { id }, data: body });
         const changed = Object.fromEntries(Object.keys(body).map((k) => [k, { from: (before as Record<string, unknown>)[k] ?? null, to: (body as Record<string, unknown>)[k] }]));
         await appendAudit(tx, { actorUserId: auth.user.id, action: 'EMPLOYEE_CONTACT_UPDATED', resource: 'employee', resourceId: id, changes: redact(changed), requestId });
@@ -356,10 +359,13 @@ export function createNurseService(db: Db) {
       });
     },
 
-    async update(auth: AuthContext, id: number, body: z.infer<typeof UpdateBody>, requestId?: string) {
+    /** `expected`: the version the caller loaded (If-Match); a newer one is refused (STALE_RECORD). */
+    async update(auth: AuthContext, id: number, body: z.infer<typeof UpdateBody>, requestId?: string, expected: Date | null = null) {
       if (Object.keys(body).length === 0) throw new HttpError(400, 'NO_CHANGES', 'Nothing to update');
       return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM employees WHERE id = ${id} FOR UPDATE`;
         const before = await loadForHr(tx, auth, id);
+        assertUnchanged(expected, before);
         if (body.unitId !== undefined && body.unitId !== before.unitId) await assertPlaceable(tx, auth, body.unitId);
         if (body.jobNumber !== undefined && body.jobNumber !== before.jobNumber) await assertJobNumberFree(tx, body.jobNumber, id);
         if (body.nationalityCode !== undefined) await assertNationality(tx, body.nationalityCode);
