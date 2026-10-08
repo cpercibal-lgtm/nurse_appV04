@@ -8,6 +8,7 @@ import {
   FileProtectOutlined, FundOutlined, IdcardOutlined, SafetyCertificateOutlined, ScheduleOutlined,
   SettingOutlined, TeamOutlined, ApartmentOutlined, HistoryOutlined, UserOutlined, SafetyOutlined, LockOutlined, BookOutlined, NotificationOutlined,
 } from '@ant-design/icons';
+import { freshImport } from '../lib/freshImport';
 import type { TranslationKey } from '../lib/i18n';
 import type { AppRole } from '../types/api';
 
@@ -24,7 +25,8 @@ export interface AppModule {
 }
 
 function page(path: string, labelKey: TranslationKey, icon: ReactNode, load: AppModule['load'], access: { requires?: AppRole[]; employeeOnly?: boolean } = {}): AppModule {
-  return { path, labelKey, icon, load, Page: lazy(load), ...access };
+  // The page itself reloads once if its file belongs to a replaced release; prefetching (load) never does.
+  return { path, labelKey, icon, load, Page: lazy(freshImport(load)), ...access };
 }
 
 const STAFF: AppRole[] = ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'];
