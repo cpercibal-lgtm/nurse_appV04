@@ -123,7 +123,20 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --type signing --title "signing key"
 
 ## 5. Dependabot
 
-`.github/dependabot.yml` opens weekly pull requests (Sunday 06:00 Riyadh) for npm (workspace and `ops/e2e`), GitHub Actions and the Docker base images, minor and patch updates grouped. Turn on the alerts and the automatic security fixes:
+`.github/dependabot.yml` opens weekly pull requests (Sunday 06:00 Riyadh) for npm (workspace and `ops/e2e`), GitHub Actions and the Docker base images, minor and patch updates grouped.
+
+**Not proposed** (owner decision 2026-10-07, after the first run opened Node 25, `@types/node` 26, TypeScript 7 and nginx 1.31):
+
+| Dependency | Ignored | Why |
+| :--- | :--- | :--- |
+| Docker `node` | New majors | Production stays on a Node LTS line (22). Odd majors are never LTS. The move to Node 24 is planned work before 22's end of life (April 2027): images, `@types/node`, CI, the VPS, together |
+| `@types/node` | New majors | Must match the Node version that runs |
+| `typescript` | New majors | TypeScript 7 is the rewritten compiler; upgraded on purpose, with testing |
+| Docker `nginx` | Odd minor versions (1.29, 1.31, …) | nginx's odd minors are the mainline line; even minors are stable |
+
+Patch and minor updates of all of them still come. Ignore rules do not hold back **security** updates. If a rule is not honoured (Settings → Code security → Dependabot shows the last run and any configuration error), close the pull request with the comment `@dependabot ignore this major version` (or `minor version` for nginx).
+
+Turn on the alerts and the automatic security fixes:
 
 ```bash
 gh api -X PUT repos/cpercibal2018-cmyk/nurse_appV04/vulnerability-alerts
