@@ -3,8 +3,11 @@
   "private": true,
   "description": "HTTPS browser test of the session cookies against the release images (ops/e2e/README.md)",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
+    "@axe-core/playwright": "4.13.0",
     "playwright": "1.63.0"
   }
 }

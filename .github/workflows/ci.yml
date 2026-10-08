@@ -111,8 +111,17 @@ jobs:
         working-directory: ops/e2e
         run: |
           npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
-      - name: HTTPS browser test of the session cookies
-        run: TAG=ci ops/e2e/run.sh
+          npx playwright install --with-deps chromium firefox webkit
+          # Firefox and WebKit resolve the test site through the hosts file (Chromium maps it itself).
+          echo "127.0.0.1 nurse.e2e.test" | sudo tee -a /etc/hosts
+      - name: HTTPS browser test of the session cookies, then the smoke and accessibility test in Chromium, Firefox and WebKit
+        run: TAG=ci E2E_REPORT_DIR="$RUNNER_TEMP/e2e-report" ops/e2e/run.sh
+      - name: Keep the accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-accessibility-report
+          path: ${{ runner.temp }}/e2e-report
+          if-no-files-found: ignore
       - name: VPS release path — db-init, blue/green switch, rollback, restart with zero failed requests (D-57)
         run: sudo --preserve-env=PATH TAG=ci ops/vps/test/run.sh   # as root, like the scripts on the VPS

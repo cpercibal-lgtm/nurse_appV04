@@ -148,8 +148,8 @@ export default function NursesPage() {
   return (
     <Card title={<>{t('nurses')} <GuideHelp section="nurses" /></>} extra={canWrite && <Button type="primary" onClick={() => { onboardForm.resetFields(); setOnboarding(crypto.randomUUID()); }}>{t('onboardEmployee')}</Button>}>
       <Flex gap={8} wrap style={{ marginBottom: 12 }}>
-        <Input.Search allowClear placeholder={t('searchJobOrName')} style={{ width: 280 }} onSearch={(q) => setFilter({ ...filter, q: q || undefined, page: 1 })} />
-        <Select allowClear placeholder={t('unit')} style={{ width: 260 }} showSearch optionFilterProp="label"
+        <Input.Search aria-label={t('searchJobOrName')} allowClear placeholder={t('searchJobOrName')} style={{ width: 280 }} onSearch={(q) => setFilter({ ...filter, q: q || undefined, page: 1 })} />
+        <Select aria-label={t('unit')} allowClear placeholder={t('unit')} style={{ width: 260 }} showSearch optionFilterProp="label"
           options={(units.data?.items ?? []).map((u) => ({ value: u.id, label: `${u.code} — ${u.name}` }))}
           onChange={(v) => setFilter({ ...filter, unitId: v ?? undefined, page: 1 })} />
       </Flex>

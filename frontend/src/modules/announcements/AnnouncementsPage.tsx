@@ -52,7 +52,7 @@ function BoardItem({ a, onOpen }: { a: Announcement; onOpen: () => void }) {
         description={<>
           {a.startsAt && <div>{t('annWhen')}: {fmt.dateTime(a.startsAt)}{a.location ? ` · ${a.location}` : ''}</div>}
           <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>{text.body}</Typography.Paragraph>
-          <div style={{ fontSize: 12, opacity: 0.65 }}>{t('annFrom', { name: a.createdByName ?? '—' })} · {a.publishedAt ? fmt.dateTime(a.publishedAt) : ''}</div>
+          <div className="meta-text">{t('annFrom', { name: a.createdByName ?? '—' })} · {a.publishedAt ? fmt.dateTime(a.publishedAt) : ''}</div>
         </>}
       />
     </List.Item>
@@ -69,7 +69,7 @@ function Board({ onOpen }: { onOpen: (id: number) => void }) {
     <>
       <Flex gap={8} wrap style={{ marginBottom: 12 }}>
         <Segmented value={state} onChange={(v) => { setState(v as 'active' | 'archived'); setPage(1); }} options={[{ value: 'active', label: t('annActive') }, { value: 'archived', label: t('annArchived') }]} />
-        <Select allowClear placeholder={t('annAllKinds')} value={kind} onChange={(v) => { setKind(v); setPage(1); }} style={{ minWidth: 160 }}
+        <Select aria-label={t('annAllKinds')} allowClear placeholder={t('annAllKinds')} value={kind} onChange={(v) => { setKind(v); setPage(1); }} style={{ minWidth: 160 }}
           options={KINDS.map((k) => ({ value: k, label: t(`annKind_${k}`) }))} />
       </Flex>
       <List loading={board.isLoading} dataSource={board.data?.items} locale={{ emptyText: <Empty description={t('annEmpty')} /> }}

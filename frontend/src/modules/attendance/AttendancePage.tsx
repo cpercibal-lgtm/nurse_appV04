@@ -35,7 +35,7 @@ export default function AttendancePage() {
       ) : (
         <>
           <Flex gap={8} wrap style={{ marginBottom: 12 }}>
-            <Select placeholder={t('unit')} style={{ width: 280 }} showSearch optionFilterProp="label" value={unitId} onChange={setUnitId}
+            <Select aria-label={t('unit')} placeholder={t('unit')} style={{ width: 280 }} showSearch optionFilterProp="label" value={unitId} onChange={setUnitId}
               options={(units.data?.items ?? []).map((u) => ({ value: u.id, label: `${u.code} — ${u.name}` }))} />
             <DatePicker value={dayjs(date)} allowClear={false} onChange={(d) => d && setDate(d.format('YYYY-MM-DD'))} />
           </Flex>

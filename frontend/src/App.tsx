@@ -61,10 +61,21 @@ export function App() {
       theme={{
         algorithm: theme === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
         // V03 brand palette.
-        token: { colorPrimary: '#1a6b4e', colorLink: '#2563eb', colorSuccess: '#16a34a', colorWarning: '#d97706', colorError: '#dc2626', borderRadius: 8 },
+        token: {
+          colorPrimary: '#1a6b4e', colorLink: '#2563eb', colorSuccess: '#16a34a', colorWarning: '#d97706', colorError: '#dc2626', borderRadius: 8,
+          // WCAG 2.2 AA (4.5:1): Ant Design's grey for descriptions, statistic titles and empty states
+          // is 3.4:1 and its placeholder 1.8:1 (found by the accessibility scan, ops/e2e/smoke.test.mjs).
+          ...(theme === 'dark'
+            ? { colorTextTertiary: 'rgba(255,255,255,0.55)', colorTextDescription: 'rgba(255,255,255,0.55)', colorTextPlaceholder: 'rgba(255,255,255,0.5)' }
+            : { colorTextTertiary: 'rgba(0,0,0,0.6)', colorTextDescription: 'rgba(0,0,0,0.6)', colorTextPlaceholder: 'rgba(0,0,0,0.58)' }),
+        },
         components: {
           Layout: { siderBg: '#0f3024', triggerBg: '#0a2019' },
-          Menu: { darkItemBg: '#0f3024', darkSubMenuItemBg: '#0a2019', darkItemSelectedBg: '#1a6b4e', itemHeight: 42 },
+          Menu: {
+            darkItemBg: '#0f3024', darkSubMenuItemBg: '#0a2019', darkItemSelectedBg: '#1a6b4e', itemHeight: 42,
+            // Light menus (Guidelines contents): the derived selected background was grey (#a1aba6, 2.7:1).
+            ...(theme === 'dark' ? {} : { itemSelectedBg: '#e6f2ed', itemSelectedColor: '#1a6b4e' }),
+          },
         },
       }}
     >

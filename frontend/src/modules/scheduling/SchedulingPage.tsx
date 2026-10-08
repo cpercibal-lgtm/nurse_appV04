@@ -108,7 +108,7 @@ export default function SchedulingPage() {
   return (
     <Card title={<>{t('scheduling')} <GuideHelp section="scheduling" /></>}>
       <Flex gap={8} wrap style={{ marginBottom: 12 }}>
-        <Select placeholder={t('unit')} style={{ width: 280 }} showSearch optionFilterProp="label" value={unitId} onChange={setUnitId}
+        <Select aria-label={t('unit')} placeholder={t('unit')} style={{ width: 280 }} showSearch optionFilterProp="label" value={unitId} onChange={setUnitId}
           options={(units.data?.items ?? []).map((u) => ({ value: u.id, label: `${u.code} — ${u.name}` }))} />
         <Button onClick={() => setWeekStart(weekStart.subtract(7, 'day'))}>‹</Button>
         <DatePicker value={weekStart} allowClear={false} onChange={(d) => d && setWeekStart(d.startOf('day'))} />

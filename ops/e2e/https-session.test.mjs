@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { after, before, test } from 'node:test';
 import { chromium, request as apiRequest } from 'playwright';
 
@@ -61,7 +62,12 @@ async function nextCode() {
     step = Math.floor(Date.now() / 30_000);
   }
   lastStep = step;
+  shareAuthenticator();
   return totp(secret, step);
+}
+/** smoke.test.mjs signs in as the same HR account after this test (run.sh): it needs the key and the last step used. */
+function shareAuthenticator() {
+  if (process.env.E2E_MFA_FILE) writeFileSync(process.env.E2E_MFA_FILE, JSON.stringify({ secret, lastStep }), { mode: 0o600 });
 }
 
 /** Password, then the second step (spec §3.5): set-up the first time, a code afterwards. */

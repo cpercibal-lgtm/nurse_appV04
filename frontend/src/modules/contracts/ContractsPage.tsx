@@ -94,9 +94,9 @@ export default function ContractsPage() {
     )}>
       {staff && (
         <Flex gap={8} wrap style={{ marginBottom: 12 }}>
-          <Select allowClear placeholder={t('status')} style={{ width: 220 }} onChange={(v) => setFilter({ ...filter, status: v ?? undefined, page: 1 })}
+          <Select aria-label={t('status')} allowClear placeholder={t('status')} style={{ width: 220 }} onChange={(v) => setFilter({ ...filter, status: v ?? undefined, page: 1 })}
             options={CONTRACT_STATUSES.map((s) => ({ value: s, label: t(`contract_${s}`) }))} />
-          <Select allowClear placeholder={t('contractType')} style={{ width: 280 }} onChange={(v) => setFilter({ ...filter, contractTypeCode: v ?? undefined, page: 1 })}
+          <Select aria-label={t('contractType')} allowClear placeholder={t('contractType')} style={{ width: 280 }} onChange={(v) => setFilter({ ...filter, contractTypeCode: v ?? undefined, page: 1 })}
             options={(allTypes.data?.items ?? []).map((x) => ({ value: x.code, label: x.isActive ? typeLabel(x) : `${typeLabel(x)} (${t('inactive')})` }))} />
         </Flex>
       )}
@@ -108,7 +108,7 @@ export default function ContractsPage() {
           { title: t('employee'), render: (_, r) => `${r.jobNumber} — ${r.employeeName}` },
           { title: t('unit'), render: (_, r) => r.unitCode ?? t('unassigned') },
           { title: t('contractType'), render: (_, r) => (r.contractTypeName ? typeLabel({ name: r.contractTypeName, nameAr: r.contractTypeNameAr }) : <Tag>{t('contractTypeNone')}</Tag>) },
-          { title: t('period'), render: (_, r) => <>{r.startDate} → {r.endDate}<div style={{ opacity: 0.65, fontSize: 12 }}>{r.startDateHijri} → {r.endDateHijri} AH</div></> },
+          { title: t('period'), render: (_, r) => <>{r.startDate} → {r.endDate}<div className="meta-text">{r.startDateHijri} → {r.endDateHijri} AH</div></> },
           { title: t('status'), render: (_, r) => <><Tag color={COLOR[r.status]}>{t(`contract_${r.status}`)}</Tag>{!covers(r.status) && <Tag>{t('noCoverage')}</Tag>}</> },
           {
             title: '', render: (_, r) => (

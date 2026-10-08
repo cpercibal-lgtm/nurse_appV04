@@ -40,7 +40,7 @@ export default function NotificationsPage() {
             <List.Item.Meta
               title={<Flex gap={6} align="center"><Tag color={PRIORITY_COLOR[n.priority]}>{t(`priority_${n.priority}`)}</Tag>
                 <Typography.Text strong={!n.readAt}>{ar && n.titleAr ? n.titleAr : n.title}</Typography.Text></Flex>}
-              description={<><span style={{ whiteSpace: 'pre-line' }}>{ar && n.messageAr ? n.messageAr : n.message}</span><div style={{ fontSize: 12, opacity: 0.65 }}>{new Date(n.createdAt).toLocaleString()}</div></>}
+              description={<><span style={{ whiteSpace: 'pre-line' }}>{ar && n.messageAr ? n.messageAr : n.message}</span><div className="meta-text">{new Date(n.createdAt).toLocaleString()}</div></>}
             />
           </List.Item>
         )}

@@ -5,10 +5,12 @@
   --brand: #1a6b4e;
   --brand-deep: #0f3024;
   --text: #1e293b;
+  --text-meta: #5f6670; /* 5.9:1 on white: secondary lines (dates, Hijri dates, sender) */
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
+  --text-meta: #9aa3ad;
   --bg: #0d1117;
   --header-bg: #161b22;
   --header-border: #30363d;
@@ -101,3 +103,17 @@ body {
 .page-error button { background: var(--brand); color: #fff; border: 0; border-radius: 8px; padding: 8px 20px; font: inherit; font-weight: 500; cursor: pointer; }
 .page-error button:hover { filter: brightness(1.1); }
 .page-error button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Accessibility (WCAG 2.2 AA, found by ops/e2e/smoke.test.mjs). */
+.meta-text { font-size: 12px; color: var(--text-meta); }
+/* Ant Design's light preset tags put shade-7 text on shade-1: green, orange, cyan 3.4:1, gold 2.8:1,
+   volcano 4.4:1. One or two shades darker reaches 5:1 or more; dark mode keeps its own colours.
+   Specific enough to win over Ant Design's .ant-tag.ant-tag-<color>:not(.ant-tag-disabled).ant-tag-filled. */
+:root:not([data-theme='dark']) .ant-tag.ant-tag-volcano:not(.ant-tag-solid) { color: #ad2102; }
+:root:not([data-theme='dark']) .ant-tag.ant-tag-orange:not(.ant-tag-solid) { color: #ad4e00; }
+:root:not([data-theme='dark']) .ant-tag.ant-tag-gold:not(.ant-tag-solid) { color: #874d00; }
+:root:not([data-theme='dark']) .ant-tag.ant-tag-lime:not(.ant-tag-solid) { color: #3f6600; }
+:root:not([data-theme='dark']) .ant-tag.ant-tag-green:not(.ant-tag-solid) { color: #237804; }
+:root:not([data-theme='dark']) .ant-tag.ant-tag-cyan:not(.ant-tag-solid) { color: #006d75; }
+/* Show-password icon: a 24 × 24 px target (WCAG 2.5.8). */
+.ant-input-password-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
