@@ -29,8 +29,8 @@ jobs:
       # Test-only signing key (CI never issues real sessions).
       JWT_SECRET: ci-only-test-secret-not-used-anywhere-else-0123456789
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -67,18 +67,18 @@ jobs:
     env:
       VALIDATOR_VERSION: 6.10.4
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
       - name: Cache the validator and the R4 core package
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             validator_cli.jar
@@ -97,12 +97,12 @@ jobs:
   images:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - run: docker buildx build --load -f backend/Dockerfile --target runtime -t nurseapp/api:ci .
       - run: docker buildx build --load -f backend/Dockerfile --target migrate -t nurseapp/migrate:ci .
       - run: docker buildx build --load -f frontend/Dockerfile -t nurseapp/web:ci .
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
