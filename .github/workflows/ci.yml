@@ -118,7 +118,7 @@ jobs:
         run: TAG=ci E2E_REPORT_DIR="$RUNNER_TEMP/e2e-report" ops/e2e/run.sh
       - name: Keep the accessibility report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-accessibility-report
           path: ${{ runner.temp }}/e2e-report
