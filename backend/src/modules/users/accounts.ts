@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { HttpError, notFound } from '../../lib/http-errors.js';
 import { PasswordSchema, type PasswordService } from '../../lib/passwords.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
@@ -53,7 +54,7 @@ export function createAccountService(db: Db, passwords: PasswordService) {
         ...(query.q ? { OR: [{ email: { contains: query.q, mode: 'insensitive' as const } }, { displayName: { contains: query.q, mode: 'insensitive' as const } }] } : {}),
       },
       select: {
-        id: true, email: true, displayName: true, isActive: true, isBreakGlass: true, employeeId: true, lastLoginAt: true, createdAt: true,
+        id: true, email: true, displayName: true, isActive: true, isBreakGlass: true, employeeId: true, lastLoginAt: true, createdAt: true, updatedAt: true,
         employee: { select: { jobNumber: true, fullName: true, unitId: true } },
         mfaFactor: { select: { confirmedAt: true } },
         telegramLinkedAt: true, // D-66: whether, never the chat id
@@ -81,7 +82,8 @@ export function createAccountService(db: Db, passwords: PasswordService) {
     });
   }
 
-  async function update(auth: AuthContext, id: number, body: z.infer<typeof UpdateAccountBody>, requestId?: string) {
+  /** `expected`: the version the caller loaded (If-Match); an account changed since is refused (STALE_RECORD). Signing in does not change the version. */
+  async function update(auth: AuthContext, id: number, body: z.infer<typeof UpdateAccountBody>, requestId?: string, expected: Date | null = null) {
     const target = await db.user.findUnique({ where: { id }, select: { id: true, isActive: true, isBreakGlass: true, employeeId: true, displayName: true } });
     if (!target) throw notFound('Account not found');
     if (target.isBreakGlass) throw new HttpError(403, 'BREAK_GLASS_ACCOUNT_PROTECTED', 'The break-glass account is managed outside the application');
@@ -103,7 +105,12 @@ export function createAccountService(db: Db, passwords: PasswordService) {
           throw new HttpError(409, 'LAST_SYSTEM_ADMIN', 'This account holds the last active System Admin assignment (R8)');
         }
       }
-      const updated = await tx.user.update({ where: { id }, data: body, select: { id: true, isActive: true, displayName: true, employeeId: true } });
+      // After the System Admin lock above (same order as every other path), hold the account and compare versions.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${id} FOR UPDATE`;
+      const current = await tx.user.findUnique({ where: { id }, select: { updatedAt: true } });
+      if (!current) throw notFound('Account not found');
+      assertUnchanged(expected, current);
+      const { updatedAt, ...updated } = await tx.user.update({ where: { id }, data: body, select: { id: true, isActive: true, displayName: true, employeeId: true, updatedAt: true } });
       if (body.isActive === false && target.isActive) {
         // Deactivation ends every session at once (authenticate checks the family).
         await tx.refreshSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
@@ -114,7 +121,7 @@ export function createAccountService(db: Db, passwords: PasswordService) {
         changes: { before: { isActive: target.isActive, displayName: target.displayName, employeeId: target.employeeId }, after: updated },
         requestId, priority: body.isActive === false ? 'HIGH' : 'NORMAL',
       });
-      return updated;
+      return { ...updated, updatedAt };
     });
   }
 

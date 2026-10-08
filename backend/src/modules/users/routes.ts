@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { ifMatch } from '../../lib/concurrency.js';
 import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
@@ -77,7 +78,7 @@ export function createUsersRouter(
   });
   router.patch('/users/:id', authorize('accounts.write'), async (req, res) => {
     const { id } = IdParam.parse(req.params);
-    res.json(await accounts.update(authOf(res), id, UpdateAccountBody.parse(req.body), res.locals.requestId));
+    res.json(await accounts.update(authOf(res), id, UpdateAccountBody.parse(req.body), res.locals.requestId, ifMatch(req)));
   });
 
   // ── Role assignments ──────────────────────────────────────────────────────

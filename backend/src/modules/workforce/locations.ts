@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { HR_ROLES } from '../credentials/access.js';
@@ -103,11 +104,13 @@ export function createLocationService(db: Db) {
       });
     },
 
-    async updateRegion(auth: AuthContext, code: string, body: z.infer<typeof RegionUpdateBody>, requestId?: string) {
+    async updateRegion(auth: AuthContext, code: string, body: z.infer<typeof RegionUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT code FROM saudi_regions WHERE code = ${code} FOR UPDATE`;
         const before = await tx.saudiRegion.findUnique({ where: { code } });
         if (!before) throw notFound('Region not found');
+        assertUnchanged(expected, before);
         if (body.name !== undefined) await assertRegionNameFree(tx, body.name, code);
         const r = await tx.saudiRegion.update({ where: { code }, data: { ...body, ...(body.nameAr !== undefined ? { nameAr: blank(body.nameAr) } : {}) } });
         await appendAudit(tx, { actorUserId: auth.user.id, action: activity('REGION', before, body.isActive), resource: 'saudi_region', resourceId: code, changes: changes(before, body), requestId });
@@ -140,11 +143,13 @@ export function createLocationService(db: Db) {
       });
     },
 
-    async updateCity(auth: AuthContext, id: number, body: z.infer<typeof CityUpdateBody>, requestId?: string) {
+    async updateCity(auth: AuthContext, id: number, body: z.infer<typeof CityUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT id FROM saudi_cities WHERE id = ${id} FOR UPDATE`;
         const before = await tx.saudiCity.findUnique({ where: { id } });
         if (!before) throw notFound('City not found');
+        assertUnchanged(expected, before);
         const regionCode = body.regionCode ?? before.regionCode;
         if (regionCode !== before.regionCode) {
           await assertRegionExists(tx, regionCode);

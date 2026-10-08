@@ -114,7 +114,8 @@ export function createAuthService(deps: AuthDeps) {
     const absoluteSeconds = sessionSeconds(user.isBreakGlass);
     if (user.isBreakGlass) await sirenOnLogin(tx, user.id, meta.ip, now, absoluteSeconds, requestId);
     const session = await issue(tx, user.id, randomToken(16), new Date(now.getTime() + env.SESSION_IDLE_SECONDS * 1000), new Date(now.getTime() + absoluteSeconds * 1000), now, meta);
-    await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: now } });
+    // Raw, so updated_at stays: it is the account's version for edits (If-Match), and a sign-in is not an edit.
+    await tx.$executeRaw`UPDATE users SET last_login_at = ${now} WHERE id = ${user.id}`;
     await appendAudit(tx, {
       actorUserId: user.id, action: 'LOGIN_SUCCEEDED', resource: 'user', resourceId: String(user.id), requestId,
       ...(mfaUsed ? { changes: { mfa: mfaUsed } } : {}), priority: user.isBreakGlass ? 'HIGH' : 'NORMAL',

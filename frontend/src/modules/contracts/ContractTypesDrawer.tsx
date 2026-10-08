@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Alert, App, Button, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { useContractTypeAction, useContractTypes, type ContractType } from './api';
 
 type Values = { code: string; name: string; nameAr?: string; displayOrder: number; isActive: boolean };
@@ -31,11 +31,14 @@ export function ContractTypesDrawer({ open, onClose }: { open: boolean; onClose:
       if (editing === 'new') {
         await action.mutateAsync({ kind: 'create', body: { code: v.code, name: v.name, ...(v.nameAr ? { nameAr: v.nameAr } : {}), displayOrder: v.displayOrder } });
       } else if (editing) {
-        await action.mutateAsync({ kind: 'update', code: editing.code, body: { name: v.name, nameAr: v.nameAr || null, displayOrder: v.displayOrder, isActive: v.isActive } });
+        await action.mutateAsync({ kind: 'update', code: editing.code, version: editing.updatedAt, body: { name: v.name, nameAr: v.nameAr || null, displayOrder: v.displayOrder, isActive: v.isActive } });
       }
       message.success(t('saved'));
       setEditing(null);
-    } catch (e) { message.error(describeApiError(e)); }
+    } catch (e) {
+      // Someone else saved this record first: the list has reloaded; the dialog closes so it reopens with their change.
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); setEditing(null); } else message.error(describeApiError(e));
+    }
   }
 
   async function remove(row: ContractType) {

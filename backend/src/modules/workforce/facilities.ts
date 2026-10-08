@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { HR_ROLES } from '../credentials/access.js';
@@ -66,11 +67,13 @@ export function createFacilityService(db: Db) {
       });
     },
 
-    async update(auth: AuthContext, id: number, body: z.infer<typeof FacilityUpdateBody>, requestId?: string) {
+    async update(auth: AuthContext, id: number, body: z.infer<typeof FacilityUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT id FROM facilities WHERE id = ${id} FOR UPDATE`;
         const before = await tx.facility.findUnique({ where: { id } });
         if (!before) throw notFound('Facility not found');
+        assertUnchanged(expected, before);
         if (body.name !== undefined) await assertNameFree(tx, body.name, id);
         const f = await tx.facility.update({ where: { id }, data: { ...body, ...(body.nameAr !== undefined ? { nameAr: body.nameAr || null } : {}) } });
         const action = body.isActive === false && before.isActive ? 'FACILITY_DEACTIVATED'

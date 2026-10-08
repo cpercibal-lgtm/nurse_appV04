@@ -69,7 +69,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await rankGrades.create(authOf(res), RankGradeCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/rank-grades/:code', authorize('workforce.write'), async (req, res) => {
-    res.json(await rankGrades.update(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), RankGradeUpdateBody.parse(req.body), rid(res)));
+    res.json(await rankGrades.update(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), RankGradeUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/rank-grades/:code', authorize('workforce.write'), async (req, res) => {
     res.json(await rankGrades.remove(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), rid(res)));
@@ -82,7 +82,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await specialties.create(authOf(res), SpecialtyCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/nursing-specialties/:code', authorize('workforce.write'), async (req, res) => {
-    res.json(await specialties.update(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), SpecialtyUpdateBody.parse(req.body), rid(res)));
+    res.json(await specialties.update(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), SpecialtyUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/nursing-specialties/:code', authorize('workforce.write'), async (req, res) => {
     res.json(await specialties.remove(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), rid(res)));
@@ -96,7 +96,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await locations.createRegion(authOf(res), RegionCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/saudi-regions/:code', authorize('workforce.write'), async (req, res) => {
-    res.json(await locations.updateRegion(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), RegionUpdateBody.parse(req.body), rid(res)));
+    res.json(await locations.updateRegion(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), RegionUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/saudi-regions/:code', authorize('workforce.write'), async (req, res) => {
     res.json(await locations.removeRegion(authOf(res), CodeParam.parse(req.params).code.toUpperCase(), rid(res)));
@@ -106,7 +106,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await locations.createCity(authOf(res), CityCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/saudi-cities/:id', authorize('workforce.write'), async (req, res) => {
-    res.json(await locations.updateCity(authOf(res), CityId.parse(req.params).id, CityUpdateBody.parse(req.body), rid(res)));
+    res.json(await locations.updateCity(authOf(res), CityId.parse(req.params).id, CityUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/saudi-cities/:id', authorize('workforce.write'), async (req, res) => {
     res.json(await locations.removeCity(authOf(res), CityId.parse(req.params).id, rid(res)));
@@ -120,7 +120,7 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
     res.status(201).json(await facilities.create(authOf(res), FacilityCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/facilities/:id', authorize('workforce.write'), async (req, res) => {
-    res.json(await facilities.update(authOf(res), FacilityParam.parse(req.params).id, FacilityUpdateBody.parse(req.body), rid(res)));
+    res.json(await facilities.update(authOf(res), FacilityParam.parse(req.params).id, FacilityUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/facilities/:id', authorize('workforce.write'), async (req, res) => {
     res.json(await facilities.remove(authOf(res), FacilityParam.parse(req.params).id, rid(res)));

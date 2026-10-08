@@ -72,14 +72,14 @@ export function useWorkforceAction() {
 }
 
 /** Rank/Grade master (owner decision 2026-10-03): the SCFHS nursing classification; employeeCount = employees holding it. */
-export interface RankGrade { code: string; name: string; meaning: string | null; isActive: boolean; sortOrder: number; employeeCount: number }
+export interface RankGrade { code: string; name: string; meaning: string | null; isActive: boolean; sortOrder: number; employeeCount: number; updatedAt: string }
 export const useRankGrades = (includeInactive: boolean, enabled = true) => useQuery({
   queryKey: ['rank-grades', includeInactive], enabled,
   queryFn: () => http.get<{ items: RankGrade[] }>(`/rank-grades${includeInactive ? '?includeInactive=true' : ''}`),
 });
 type RankGradeAction =
   | { kind: 'create'; body: { code: string; name: string; meaning?: string; isActive: boolean; sortOrder: number } }
-  | { kind: 'update'; code: string; body: { name?: string; meaning?: string | null; isActive?: boolean; sortOrder?: number } }
+  | { kind: 'update'; code: string; version?: string; body: { name?: string; meaning?: string | null; isActive?: boolean; sortOrder?: number } }
   | { kind: 'remove'; code: string };
 export function useRankGradeAction() {
   const qc = useQueryClient();
@@ -87,23 +87,24 @@ export function useRankGradeAction() {
     mutationFn: (a: RankGradeAction): Promise<unknown> => {
       switch (a.kind) {
         case 'create': return http.post('/rank-grades', a.body);
-        case 'update': return http.patch(`/rank-grades/${encodeURIComponent(a.code)}`, a.body);
+        case 'update': return http.patch(`/rank-grades/${encodeURIComponent(a.code)}`, a.body, { ifMatch: a.version });
         case 'remove': return http.delete(`/rank-grades/${encodeURIComponent(a.code)}`);
       }
     },
     onSuccess: () => Promise.all(['rank-grades', 'employees'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['rank-grades'] }),
   });
 }
 
 /** Nursing Specialty master (owner decision 2026-10-03); employeeCount = employees holding the specialty. */
-export interface NursingSpecialty { code: string; name: string; nameAr: string | null; description: string | null; isActive: boolean; sortOrder: number; employeeCount: number }
+export interface NursingSpecialty { code: string; name: string; nameAr: string | null; description: string | null; isActive: boolean; sortOrder: number; employeeCount: number; updatedAt: string }
 export const useSpecialties = (includeInactive: boolean, enabled = true) => useQuery({
   queryKey: ['nursing-specialties', includeInactive], enabled,
   queryFn: () => http.get<{ items: NursingSpecialty[] }>(`/nursing-specialties${includeInactive ? '?includeInactive=true' : ''}`),
 });
 type SpecialtyAction =
   | { kind: 'create'; body: { code: string; name: string; nameAr?: string; description?: string; isActive: boolean; sortOrder: number } }
-  | { kind: 'update'; code: string; body: { name?: string; nameAr?: string | null; description?: string | null; isActive?: boolean; sortOrder?: number } }
+  | { kind: 'update'; code: string; version?: string; body: { name?: string; nameAr?: string | null; description?: string | null; isActive?: boolean; sortOrder?: number } }
   | { kind: 'remove'; code: string };
 export function useSpecialtyAction() {
   const qc = useQueryClient();
@@ -111,17 +112,18 @@ export function useSpecialtyAction() {
     mutationFn: (a: SpecialtyAction): Promise<unknown> => {
       switch (a.kind) {
         case 'create': return http.post('/nursing-specialties', a.body);
-        case 'update': return http.patch(`/nursing-specialties/${encodeURIComponent(a.code)}`, a.body);
+        case 'update': return http.patch(`/nursing-specialties/${encodeURIComponent(a.code)}`, a.body, { ifMatch: a.version });
         case 'remove': return http.delete(`/nursing-specialties/${encodeURIComponent(a.code)}`);
       }
     },
     onSuccess: () => Promise.all(['nursing-specialties', 'employees'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['nursing-specialties'] }),
   });
 }
 
 /** Saudi location master (owner decision 2026-10-03): regions (ISO 3166-2 codes) and their cities. */
-export interface SaudiRegion { code: string; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; cityCount: number; employeeCount: number }
-export interface SaudiCity { id: number; regionCode: string; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; employeeCount: number }
+export interface SaudiRegion { code: string; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; cityCount: number; employeeCount: number; updatedAt: string }
+export interface SaudiCity { id: number; regionCode: string; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; employeeCount: number; updatedAt: string }
 export const useRegions = (includeInactive: boolean, enabled = true) => useQuery({
   queryKey: ['saudi-regions', includeInactive], enabled,
   queryFn: () => http.get<{ items: SaudiRegion[] }>(`/saudi-regions${includeInactive ? '?includeInactive=true' : ''}`),
@@ -138,10 +140,10 @@ export const useCities = (regionCode: string | null, includeInactive: boolean, e
 });
 type LocationAction =
   | { kind: 'createRegion'; body: { code: string; name: string; nameAr?: string; isActive: boolean; sortOrder: number } }
-  | { kind: 'updateRegion'; code: string; body: { name?: string; nameAr?: string | null; isActive?: boolean; sortOrder?: number } }
+  | { kind: 'updateRegion'; code: string; version?: string; body: { name?: string; nameAr?: string | null; isActive?: boolean; sortOrder?: number } }
   | { kind: 'removeRegion'; code: string }
   | { kind: 'createCity'; body: { regionCode: string; name: string; nameAr?: string; isActive: boolean; sortOrder: number } }
-  | { kind: 'updateCity'; id: number; body: { regionCode?: string; name?: string; nameAr?: string | null; isActive?: boolean; sortOrder?: number } }
+  | { kind: 'updateCity'; id: number; version?: string; body: { regionCode?: string; name?: string; nameAr?: string | null; isActive?: boolean; sortOrder?: number } }
   | { kind: 'removeCity'; id: number };
 export function useLocationAction() {
   const qc = useQueryClient();
@@ -149,26 +151,27 @@ export function useLocationAction() {
     mutationFn: (a: LocationAction): Promise<unknown> => {
       switch (a.kind) {
         case 'createRegion': return http.post('/saudi-regions', a.body);
-        case 'updateRegion': return http.patch(`/saudi-regions/${encodeURIComponent(a.code)}`, a.body);
+        case 'updateRegion': return http.patch(`/saudi-regions/${encodeURIComponent(a.code)}`, a.body, { ifMatch: a.version });
         case 'removeRegion': return http.delete(`/saudi-regions/${encodeURIComponent(a.code)}`);
         case 'createCity': return http.post('/saudi-cities', a.body);
-        case 'updateCity': return http.patch(`/saudi-cities/${a.id}`, a.body);
+        case 'updateCity': return http.patch(`/saudi-cities/${a.id}`, a.body, { ifMatch: a.version });
         case 'removeCity': return http.delete(`/saudi-cities/${a.id}`);
       }
     },
     onSuccess: () => Promise.all(['saudi-regions', 'saudi-cities', 'employees'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && Promise.all(['saudi-regions', 'saudi-cities'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
   });
 }
 
 /** Facility master (owner decision 2026-10-03): the hospitals an employee actually works in; employeeCount = employees there. */
-export interface Facility { id: number; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; employeeCount: number }
+export interface Facility { id: number; name: string; nameAr: string | null; isActive: boolean; sortOrder: number; employeeCount: number; updatedAt: string }
 export const useFacilities = (includeInactive: boolean, enabled = true) => useQuery({
   queryKey: ['facilities', includeInactive], enabled,
   queryFn: () => http.get<{ items: Facility[] }>(`/facilities${includeInactive ? '?includeInactive=true' : ''}`),
 });
 type FacilityAction =
   | { kind: 'create'; body: { name: string; nameAr?: string } }
-  | { kind: 'update'; id: number; body: { name?: string; nameAr?: string | null; isActive?: boolean } }
+  | { kind: 'update'; id: number; version?: string; body: { name?: string; nameAr?: string | null; isActive?: boolean } }
   | { kind: 'remove'; id: number };
 export function useFacilityAction() {
   const qc = useQueryClient();
@@ -176,10 +179,11 @@ export function useFacilityAction() {
     mutationFn: (a: FacilityAction): Promise<unknown> => {
       switch (a.kind) {
         case 'create': return http.post<Facility>('/facilities', a.body);
-        case 'update': return http.patch<Facility>(`/facilities/${a.id}`, a.body);
+        case 'update': return http.patch<Facility>(`/facilities/${a.id}`, a.body, { ifMatch: a.version });
         case 'remove': return http.delete(`/facilities/${a.id}`);
       }
     },
     onSuccess: () => Promise.all(['facilities', 'employees'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['facilities'] }),
   });
 }

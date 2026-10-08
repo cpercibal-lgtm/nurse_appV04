@@ -92,6 +92,68 @@ describeDb('simultaneous edits are refused, not overwritten (DB-03)', () => {
     expect((await db.position.findUniqueOrThrow({ where: { code: pos.body.code } })).title).toBe('First');
   });
 
+  it('master lists (rank/grade, specialty, region, city, facility, contract type): the same rule', async () => {
+    const code = () => uniq('CM').toUpperCase().slice(0, 20);
+    // Each list: create a record, save once from its version, then a second save from the same version is refused.
+    const check = async (created: { status: number; body: Record<string, unknown> }, path: string, field: string, read: () => Promise<object>) => {
+      expect(created.status).toBe(201);
+      const v1 = created.body.updatedAt as string;
+      expect(v1).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      const first = await hr.patch(path, { [field]: `First ${v1}` }).set('If-Match', tag(v1));
+      expect(first.status).toBe(200);
+      const second = await hr2.patch(path, { [field]: `Second ${v1}` }).set('If-Match', tag(v1));
+      expect(second.status).toBe(409);
+      expect(second.body.error).toMatchObject({ code: 'STALE_RECORD', details: { currentVersion: first.body.updatedAt } });
+      expect(((await read()) as Record<string, unknown>)[field]).toBe(`First ${v1}`);
+      // After reloading (the current version) the change goes through; without a version it is applied as before.
+      expect((await hr2.patch(path, { [field]: `Second ${v1}` }).set('If-Match', tag(first.body.updatedAt))).status).toBe(200);
+      expect((await hr.patch(path, { isActive: false })).status).toBe(200);
+    };
+
+    const rank = await hr.post('/rank-grades', { code: code(), name: 'Concurrency rank' });
+    await check(rank, `/rank-grades/${rank.body.code}`, 'name', () => db.rankGrade.findUniqueOrThrow({ where: { code: rank.body.code } }));
+
+    const spec = await hr.post('/nursing-specialties', { code: code(), name: `Concurrency specialty ${uniq('s')}` });
+    await check(spec, `/nursing-specialties/${spec.body.code}`, 'name', () => db.nursingSpecialty.findUniqueOrThrow({ where: { code: spec.body.code } }));
+
+    const region = await hr.post('/saudi-regions', { code: `R${Math.random().toString(36).slice(2, 11)}`.toUpperCase(), name: `Concurrency region ${uniq('r')}` });
+    const city = await hr.post('/saudi-cities', { regionCode: region.body.code, name: 'Concurrency city' });
+    await check(city, `/saudi-cities/${city.body.id}`, 'name', () => db.saudiCity.findUniqueOrThrow({ where: { id: city.body.id } }));
+    await check(region, `/saudi-regions/${region.body.code}`, 'name', () => db.saudiRegion.findUniqueOrThrow({ where: { code: region.body.code } }));
+
+    const facility = await hr.post('/facilities', { name: `Concurrency facility ${uniq('f')}` });
+    await check(facility, `/facilities/${facility.body.id}`, 'name', () => db.facility.findUniqueOrThrow({ where: { id: facility.body.id } }));
+
+    const type = await hr.post('/contract-types', { code: code(), name: 'Concurrency contract type' });
+    await check(type, `/contract-types/${type.body.code}`, 'name', () => db.contractType.findUniqueOrThrow({ where: { code: type.body.code } }));
+  });
+
+  it('account: a second edit from the same version is refused; signing in does not change the version', async () => {
+    const target = await makeUser(db);
+    const row = async () => ((await hr.get('/users')).body.items as Array<{ id: number; updatedAt: string }>).find((u) => u.id === target.id)!;
+    const v1 = (await row()).updatedAt;
+    expect(v1).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    // The account's owner signs in while the administrator has the list open: not an edit, so the version stays.
+    await signIn(app, target.email);
+    expect((await db.user.findUniqueOrThrow({ where: { id: target.id } })).lastLoginAt).not.toBeNull();
+    expect((await row()).updatedAt).toBe(v1);
+
+    const first = await hr.patch(`/users/${target.id}`, { displayName: 'Renamed by HR one' }).set('If-Match', tag(v1));
+    expect(first.status).toBe(200);
+    expect(first.body.updatedAt).not.toBe(v1);
+    const second = await hr2.patch(`/users/${target.id}`, { isActive: false }).set('If-Match', tag(v1));
+    expect(second.status).toBe(409);
+    expect(second.body.error).toMatchObject({ code: 'STALE_RECORD', details: { currentVersion: first.body.updatedAt } });
+    const u = await db.user.findUniqueOrThrow({ where: { id: target.id } });
+    expect([u.displayName, u.isActive]).toEqual(['Renamed by HR one', true]);
+    expect(await db.auditEntry.count({ where: { resource: 'user', resourceId: String(target.id), action: { in: ['USER_UPDATED', 'USER_DEACTIVATED'] } } })).toBe(1);
+
+    // With the current version the deactivation goes through; without a version an edit is applied as before.
+    expect((await hr2.patch(`/users/${target.id}`, { isActive: false }).set('If-Match', tag(first.body.updatedAt))).status).toBe(200);
+    expect((await hr.patch(`/users/${target.id}`, { isActive: true })).status).toBe(200);
+  });
+
   it('without If-Match an edit is applied as before; a malformed one is refused', async () => {
     const emp = await makeEmployee(db, org.unitA.id);
     expect((await hr.patch(`/employees/${emp.id}`, { jobTitle: 'No version sent' })).status).toBe(200);

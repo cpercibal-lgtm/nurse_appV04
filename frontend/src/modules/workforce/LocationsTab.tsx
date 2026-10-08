@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, App, Button, Flex, Form, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { ApiError } from '../../services/http';
 import { useCities, useLocationAction, useRegions, type SaudiCity, type SaudiRegion } from './api';
 
@@ -67,7 +67,13 @@ function RegionsPart({ canWrite }: { canWrite: boolean }) {
       : { code: r.code, name: r.name, nameAr: r.nameAr ?? undefined, isActive: r.isActive, sortOrder: r.sortOrder });
     setEditing(r);
   };
-  const run = async (a: Parameters<typeof action.mutateAsync>[0]) => { try { await action.mutateAsync(a); message.success(t('saved')); return true; } catch (e) { message.error(describeApiError(e)); return false; } };
+  // A stale edit (someone else saved first) also closes the dialog: the list has reloaded with their change.
+  const run = async (a: Parameters<typeof action.mutateAsync>[0]) => {
+    try { await action.mutateAsync(a); message.success(t('saved')); return true; } catch (e) {
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); return true; }
+      message.error(describeApiError(e)); return false;
+    }
+  };
 
   return (
     <>
@@ -102,7 +108,7 @@ function RegionsPart({ canWrite }: { canWrite: boolean }) {
         <Form form={form} layout="vertical" onFinish={async (v) => {
           const ok = editing === 'new'
             ? await run({ kind: 'createRegion', body: { code: v.code, name: v.name, nameAr: optional(v.nameAr), isActive: v.isActive, sortOrder: v.sortOrder } })
-            : editing && await run({ kind: 'updateRegion', code: editing.code, body: { name: v.name, nameAr: optional(v.nameAr) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
+            : editing && await run({ kind: 'updateRegion', code: editing.code, version: editing.updatedAt, body: { name: v.name, nameAr: optional(v.nameAr) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
           if (ok) setEditing(null);
         }}>
           <Form.Item name="code" label={t('regionCode')} extra={editing === 'new' ? t('regionCodeHint') : t('locationCodeFixed')}
@@ -142,7 +148,13 @@ function CitiesPart({ canWrite }: { canWrite: boolean }) {
       : { regionCode: c.regionCode, name: c.name, nameAr: c.nameAr ?? undefined, isActive: c.isActive, sortOrder: c.sortOrder });
     setEditing(c);
   };
-  const run = async (a: Parameters<typeof action.mutateAsync>[0]) => { try { await action.mutateAsync(a); message.success(t('saved')); return true; } catch (e) { message.error(describeApiError(e)); return false; } };
+  // A stale edit (someone else saved first) also closes the dialog: the list has reloaded with their change.
+  const run = async (a: Parameters<typeof action.mutateAsync>[0]) => {
+    try { await action.mutateAsync(a); message.success(t('saved')); return true; } catch (e) {
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); return true; }
+      message.error(describeApiError(e)); return false;
+    }
+  };
 
   return (
     <>
@@ -178,7 +190,7 @@ function CitiesPart({ canWrite }: { canWrite: boolean }) {
         <Form form={form} layout="vertical" onFinish={async (v) => {
           const ok = editing === 'new'
             ? await run({ kind: 'createCity', body: { regionCode: v.regionCode, name: v.name, nameAr: optional(v.nameAr), isActive: v.isActive, sortOrder: v.sortOrder } })
-            : editing && await run({ kind: 'updateCity', id: editing.id, body: { ...(v.regionCode !== editing.regionCode ? { regionCode: v.regionCode } : {}), name: v.name, nameAr: optional(v.nameAr) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
+            : editing && await run({ kind: 'updateCity', id: editing.id, version: editing.updatedAt, body: { ...(v.regionCode !== editing.regionCode ? { regionCode: v.regionCode } : {}), name: v.name, nameAr: optional(v.nameAr) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
           if (ok) setEditing(null);
         }}>
           <Form.Item name="regionCode" label={t('regionName')} rules={[{ required: true }]}

@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../../services/http';
+import { isStaleRecord } from '../../lib/errors';
 import type { Paged } from '../../types/api';
 
 export type ContractStatus = 'Draft' | 'PendingApproval' | 'Approved' | 'Active' | 'Expired' | 'Suspended' | 'Terminated' | 'Superseded';
@@ -28,7 +29,7 @@ export interface Renewable {
 }
 
 /** Employment contract types (owner decision 2026-10-03): a list HR maintains; contractCount = contracts using the type. */
-export interface ContractType { code: string; name: string; nameAr: string | null; isActive: boolean; displayOrder: number; contractCount: number }
+export interface ContractType { code: string; name: string; nameAr: string | null; isActive: boolean; displayOrder: number; contractCount: number; updatedAt: string }
 
 export const useContracts = (f: { status?: ContractStatus; contractTypeCode?: string; page: number }, staff: boolean) => useQuery({
   queryKey: ['contracts', staff, f], placeholderData: keepPreviousData,
@@ -53,7 +54,7 @@ export const useContractTypes = (includeInactive: boolean, enabled = true) => us
 });
 type TypeAction =
   | { kind: 'create'; body: { code: string; name: string; nameAr?: string; displayOrder: number } }
-  | { kind: 'update'; code: string; body: { name?: string; nameAr?: string | null; isActive?: boolean; displayOrder?: number } }
+  | { kind: 'update'; code: string; version?: string; body: { name?: string; nameAr?: string | null; isActive?: boolean; displayOrder?: number } }
   | { kind: 'remove'; code: string };
 export function useContractTypeAction() {
   const qc = useQueryClient();
@@ -61,11 +62,12 @@ export function useContractTypeAction() {
     mutationFn: (a: TypeAction): Promise<unknown> => {
       switch (a.kind) {
         case 'create': return http.post('/contract-types', a.body);
-        case 'update': return http.patch(`/contract-types/${encodeURIComponent(a.code)}`, a.body);
+        case 'update': return http.patch(`/contract-types/${encodeURIComponent(a.code)}`, a.body, { ifMatch: a.version });
         case 'remove': return http.delete<{ code: string; outcome: 'DELETED' | 'DEACTIVATED'; contractCount: number }>(`/contract-types/${encodeURIComponent(a.code)}`);
       }
     },
     onSuccess: () => Promise.all(['contract-types', 'contracts'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['contract-types'] }),
   });
 }
 export const useContractDocs = (id: number | null) => useQuery({ queryKey: ['contracts', 'docs', id], enabled: id !== null, queryFn: () => http.get<Paged<ContractDoc>>(`/contracts/${id}/documents`) });

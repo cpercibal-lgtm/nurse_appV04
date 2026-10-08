@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, App, Button, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { useAuth } from '../../hooks/useAuth';
 import { ApiError, http } from '../../services/http';
 import { useAccounts, useCreateAccount, useUpdateAccount, type Account } from './api';
@@ -68,10 +68,11 @@ export function AccountsTab() {
 
   async function toggle(a: Account) {
     try {
-      await update.mutateAsync({ id: a.id, body: { isActive: !a.isActive } });
+      await update.mutateAsync({ id: a.id, version: a.updatedAt, body: { isActive: !a.isActive } });
       message.success(t('saved'));
     } catch (e) {
-      message.error(describeApiError(e));
+      // Someone else changed this account first: the list has reloaded with their change.
+      if (isStaleRecord(e)) message.warning(describeApiError(e), 8); else message.error(describeApiError(e));
     }
   }
 

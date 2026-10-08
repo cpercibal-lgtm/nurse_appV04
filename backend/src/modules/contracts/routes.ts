@@ -3,6 +3,7 @@
 
 import express, { Router, type Response } from 'express';
 import { z } from 'zod';
+import { ifMatch } from '../../lib/concurrency.js';
 import type { Db } from '../../lib/prisma.js';
 import { decodeFileName } from '../../lib/uploads.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
@@ -27,7 +28,7 @@ export function createContractsRouter(db: Db, contracts: ContractService, maxUpl
     res.status(201).json(await types.create(authOf(res), ContractTypeCreateBody.parse(req.body), rid(res)));
   });
   r.patch('/contract-types/:code', authorize('contracts.manage'), async (req, res) => {
-    res.json(await types.update(authOf(res), CodeParam.parse(req.params).code, ContractTypeUpdateBody.parse(req.body), rid(res)));
+    res.json(await types.update(authOf(res), CodeParam.parse(req.params).code, ContractTypeUpdateBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.delete('/contract-types/:code', authorize('contracts.manage'), async (req, res) => {
     res.json(await types.remove(authOf(res), CodeParam.parse(req.params).code, rid(res)));

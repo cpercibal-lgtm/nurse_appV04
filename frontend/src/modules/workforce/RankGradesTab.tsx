@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, App, Button, Flex, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { ApiError } from '../../services/http';
 import { useRankGradeAction, useRankGrades, type RankGrade } from './api';
 
@@ -42,11 +42,14 @@ export function RankGradesTab({ canWrite }: { canWrite: boolean }) {
       if (editing === 'new') {
         await action.mutateAsync({ kind: 'create', body: { code: v.code, name: v.name, ...(v.meaning?.trim() ? { meaning: v.meaning } : {}), isActive: v.isActive, sortOrder: v.sortOrder } });
       } else if (editing) {
-        await action.mutateAsync({ kind: 'update', code: editing.code, body: { name: v.name, meaning: v.meaning?.trim() ? v.meaning : null, isActive: v.isActive, sortOrder: v.sortOrder } });
+        await action.mutateAsync({ kind: 'update', code: editing.code, version: editing.updatedAt, body: { name: v.name, meaning: v.meaning?.trim() ? v.meaning : null, isActive: v.isActive, sortOrder: v.sortOrder } });
       }
       message.success(t('saved'));
       setEditing(null);
-    } catch (e) { message.error(describeApiError(e)); }
+    } catch (e) {
+      // Someone else saved this record first: the list has reloaded; the dialog closes so it reopens with their change.
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); setEditing(null); } else message.error(describeApiError(e));
+    }
   }
 
   const setActive = async (r: RankGrade, isActive: boolean) => {

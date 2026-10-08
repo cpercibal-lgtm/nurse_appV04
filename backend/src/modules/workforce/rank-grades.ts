@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { HR_ROLES } from '../credentials/access.js';
@@ -78,11 +79,13 @@ export function createRankGradeService(db: Db) {
       });
     },
 
-    async update(auth: AuthContext, code: string, body: z.infer<typeof RankGradeUpdateBody>, requestId?: string) {
+    async update(auth: AuthContext, code: string, body: z.infer<typeof RankGradeUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT code FROM rank_grades WHERE code = ${code} FOR UPDATE`;
         const before = await tx.rankGrade.findUnique({ where: { code } });
         if (!before) throw notFound('Rank/Grade not found');
+        assertUnchanged(expected, before);
         const r = await tx.rankGrade.update({ where: { code }, data: { ...body, ...(body.meaning !== undefined ? { meaning: body.meaning || null } : {}) } });
         const action = body.isActive === false && before.isActive ? 'RANK_GRADE_DEACTIVATED'
           : body.isActive === true && !before.isActive ? 'RANK_GRADE_REACTIVATED' : 'RANK_GRADE_UPDATED';

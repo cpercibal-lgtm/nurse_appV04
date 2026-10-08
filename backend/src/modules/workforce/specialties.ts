@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { HR_ROLES } from '../credentials/access.js';
@@ -76,11 +77,13 @@ export function createSpecialtyService(db: Db) {
       });
     },
 
-    async update(auth: AuthContext, code: string, body: z.infer<typeof SpecialtyUpdateBody>, requestId?: string) {
+    async update(auth: AuthContext, code: string, body: z.infer<typeof SpecialtyUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT code FROM nursing_specialties WHERE code = ${code} FOR UPDATE`;
         const before = await tx.nursingSpecialty.findUnique({ where: { code } });
         if (!before) throw notFound('Specialty not found');
+        assertUnchanged(expected, before);
         if (body.name !== undefined) await assertNameFree(tx, body.name, code);
         const data = {
           ...body,

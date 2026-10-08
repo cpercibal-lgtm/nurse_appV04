@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { HR_ROLES } from '../credentials/access.js';
@@ -58,11 +59,13 @@ export function createContractTypeService(db: Db) {
       });
     },
 
-    async update(auth: AuthContext, code: string, body: z.infer<typeof ContractTypeUpdateBody>, requestId?: string) {
+    async update(auth: AuthContext, code: string, body: z.infer<typeof ContractTypeUpdateBody>, requestId?: string, expected: Date | null = null) {
       return db.$transaction(async (tx) => {
         await assertSystemWide(tx, auth);
+        await tx.$queryRaw`SELECT code FROM contract_types WHERE code = ${code} FOR UPDATE`;
         const before = await tx.contractType.findUnique({ where: { code } });
         if (!before) throw notFound('Contract type not found');
+        assertUnchanged(expected, before);
         const t = await tx.contractType.update({ where: { code }, data: body });
         await appendAudit(tx, { actorUserId: auth.user.id, action: 'CONTRACT_TYPE_UPDATED', resource: 'contract_type', resourceId: code, changes: { before, after: body }, requestId });
         return t;

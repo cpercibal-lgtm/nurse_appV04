@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Flex, Form, Input, Modal, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { ApiError } from '../../services/http';
 import { useFacilities, useFacilityAction, type Facility } from './api';
 
@@ -47,11 +47,14 @@ export function FacilitiesManager({ canWrite, onCreated, onWithdrawn }: { canWri
         message.success(t('facilityAdded', { name: created.name }));
         onCreated?.(created);
       } else if (editing) {
-        await action.mutateAsync({ kind: 'update', id: editing.id, body: { name: tidy(v.name), nameAr: v.nameAr?.trim() ? v.nameAr : null } });
+        await action.mutateAsync({ kind: 'update', id: editing.id, version: editing.updatedAt, body: { name: tidy(v.name), nameAr: v.nameAr?.trim() ? v.nameAr : null } });
         message.success(t('saved'));
       }
       setEditing(null);
-    } catch (e) { message.error(describeApiError(e)); }
+    } catch (e) {
+      // Someone else saved this record first: the list has reloaded; the dialog closes so it reopens with their change.
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); setEditing(null); } else message.error(describeApiError(e));
+    }
   }
 
   const setActive = async (f: Facility, isActive: boolean) => {

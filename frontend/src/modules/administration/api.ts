@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '../../services/http';
+import { isStaleRecord } from '../../lib/errors';
 import type { AppRole, DataSubjectRequest, DsrType, Paged, ScopeType } from '../../types/api';
 
 export interface Account {
@@ -10,6 +11,8 @@ export interface Account {
   isBreakGlass: boolean;
   employeeId: number | null;
   lastLoginAt: string | null;
+  /** The version for edits (If-Match); signing in does not change it. */
+  updatedAt: string;
   employee: { jobNumber: string; fullName: string; unitId: number | null } | null;
   roleAssignments: Array<{ role: AppRole; scopeType: ScopeType }>;
   /** An authenticator is set up (spec §3.5). */
@@ -106,8 +109,9 @@ export function useCreateAccount() {
 export function useUpdateAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: number; body: { isActive?: boolean; displayName?: string } }) => http.patch(`/users/${id}`, body),
+    mutationFn: ({ id, version, body }: { id: number; version?: string; body: { isActive?: boolean; displayName?: string } }) => http.patch(`/users/${id}`, body, { ifMatch: version }),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.accounts }),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: keys.accounts }),
   });
 }
 

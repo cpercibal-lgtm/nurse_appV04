@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, App, Button, Flex, Form, Input, InputNumber, Modal, Select, Space, Table, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { describeApiError } from '../../lib/errors';
+import { describeApiError, isStaleRecord } from '../../lib/errors';
 import { ApiError } from '../../services/http';
 import { useSpecialtyAction, useSpecialties, type NursingSpecialty } from './api';
 
@@ -43,11 +43,14 @@ export function SpecialtiesTab({ canWrite }: { canWrite: boolean }) {
       if (editing === 'new') {
         await action.mutateAsync({ kind: 'create', body: { code: v.code, name: v.name, nameAr: optional(v.nameAr), description: optional(v.description), isActive: v.isActive, sortOrder: v.sortOrder } });
       } else if (editing) {
-        await action.mutateAsync({ kind: 'update', code: editing.code, body: { name: v.name, nameAr: optional(v.nameAr) ?? null, description: optional(v.description) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
+        await action.mutateAsync({ kind: 'update', code: editing.code, version: editing.updatedAt, body: { name: v.name, nameAr: optional(v.nameAr) ?? null, description: optional(v.description) ?? null, isActive: v.isActive, sortOrder: v.sortOrder } });
       }
       message.success(t('saved'));
       setEditing(null);
-    } catch (e) { message.error(describeApiError(e)); }
+    } catch (e) {
+      // Someone else saved this record first: the list has reloaded; the dialog closes so it reopens with their change.
+      if (isStaleRecord(e)) { message.warning(describeApiError(e), 8); setEditing(null); } else message.error(describeApiError(e));
+    }
   }
 
   const setActive = async (r: NursingSpecialty, isActive: boolean) => {
