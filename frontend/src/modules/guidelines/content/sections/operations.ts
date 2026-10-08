@@ -24,7 +24,7 @@ export const OPERATIONS: GuideSection[] = [
         ],
       },
     ],
-    callouts: [{ kind: 'info', text: 'A coverage target left empty means "not set" — never zero. Shortages warn but never stop publication. Rest, fatigue and skill-mix rules are not defined by the hospital yet and are not enforced.' }],
+    callouts: [{ kind: 'info', text: 'Two people editing the same record: the first to save wins. The second sees "Someone else saved a change to this record", nothing of theirs is lost, and the record reloads so the change can be made again on top of the first.' }, { kind: 'info', text: 'A coverage target left empty means "not set" — never zero. Shortages warn but never stop publication. Rest, fatigue and skill-mix rules are not defined by the hospital yet and are not enforced.' }],
     tasks: [
       {
         id: 'units',

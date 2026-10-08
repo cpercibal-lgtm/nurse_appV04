@@ -1404,6 +1404,8 @@ The hospital's structure: departments, units and their beds, positions, and how 
 **Screen:** `/workforce`  
 **Where:** Side menu → Workforce. Tabs: Units, Departments, Positions, Coverage targets.
 
+> **Note:** Two people editing the same record: the first to save wins. The second sees "Someone else saved a change to this record", nothing of theirs is lost, and the record reloads so the change can be made again on top of the first.
+
 > **Note:** A coverage target left empty means "not set" — never zero. Shortages warn but never stop publication. Rest, fatigue and skill-mix rules are not defined by the hospital yet and are not enforced.
 
 ![How the hospital system works](generated/flows/hospital-workflow.svg)
@@ -2842,7 +2844,7 @@ Common questions and what to do. When reporting a problem, give the page, what y
 | I lost my phone | Use a recovery code, or ask HR to reset two-factor sign-in. |
 | ELIGIBLE but nothing was checked | The unit has no requirements configured (grey note): HR must enter the unit's policy. |
 | KPI looks wrong | Only published shifts of nurse positions count; check beds, critical areas, patient-care areas, inpatient beds and Nurse (KPI) positions in Workforce. |
-| "Someone else saved a change to this record" | Another person saved the same record after you opened it, so your change was not saved (theirs would have been lost). The record has been reloaded: check their change, then make yours again. |
+| "Someone else saved a change to this record" | Another person saved the same record after you opened it, so your change was not saved (theirs would have been lost). The record has been reloaded: check their change, then make yours again. This applies to employees (including your own phone numbers), units and their beds, departments, positions, the master lists (Rank/Grade, specialties, regions and cities, facilities, contract types) and user accounts. |
 | "The application has been updated" | A new version was released while the page was open. The page normally reloads by itself; if this message shows, press Reload. |
 | Attendance shows everyone missing | The badge system is not connected yet; real clock-ins will appear once it is. |
 
