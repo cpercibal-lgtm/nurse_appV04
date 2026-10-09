@@ -210,7 +210,16 @@ for (const name of BROWSERS) {
       const dialog = page.getByRole('dialog');
       await dialog.getByLabel('Code').fill(code);
       await dialog.getByLabel('Name').fill(`Smoke test department (${name})`);
+      // A WebKit run once never sent the request (no POST in the API log) and only the cell wait below timed
+      // out. Say which step failed: the form did not take the text, the click did not submit, or the API refused.
+      assert.equal(await dialog.getByLabel('Code').inputValue(), code, 'the Code field took the text');
+      const posted = page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/departments', { timeout: 15_000 });
       await dialog.getByRole('button', { name: 'Submit' }).click();
+      const response = await posted.catch(async () => {
+        const shown = await dialog.innerText().catch(() => '(the dialog is gone)');
+        throw new Error(`Submit sent no POST /api/v1/departments within 15 s; the dialog shows: ${shown.replace(/\s+/g, ' ').slice(0, 300)}`);
+      });
+      assert.ok(response.ok(), `POST /api/v1/departments answered ${response.status()}`);
       await page.getByRole('cell', { name: code, exact: true }).waitFor({ timeout: 15_000 });
       await page.reload();
       await settled();
