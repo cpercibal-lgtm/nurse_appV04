@@ -111,7 +111,7 @@ Images are built by GitHub Actions — **never on the server**: the VPS needs no
 | Variable | `VPS_HOST` | the VPS address or host name |
 | Variable | `APP_URL` | `https://nurse.<hospital-domain>` |
 
-**A release** ([`deploy-vps.yml`](../../.github/workflows/deploy-vps.yml)): every merge to `main` → CI → build `api`, `migrate`, `web` for that commit → **waits for approval** → one SSH call carrying the images and these scripts → on the VPS, [`deploy.sh release`](deploy.sh):
+**A release** ([`deploy-vps.yml`](../../.github/workflows/deploy-vps.yml)): every merge to `main` → CI → **waits for approval** → build `api`, `migrate`, `web` for that commit **once**, run the browser and release-path tests on those exact images (nothing is sent if they fail), write `ops/RELEASE_IMAGES` (commit, sha256 of the images, image IDs) → one SSH call carrying the images, the manifest and these scripts → on the VPS, `deploy.sh load` refuses images that are not the ones the manifest names (and logs each release's manifest to `/srv/nurseapp/image-manifests.log`), then [`deploy.sh release`](deploy.sh):
 
 1. migrations as `nurseapp_migration`; then `02_grants.sql` and `verify.sql` — any FAIL stops the release before anything changes for users;
 2. the **idle colour** (blue ↔ green) starts beside the live one with the new images;

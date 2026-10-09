@@ -88,6 +88,20 @@ check_colour() {
     || die "$color answers, but its API cannot reach the database"
 }
 
+# The images must be the ones the release's manifest (ops/RELEASE_IMAGES, written by
+# make-image-manifest.sh after the tests) names: same sha256 of images.tar.gz.
+verify_images() {
+  local file="$1" manifest="$OPS/RELEASE_IMAGES" want got
+  [[ -f "$manifest" ]] || die "$manifest is missing — a release must name its images"
+  want="$(awk '$1 == "sha256" { print $2 }' "$manifest")"
+  [[ "$want" =~ ^[0-9a-f]{64}$ ]] || die "$manifest has no sha256 line"
+  got="$(sha256sum "$file" | cut -d' ' -f1)"
+  [[ "$got" == "$want" ]] || die "the images are not the ones the manifest names (manifest $want, file $got)"
+  mkdir -p "$STATE"
+  { date -u +'%FT%TZ'; sed 's/^/  /' "$manifest"; } >> "$STATE/image-manifests.log"   # what each release ran
+  log "images match the manifest ($(awk '$1 == "tag" { print $2 }' "$manifest"))"
+}
+
 caddy_reload() { edge exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; }
 
 switch_to() {
@@ -139,6 +153,7 @@ promote() {
 case "$CMD" in
   load)
     [[ -f "$ARG" ]] || die "usage: $0 load <images.tar.gz>"
+    verify_images "$ARG"
     # The release scripts are public repository files; PostgreSQL's archive_command and the
     # nightly backup run ops/backup/scripts as postgres. An older nurseapp-release (umask 077)
     # leaves them root-only — fixed here because this file travels with every release.
