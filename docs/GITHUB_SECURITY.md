@@ -57,13 +57,13 @@ gh auth login
 Merge settings: squash merges only (GitHub signs the squash commit, which the signed-commit rule needs), and delete the branch after the merge:
 
 ```bash
-gh repo edit cpercibal2018-cmyk/nurse_appV04 --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge
+gh repo edit percibalvillegas18/nurse_appV04 --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge
 ```
 
 Branch protection: pull request required, the four checks must pass on an up-to-date branch, linear history, no force pushes or deletion, conversations resolved:
 
 ```bash
-gh api -X PUT repos/cpercibal2018-cmyk/nurse_appV04/branches/main/protection -H "Accept: application/vnd.github+json" --input - <<'JSON'
+gh api -X PUT repos/percibalvillegas18/nurse_appV04/branches/main/protection -H "Accept: application/vnd.github+json" --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
@@ -92,13 +92,13 @@ JSON
 Signed commits:
 
 ```bash
-gh api -X POST repos/cpercibal2018-cmyk/nurse_appV04/branches/main/protection/required_signatures -H "Accept: application/vnd.github+json"
+gh api -X POST repos/percibalvillegas18/nurse_appV04/branches/main/protection/required_signatures -H "Accept: application/vnd.github+json"
 ```
 
 Check the result:
 
 ```bash
-gh api repos/cpercibal2018-cmyk/nurse_appV04/branches/main/protection
+gh api repos/percibalvillegas18/nurse_appV04/branches/main/protection
 ```
 
 Why these values with **one maintainer**: nobody can approve their own pull request, so 1 required approval or "Require review from Code Owners" would block every merge (or force the admin bypass each time). A pull request with passing checks is still required. When a second maintainer joins, add them to `.github/CODEOWNERS`, then set `"required_approving_review_count": 1` and `"require_code_owner_reviews": true`, and `"enforce_admins": true`.
@@ -139,11 +139,11 @@ Patch and minor updates of all of them still come. Ignore rules do not hold back
 Turn on the alerts and the automatic security fixes:
 
 ```bash
-gh api -X PUT repos/cpercibal2018-cmyk/nurse_appV04/vulnerability-alerts
+gh api -X PUT repos/percibalvillegas18/nurse_appV04/vulnerability-alerts
 ```
 
 ```bash
-gh api -X PUT repos/cpercibal2018-cmyk/nurse_appV04/automated-security-fixes
+gh api -X PUT repos/percibalvillegas18/nurse_appV04/automated-security-fixes
 ```
 
 Known and accepted: 4 high advisories in Prisma 7.10's own dependencies (`mysql2`, `deepmerge-ts`), not used by the application; re-check when Prisma is updated. `npm audit --omit=dev` reports none.
