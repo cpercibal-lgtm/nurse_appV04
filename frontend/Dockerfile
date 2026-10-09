@@ -4,7 +4,8 @@
 #   docker build -f frontend/Dockerfile -t web .
 # Behind a TLS-inspecting proxy add  --secret id=ca,src=/path/to/ca.pem  (install only).
 
-FROM node:22-bookworm-slim AS build
+# Base images are pinned by digest (QA F2); Dependabot moves tag and digest together.
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -16,7 +17,7 @@ COPY frontend frontend
 # The build includes the gzipped bundle budget gate.
 RUN NODE_ENV=production npm run build -w frontend
 
-FROM nginx:1.30-alpine AS runtime
+FROM nginx:1.30-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 AS runtime
 # Unprivileged: nginx listens on 8080 and runs as the nginx user.
 RUN sed -i 's/^user .*;//' /etc/nginx/nginx.conf \
  && sed -i 's#^pid .*;#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \

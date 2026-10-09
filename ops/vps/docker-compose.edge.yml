@@ -3,11 +3,15 @@
 # by both release colours. Started by deploy.sh; do not run by hand except for
 # diagnosis. Settings: /etc/nurseapp/deploy.env (SITE_HOST, ACME_EMAIL).
 
+# Both images are pinned by digest (QA F2): the tag says which release, the digest which exact image;
+# Dependabot (/ops/vps) moves them together. ClamAV's signatures are not part of the image: freshclam
+# updates them in /srv/nurseapp/clamav, so a pinned engine still has current definitions.
+
 name: nurseapp-edge
 
 services:
   caddy:
-    image: caddy:2.8
+    image: caddy:2.8@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f
     restart: unless-stopped
     ports: ["80:80", "443:443", "443:443/udp"]   # the only published ports on the VPS
     environment:
@@ -28,7 +32,7 @@ services:
     cap_add: [NET_BIND_SERVICE]
 
   clamav:
-    image: clamav/clamav:1.4
+    image: clamav/clamav:1.4@sha256:57deb108fc4c72778aa83eafbca7bb7153e28c3f57c005afd38d31f16da86f23
     environment:
       FRESHCLAM_CHECKS: "12"   # signature checks per day (image default 1 = signatures up to a day old; go-live-check wants ≤ 24 h)
     restart: unless-stopped
