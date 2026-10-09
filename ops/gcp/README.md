@@ -92,7 +92,7 @@ gcloud compute firewall-rules create nurseapp-app-to-db --network=nurseapp-vpc -
 ```bash
 gcloud artifacts repositories create nurseapp --repository-format=docker --location=$REGION
 NUM=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
-REPO=cpercibal2018-cmyk/nurse_appV04
+REPO=percibalvillegas18/nurse_appV04
 POOL=projects/$NUM/locations/global/workloadIdentityPools/github
 
 for sa in nurseapp-app-vm nurseapp-db-vm nurseapp-build nurseapp-deploy; do gcloud iam service-accounts create $sa; done

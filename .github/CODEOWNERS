@@ -4,31 +4,31 @@
 # protection (nobody can approve their own pull request); turn it on once a
 # second maintainer is added below.
 
-*                                   @cpercibal2018-cmyk
+*                                   @percibalvillegas18
 
 # Release, server and database operations: production access, backups, roles.
-/.github/                           @cpercibal2018-cmyk
-/ops/                               @cpercibal2018-cmyk
-/docker-compose.yml                 @cpercibal2018-cmyk
-/backend/Dockerfile                 @cpercibal2018-cmyk
-/frontend/Dockerfile                @cpercibal2018-cmyk
-/frontend/nginx/                    @cpercibal2018-cmyk
+/.github/                           @percibalvillegas18
+/ops/                               @percibalvillegas18
+/docker-compose.yml                 @percibalvillegas18
+/backend/Dockerfile                 @percibalvillegas18
+/frontend/Dockerfile                @percibalvillegas18
+/frontend/nginx/                    @percibalvillegas18
 
 # Database schema, migrations and the hospital baseline.
-/backend/prisma/                    @cpercibal2018-cmyk
+/backend/prisma/                    @percibalvillegas18
 
 # Security-sensitive code: sign-in, sessions, MFA, roles, approvals, audit, encryption, uploads.
-/backend/src/config/                @cpercibal2018-cmyk
-/backend/src/lib/                   @cpercibal2018-cmyk
-/backend/src/modules/auth/          @cpercibal2018-cmyk
-/backend/src/modules/users/         @cpercibal2018-cmyk
-/backend/src/modules/administration/ @cpercibal2018-cmyk
-/backend/src/modules/audit/         @cpercibal2018-cmyk
-/backend/src/modules/pdpl/          @cpercibal2018-cmyk
-/backend/src/modules/documents/     @cpercibal2018-cmyk
+/backend/src/config/                @percibalvillegas18
+/backend/src/lib/                   @percibalvillegas18
+/backend/src/modules/auth/          @percibalvillegas18
+/backend/src/modules/users/         @percibalvillegas18
+/backend/src/modules/administration/ @percibalvillegas18
+/backend/src/modules/audit/         @percibalvillegas18
+/backend/src/modules/pdpl/          @percibalvillegas18
+/backend/src/modules/documents/     @percibalvillegas18
 
 # Dependencies (also updated by Dependabot).
-/package.json                       @cpercibal2018-cmyk
-/package-lock.json                  @cpercibal2018-cmyk
-/backend/package.json               @cpercibal2018-cmyk
-/frontend/package.json              @cpercibal2018-cmyk
+/package.json                       @percibalvillegas18
+/package-lock.json                  @percibalvillegas18
+/backend/package.json               @percibalvillegas18
+/frontend/package.json              @percibalvillegas18
