@@ -1,0 +1,46 @@
+name: Test the release images
+description: >
+  The tests a release image must pass: the HTTPS browser test of the session cookies, the smoke and
+  accessibility test in Chromium, Firefox and WebKit, and the VPS release path (db-init, blue/green
+  switch, rollback, restart). CI runs it on every push; Deploy (VPS) runs it again on the images it
+  built, so what ships is what was tested (finding F2). Needs a checkout and
+  nurseapp/{api,migrate,web}:<tag> in the local Docker.
+
+inputs:
+  tag:
+    description: Tag of the three nurseapp images to test
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: ops/e2e/package-lock.json
+    - name: Install the browser test
+      shell: bash
+      working-directory: ops/e2e
+      run: |
+        npm ci --no-audit --no-fund
+        npx playwright install --with-deps chromium firefox webkit
+        # Firefox and WebKit resolve the test site through the hosts file (Chromium maps it itself).
+        echo "127.0.0.1 nurse.e2e.test" | sudo tee -a /etc/hosts
+    - name: HTTPS browser test of the session cookies, then the smoke and accessibility test in Chromium, Firefox and WebKit
+      shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+      run: E2E_REPORT_DIR="$RUNNER_TEMP/e2e-report" ops/e2e/run.sh
+    - name: Keep the accessibility report
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: e2e-accessibility-report
+        path: ${{ runner.temp }}/e2e-report
+        if-no-files-found: ignore
+    - name: VPS release path — db-init, blue/green switch, rollback, restart with zero failed requests (D-57)
+      shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+      run: sudo --preserve-env=PATH TAG="$TAG" ops/vps/test/run.sh   # as root, like the scripts on the VPS

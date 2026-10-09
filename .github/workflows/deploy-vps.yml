@@ -3,9 +3,11 @@ name: Deploy (VPS)
 # Production release to the single VPS (decision D-57; ops/vps/README.md).
 # Runs after CI has passed on main, then waits for a reviewer to approve the
 # `production` environment. Builds the images here — never on the server —
-# and sends them with the release scripts over SSH to the one command the
-# deploy key may run there (nurseapp-release): migrations, role check,
-# blue/green switch. Does nothing until the VPS_HOST variable is set.
+# once, runs the browser and release-path tests on those exact images, and
+# sends them with the release scripts over SSH to the one command the
+# deploy key may run there (nurseapp-release): the images' hash is checked
+# against the manifest in the bundle, then migrations, role check, blue/green
+# switch. Does nothing until the VPS_HOST variable is set.
 
 # Only a CI run of a push to main in this repository releases: workflow_run's branch filter
 # also matches a pull request from a fork whose branch is called main.
@@ -36,18 +38,24 @@ jobs:
         with:
           ref: ${{ env.SHA }}
       - uses: docker/setup-buildx-action@v4
-      - name: Build the release images (the same Dockerfiles CI tested)
+      - name: Build the release images once (the images that are tested and then shipped)
         run: |
           set -euo pipefail
           docker buildx build --load -f backend/Dockerfile --target runtime -t "nurseapp/api:$SHA" .
           docker buildx build --load -f backend/Dockerfile --target migrate -t "nurseapp/migrate:$SHA" .
           docker buildx build --load -f frontend/Dockerfile -t "nurseapp/web:$SHA" .
-      - name: Bundle images and release scripts
+      # The same tests CI runs, on the images built just above. Nothing below runs if they fail.
+      - uses: ./.github/actions/test-release-images
+        with:
+          tag: ${{ env.SHA }}
+      - name: Bundle images and release scripts (the manifest names the images' hash; the VPS checks it)
         run: |
           set -euo pipefail
           mkdir -p bundle/ops
           cp -r ops/vps ops/db ops/backup bundle/ops/
           docker save "nurseapp/api:$SHA" "nurseapp/migrate:$SHA" "nurseapp/web:$SHA" | gzip -1 > bundle/images.tar.gz
+          ops/vps/make-image-manifest.sh "$SHA" bundle/images.tar.gz > bundle/ops/RELEASE_IMAGES
+          cat bundle/ops/RELEASE_IMAGES
           tar -cf bundle.tar -C bundle ops images.tar.gz
           ls -lh bundle.tar
       - name: Release on the VPS (blue/green; waits until the new colour is live)
