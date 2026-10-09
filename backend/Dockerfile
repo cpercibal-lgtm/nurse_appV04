@@ -12,7 +12,9 @@
 # Behind a TLS-inspecting proxy, pass its CA for the npm install only (never
 # stored in the image):  docker build --secret id=ca,src=/path/to/ca.pem ...
 
-FROM node:22-bookworm-slim AS build
+# Base images are pinned by digest (QA F2): the tag says which release, the digest which exact image.
+# Dependabot (/backend, /frontend) moves tag and digest together.
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -32,7 +34,7 @@ WORKDIR /app/backend
 CMD ["npx", "prisma", "migrate", "deploy"]
 
 # ── runtime: production dependencies and compiled code only ────────────────
-FROM node:22-bookworm-slim AS runtime
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json package-lock.json ./
