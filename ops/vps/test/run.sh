@@ -95,12 +95,22 @@ for image in api migrate web; do docker tag "nurseapp/$image:$TAG" "nurseapp/$im
 mkdir -p "$WORK/bundle/ops" "$WORK/opt"
 cp -r "$ROOT/ops/vps" "$ROOT/ops/db" "$ROOT/ops/backup" "$WORK/bundle/ops/"   # what the workflow ships
 docker save "nurseapp/api:$SHA" "nurseapp/migrate:$SHA" "nurseapp/web:$SHA" | gzip -1 > "$WORK/bundle/images.tar.gz"
+"$HERE/make-image-manifest.sh" "$SHA" "$WORK/bundle/images.tar.gz" > "$WORK/bundle/ops/RELEASE_IMAGES"   # what the workflow ships beside the images
 for image in api migrate web; do docker rmi "nurseapp/$image:$SHA" >/dev/null; done   # must come from the bundle
 tar -cf "$WORK/bundle.tar" -C "$WORK/bundle" ops images.tar.gz
 tar -cf "$WORK/evil.tar" -C "$WORK/bundle" ops/vps/deploy.sh && tar -rf "$WORK/evil.tar" -C / etc/hostname
 release_dirs() { compgen -G '/var/tmp/nurseapp-release.*' | sort || true; }
 before="$(release_dirs)"
 if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/evil.tar" 2>/dev/null; then echo "a bundle with a foreign path was accepted" >&2; exit 1; fi
+# The images must be the ones the manifest names: a changed tarball, or no manifest at all, is refused before docker load.
+cp -r "$WORK/bundle" "$WORK/tampered" && printf 'x' >> "$WORK/tampered/images.tar.gz"
+tar -cf "$WORK/tampered.tar" -C "$WORK/tampered" ops images.tar.gz
+if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/tampered.tar" 2>/dev/null; then echo "images that do not match the manifest were accepted" >&2; exit 1; fi
+cp -r "$WORK/bundle" "$WORK/unlisted" && rm "$WORK/unlisted/ops/RELEASE_IMAGES"
+tar -cf "$WORK/unlisted.tar" -C "$WORK/unlisted" ops images.tar.gz
+if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/unlisted.tar" 2>/dev/null; then echo "images without a manifest were accepted" >&2; exit 1; fi
+if docker image inspect "nurseapp/api:$SHA" >/dev/null 2>&1; then echo "a refused bundle's images were loaded anyway" >&2; exit 1; fi
+[[ "$(live)" == blue ]] || { echo "a refused bundle changed the live colour" >&2; exit 1; }
 if NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" "release;id" < /dev/null 2>/dev/null; then echo "a bad command was accepted" >&2; exit 1; fi
 NURSEAPP_OPS="$WORK/opt" "$HERE/nurseapp-release" release "$SHA" < "$WORK/bundle.tar"
 [[ "$(release_dirs)" == "$before" ]] || { echo "nurseapp-release left its work folder in /var/tmp" >&2; exit 1; }
@@ -109,6 +119,9 @@ for p in "$WORK/opt" "$WORK/opt/backup/scripts" "$WORK/opt/backup/scripts/wal-ar
   [[ "$(stat -c %a "$p")" == 755 ]] || { echo "released $p is not readable by the postgres user" >&2; exit 1; }
 done
 [[ "$(live)" == green ]] || { echo "expected green live" >&2; exit 1; }
+# The release record names what ran: the commit, the tarball hash, and each image.
+[[ "$(grep -c 'sha256 ' "$STATE/image-manifests.log")" == 1 ]] && grep -q "tag $SHA" "$STATE/image-manifests.log" \
+  || { echo "image-manifests.log does not record exactly this release's images" >&2; exit 1; }
 (( $(running blue) == 0 )) || { echo "blue still running after the switch" >&2; exit 1; }
 (( $(running green) == 3 )) || { echo "green is not api + worker + web" >&2; exit 1; }
 
