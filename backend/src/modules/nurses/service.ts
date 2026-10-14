@@ -266,7 +266,49 @@ export function createNurseService(db: Db) {
     return e;
   }
 
+  /**
+   * Onboarding inside the caller's transaction (E10, D-17): employee + Draft contract + HIGH audit + eligibility state.
+   * Shared by onboarding and the staff import (D-72), so both apply exactly the same rules.
+   */
+  async function onboardInTx(tx: DbClient, auth: AuthContext, input: z.infer<typeof OnboardBody>, requestId?: string) {
+    if (input.contractEnd <= input.contractStart) throw unprocessable('CONTRACT_DATES_INVALID', 'Contract end must be after its start (C5)');
+    // E6: no position given → the default, but only if the hospital has it (an empty database may not).
+    const positionCode = input.positionCode ?? (await tx.position.findFirst({ where: { code: DEFAULT_ONBOARDING_POSITION, isActive: true }, select: { code: true } }))?.code;
+    if (!positionCode) throw unprocessable('POSITION_REQUIRED', `Choose a position: the default position ${DEFAULT_ONBOARDING_POSITION} (rule E6) does not exist or is inactive`);
+    const body = { ...input, positionCode };
+    await assertPlaceable(tx, auth, body.unitId);
+    await assertPosition(tx, body.positionCode);
+    await assertJobNumberFree(tx, body.jobNumber);
+    await assertNationality(tx, body.nationalityCode);
+    await assertActiveRankGrade(tx, body.rankGradeCode);
+    await assertActiveSpecialty(tx, body.specialtyCode);
+    await assertJobPost(tx, body.jobPostRegionCode, body.jobPostCityId);
+    await assertActiveFacility(tx, body.facilityId);
+    const { contractStart, contractEnd, contractTypeCode, hireDate, ...fields } = body;
+    await assertActiveContractType(tx, contractTypeCode);
+    const emp = await tx.employee.create({
+      // full_name is composed by the database trigger (E3); the placeholder never survives the insert.
+      data: { ...fields, fullName: '', hireDate: hireDate ? toDbDate(hireDate) : null },
+    });
+    const contract = await tx.contract.create({
+      data: {
+        employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Draft', createdById: auth.user.id, contractTypeCode,
+        startDate: toDbDate(contractStart), endDate: toDbDate(contractEnd),
+        startDateHijri: toHijriIso(contractStart), endDateHijri: toHijriIso(contractEnd),
+      },
+    });
+    await appendAudit(tx, {
+      actorUserId: auth.user.id, action: 'EMPLOYEE_ONBOARDED', resource: 'employee', resourceId: emp.id,
+      changes: { jobNumber: emp.jobNumber, unitId: emp.unitId, positionCode: emp.positionCode, contractId: contract.id, contractStart, contractEnd, contractTypeCode, contractStatus: 'Draft' },
+      requestId, priority: 'HIGH',
+    });
+    await refreshEligibility(tx, emp.id, 'EMPLOYEE_ONBOARDED', { actorUserId: auth.user.id, requestId });
+    return { employeeId: emp.id, contractId: contract.id };
+  }
+
   return {
+    onboardInTx,
+
     async list(auth: AuthContext, q: z.infer<typeof ListQuery>) {
       const [hr, sup] = await Promise.all([hrScope(db, auth), unitScope(db, auth, ['SUPERVISOR'])]);
       const unitFilter = (s: typeof hr) => (s.all ? {} : { unitId: { in: [...s.unitIds] } });
@@ -322,41 +364,7 @@ export function createNurseService(db: Db) {
 
     /** E10 + D-3: employee, Draft contract, audit and eligibility state in one transaction. Returns identifiers only ([I]). */
     async onboard(auth: AuthContext, input: z.infer<typeof OnboardBody>, requestId?: string) {
-      if (input.contractEnd <= input.contractStart) throw unprocessable('CONTRACT_DATES_INVALID', 'Contract end must be after its start (C5)');
-      return db.$transaction(async (tx) => {
-        // E6: no position given → the default, but only if the hospital has it (an empty database may not).
-        const positionCode = input.positionCode ?? (await tx.position.findFirst({ where: { code: DEFAULT_ONBOARDING_POSITION, isActive: true }, select: { code: true } }))?.code;
-        if (!positionCode) throw unprocessable('POSITION_REQUIRED', `Choose a position: the default position ${DEFAULT_ONBOARDING_POSITION} (rule E6) does not exist or is inactive`);
-        const body = { ...input, positionCode };
-        await assertPlaceable(tx, auth, body.unitId);
-        await assertPosition(tx, body.positionCode);
-        await assertJobNumberFree(tx, body.jobNumber);
-        await assertNationality(tx, body.nationalityCode);
-        await assertActiveRankGrade(tx, body.rankGradeCode);
-        await assertActiveSpecialty(tx, body.specialtyCode);
-        await assertJobPost(tx, body.jobPostRegionCode, body.jobPostCityId);
-        await assertActiveFacility(tx, body.facilityId);
-        const { contractStart, contractEnd, contractTypeCode, hireDate, ...fields } = body;
-        await assertActiveContractType(tx, contractTypeCode);
-        const emp = await tx.employee.create({
-          // full_name is composed by the database trigger (E3); the placeholder never survives the insert.
-          data: { ...fields, fullName: '', hireDate: hireDate ? toDbDate(hireDate) : null },
-        });
-        const contract = await tx.contract.create({
-          data: {
-            employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Draft', createdById: auth.user.id, contractTypeCode,
-            startDate: toDbDate(contractStart), endDate: toDbDate(contractEnd),
-            startDateHijri: toHijriIso(contractStart), endDateHijri: toHijriIso(contractEnd),
-          },
-        });
-        await appendAudit(tx, {
-          actorUserId: auth.user.id, action: 'EMPLOYEE_ONBOARDED', resource: 'employee', resourceId: emp.id,
-          changes: { jobNumber: emp.jobNumber, unitId: emp.unitId, positionCode: emp.positionCode, contractId: contract.id, contractStart, contractEnd, contractTypeCode, contractStatus: 'Draft' },
-          requestId, priority: 'HIGH',
-        });
-        await refreshEligibility(tx, emp.id, 'EMPLOYEE_ONBOARDED', { actorUserId: auth.user.id, requestId });
-        return { employeeId: emp.id, contractId: contract.id };
-      });
+      return db.$transaction((tx) => onboardInTx(tx, auth, input, requestId));
     },
 
     /** `expected`: the version the caller loaded (If-Match); a newer one is refused (STALE_RECORD). */

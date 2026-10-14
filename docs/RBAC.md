@@ -55,7 +55,7 @@ Generated from `backend/src/modules/users/permissions.ts`. **`backend/test/docs.
 | `workforce.bedHistory` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Bed change log of a unit in scope |
 | `kpi.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Nurse-to-bed KPI |
 | `employees.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Employee list and records (Supervisor: baseline view) |
-| `employees.write` | HR_ADMIN, SYSTEM_ADMIN | Onboard, edit, soft-delete |
+| `employees.write` | HR_ADMIN, SYSTEM_ADMIN | Onboard, edit, soft-delete; staff import from the template and its live lists (D-72), each row's unit in scope (Unassigned: system-wide) |
 | `employees.position` | HR_ADMIN | Position change (E9) — System Admin excluded |
 | `employees.assign` | HR_ADMIN, SYSTEM_ADMIN | Unit and/or position from the Nurses list (right-click), with a reason, and its preview (owner decision 2026-10-05); System Admin only while elevated |
 | `contracts.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Contract list and records |

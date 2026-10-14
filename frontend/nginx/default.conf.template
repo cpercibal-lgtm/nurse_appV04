@@ -44,6 +44,18 @@ server {
     proxy_read_timeout 60s;
   }
 
+  # Staff import (D-72): one transaction of up to 1,000 people (about 25 s measured; the API allows 120 s).
+  location = /api/v1/employees/import {
+    proxy_pass http://api;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Client-Ip "";
+    proxy_read_timeout 180s;
+  }
+
   # Hashed assets: cache for a year. index.html: never cache, so a release is picked up at once.
   location /assets/ {
     expires 1y;

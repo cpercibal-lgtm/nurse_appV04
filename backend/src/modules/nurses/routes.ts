@@ -7,11 +7,12 @@ import { ifMatch } from '../../lib/concurrency.js';
 import type { Db } from '../../lib/prisma.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
+import { ImportBody, type StaffImportService } from './staff-import.js';
 import { AssignmentBody, AssignmentPreviewQuery, DeleteBody, ListQuery, OnboardBody, OwnContactBody, PositionBody, UpdateBody, type NurseService } from './service.js';
 
 const IdParam = z.object({ id: z.coerce.number().int().positive() });
 
-export function createNursesRouter(db: Db, nurses: NurseService) {
+export function createNursesRouter(db: Db, nurses: NurseService, staffImport: StaffImportService) {
   const r = Router();
   const rid = (res: Response) => res.locals.requestId as string;
 
@@ -22,6 +23,12 @@ export function createNursesRouter(db: Db, nurses: NurseService) {
   r.get('/employees/onboarding-defaults', authorize('employees.write'), async (_req, res) => { res.json(await nurses.onboardingDefaults()); });
   r.post('/employees/onboard', authorize('employees.write'), idempotent(db, 'employees.onboard'), async (req, res) => {
     res.status(201).json(await nurses.onboard(authOf(res), OnboardBody.parse(req.body), rid(res)));
+  });
+  // Staff import (D-72). Literal paths before /employees/:id. `check` writes nothing; the import is all or nothing.
+  r.get('/employees/import/lists', authorize('employees.write'), async (_req, res) => { res.json(await staffImport.lists(authOf(res))); });
+  r.post('/employees/import/check', authorize('employees.write'), async (req, res) => { res.json(await staffImport.check(authOf(res), ImportBody.parse(req.body))); });
+  r.post('/employees/import', authorize('employees.write'), idempotent(db, 'employees.import'), async (req, res) => {
+    res.status(201).json(await staffImport.commit(authOf(res), ImportBody.parse(req.body), rid(res)));
   });
   // Own-or-scoped checks happen in the service.
   r.get('/employees/:id', async (req, res) => { res.json(await nurses.get(authOf(res), IdParam.parse(req.params).id)); });

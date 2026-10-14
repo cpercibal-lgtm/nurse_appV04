@@ -118,3 +118,25 @@ export function useInviteEmployee() {
     onSuccess: (_d, employeeId) => qc.invalidateQueries({ queryKey: ['invitations', employeeId] }),
   });
 }
+
+// ── Staff import (D-72): rows from the template; check writes nothing, the import is all or nothing ──
+export type ImportRowStatus = 'CREATE' | 'UNCHANGED' | 'CONFLICT' | 'REJECTED';
+export interface ImportReport {
+  totals: { create: number; unchanged: number; conflict: number; rejected: number };
+  canImport?: boolean;
+  rows: Array<{ rowNumber: number; jobNumber: string | null; status: ImportRowStatus; problems: Array<{ column: string | null; code: string; message: string }> }>;
+  created?: Array<{ rowNumber: number; employeeId: number; contractId: number }>;
+}
+export interface ImportRequest { templateVersion: number; fileSha256: string; rows: unknown[] }
+export const useImportLists = () => {
+  const qc = useQueryClient();
+  return () => qc.fetchQuery({ queryKey: ['employees', 'import-lists'], staleTime: 0, queryFn: () => http.get<import('./staff-import/template').ImportLists>('/employees/import/lists') });
+};
+export const useImportCheck = () => useMutation({ mutationFn: (b: ImportRequest) => http.post<ImportReport>('/employees/import/check', b) });
+export function useImportCommit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, key }: { body: ImportRequest; key: string }) => http.post<ImportReport>('/employees/import', body, { idempotencyKey: key }),
+    onSuccess: () => Promise.all(['employees', 'contracts', 'eligibility'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+  });
+}

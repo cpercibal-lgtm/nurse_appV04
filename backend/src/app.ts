@@ -41,6 +41,7 @@ import { createWorkforceRouter } from './modules/workforce/routes.js';
 import { createOrgService } from './modules/workforce/org.js';
 import { createNurseService } from './modules/nurses/service.js';
 import { createNursesRouter } from './modules/nurses/routes.js';
+import { createStaffImportService } from './modules/nurses/staff-import.js';
 import { createContractService } from './modules/contracts/service.js';
 import { createContractsRouter } from './modules/contracts/routes.js';
 import { createSchedulingService } from './modules/scheduling/service.js';
@@ -88,7 +89,10 @@ export function createApp({ env, db, passwords = createPasswordService(env.BCRYP
   app.use('/api', requestLog.middleware); // spec §9.2: every API request, after its response
   // One exact origin; credentials allowed because the refresh token travels in a cookie.
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true, exposedHeaders: ['X-Request-Id'] }));
-  app.use(express.json({ limit: '1mb' }));
+  // The staff import (D-72) sends up to 1,000 rows as JSON; every other request keeps the 1 MB limit.
+  const jsonDefault = express.json({ limit: '1mb' });
+  const jsonImport = express.json({ limit: '3mb' });
+  app.use((req, res, next) => (req.method === 'POST' && /^\/api\/v1\/employees\/import(\/check)?$/.test(req.path) ? jsonImport : jsonDefault)(req, res, next));
   // API responses carry tokens and personal data: never store them in any cache.
   app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   app.use(cookieParser());
@@ -159,7 +163,8 @@ export function createApp({ env, db, passwords = createPasswordService(env.BCRYP
   const announcements = createAnnouncementService(db, { emailHourlyLimit: env.EMAIL_HOURLY_LIMIT });
   api.use(createUsersRouter(db, createAccountService(db, passwords), createRoleAssignmentService(db), catalog, createBaselineImportService(db), invitations, passwordResets, mfa, emailChanges, announcements));
   api.use(createWorkforceRouter(db, createOrgService(db)));
-  api.use(createNursesRouter(db, createNurseService(db)));
+  const nurseService = createNurseService(db);
+  api.use(createNursesRouter(db, nurseService, createStaffImportService(db, nurseService)));
   api.use(createSchedulingRouter(db, createSchedulingService(db), createAttendanceService(db)));
   api.use(createNotificationsRouter(db));
   api.use(createAnnouncementsRouter(db, announcements));

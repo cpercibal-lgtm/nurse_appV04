@@ -25,6 +25,7 @@ import { useEmployee, useEmployeeAction, useEmployees, useInvitations, useInvite
 import { GuideHelp } from '../guidelines/GuideHelp';
 import { AssignDialog, NurseContextMenu, type AssignMode } from './AssignDialog';
 import { keyAfterError } from '../../lib/idempotency';
+import { ImportStaffDrawer } from './staff-import/ImportStaffDrawer';
 const OPTIONAL_TEXT = ['middleName', 'jobTitle', 'fileNo', 'primaryPhone', 'emergencyContactPhone'] as const;
 
 /** Form values → API body: empty strings become null, dates YYYY-MM-DD. */
@@ -129,6 +130,7 @@ export default function NursesPage() {
   const [editing, setEditing] = useState(false);
   const defaults = useOnboardingDefaults(canWrite);
   const [moving, setMoving] = useState(false);
+  const [importing, setImporting] = useState(false); // D-72
   const detail = useEmployee(selected);
   const [onboardForm] = Form.useForm();
   const [editForm] = Form.useForm();
@@ -148,7 +150,12 @@ export default function NursesPage() {
 
   const e = detail.data;
   return (
-    <Card title={<>{t('nurses')} <GuideHelp section="nurses" /></>} extra={canWrite && <Button type="primary" onClick={() => { onboardForm.resetFields(); setOnboarding(crypto.randomUUID()); }}>{t('onboardEmployee')}</Button>}>
+    <Card title={<>{t('nurses')} <GuideHelp section="nurses" /></>} extra={canWrite && (
+      <Space>
+        <Button onClick={() => setImporting(true)}>{t('importStaff')}</Button>
+        <Button type="primary" onClick={() => { onboardForm.resetFields(); setOnboarding(crypto.randomUUID()); }}>{t('onboardEmployee')}</Button>
+      </Space>
+    )}>
       <Flex gap={8} wrap style={{ marginBottom: 12 }}>
         <Input.Search aria-label={t('searchJobOrName')} allowClear placeholder={t('searchJobOrName')} style={{ width: 280 }} onSearch={(q) => setFilter({ ...filter, q: q || undefined, page: 1 })} />
         <Select aria-label={t('unit')} allowClear placeholder={t('unit')} style={{ width: 260 }} showSearch optionFilterProp="label"
@@ -177,6 +184,7 @@ export default function NursesPage() {
         <NurseContextMenu at={{ x: menu.x, y: menu.y }} row={menu.row} onClose={() => setMenu(null)}
           onPick={(choice) => { const row = menu.row; setMenu(null); if (choice === 'open') setSelected(row.id); else setAssigning({ row, mode: choice }); }} />
       )}
+      {canWrite && <ImportStaffDrawer open={importing} onClose={() => setImporting(false)} />}
       {assigning && <AssignDialog row={assigning.row} mode={assigning.mode} onClose={() => setAssigning(null)} />}
       <Drawer title={t('onboardEmployee')} open={onboarding !== null} onClose={() => setOnboarding(null)} size={640} destroyOnHidden>
         <Alert type="info" showIcon title={t('onboardHint')} style={{ marginBottom: 12 }} />
