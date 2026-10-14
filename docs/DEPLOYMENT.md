@@ -33,7 +33,7 @@ Every backend setting is in [`.env.example`](../.env.example) and is validated a
 | `JWT_SECRET` | — | Required, ≥ 32 characters of random data (spec §3.4). Rotating it signs everyone out |
 | `ACCESS_TOKEN_TTL_SECONDS` / `SESSION_IDLE_SECONDS` / `SESSION_ABSOLUTE_SECONDS` | 900 / 3600 / 86400 | D-6 |
 | `BCRYPT_ROUNDS` | 12 | 10–15 |
-| `MFA_REQUIRED_ROLES` | SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR | Holders must use an authenticator app (spec §3.5, D-51). Production refuses a list without `SYSTEM_ADMIN` and `HR_ADMIN` |
+| `MFA_REQUIRED_ROLES` | SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR,NURSING_ADMIN,NURSING_DIRECTOR | Holders must use an authenticator app (spec §3.5, D-51). Production refuses a list without `SYSTEM_ADMIN` and `HR_ADMIN` |
 | `MFA_ENCRYPTION_KEY` | — (development derives one) | **Required in production:** 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts the authenticator secrets; keep it in the deployment secrets **and** with the backup keys — a restore without it means every authenticator is set up again (HR resets each) |
 | `LOGIN_THROTTLE_WINDOW_SECONDS` / `_MAX_PER_ACCOUNT` / `_MAX_PER_CLIENT` | 900 / 5 / 20 | D-23. Counted in the database (`login_throttle`, D-46), so they hold across any number of API instances and restarts |
 | `BACKUP_RETENTION_DAYS` | 30 | Days a backup is kept — set it to the same value as the backup kit's `BACKUP_RETENTION_DAYS` (spec §10.6). An erasure record (D-55) states when the last backup holding the erased data expires: erasure time + this + 1 day |

@@ -52,7 +52,7 @@ These are decisions, not tasks. Production should not open until each is settled
 - [ ] `CORS_ORIGIN` and `APP_BASE_URL` = `https://nurse.<hospital-domain>`.
 - [ ] The four keys exist and differ from each other: `MFA_ENCRYPTION_KEY`, `DOCUMENT_ENCRYPTION_KEY`, `PDPL_FIELD_ENCRYPTION_KEY`, `PDPL_BLIND_INDEX_PEPPER`.
 - [ ] **`LOGIN_THROTTLE_MAX_PER_CLIENT=100`** (hospital reply D1: staff use mobile internet, so many people share a carrier address). `LOGIN_THROTTLE_MAX_PER_ACCOUNT` stays 5.
-- [ ] `MFA_REQUIRED_ROLES` includes at least `SYSTEM_ADMIN` and `HR_ADMIN` (production refuses a list without them). **Known gap:** the setting accepts only `SYSTEM_ADMIN`, `HR_ADMIN` and `SUPERVISOR`, so a Nursing Admin or Nursing Director is *not* forced to use an authenticator app, although they approve and publish rosters. Accept this for now, or have the developer extend the list before go-live.
+- [ ] `MFA_REQUIRED_ROLES` includes at least `SYSTEM_ADMIN` and `HR_ADMIN` (production refuses a list without them). The default list also covers `SUPERVISOR`, `NURSING_ADMIN` and `NURSING_DIRECTOR`, so the people who approve and publish rosters must set up an authenticator app at their next sign-in.
 - [ ] E-mail: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_REPLY_TO`; `EMAIL_HOURLY_LIMIT` below the provider's limit (UltaMail: 150). Empty `SMTP_HOST` means e-mail is off, so roster approval notices reach people in the app only.
 - [ ] `BREAK_GLASS_ALERT_EMAILS` = the CEO and the IT Director.
 - [ ] `NOTIFICATION_DRIVER`, `SCFHS_DRIVER` and `BADGE_SIMULATOR` match the decisions above. `DEMO_PASSWORD` is **not** set.
@@ -149,7 +149,7 @@ For a server that already runs an earlier version, the roster approval work (pul
 2. - [ ] **Set `LOGIN_THROTTLE_MAX_PER_CLIENT=100`** in `/etc/nurseapp/app.env`, then `sudo /opt/nurseapp/vps/deploy.sh restart`.
 3. - [ ] **Grant the roles** (A11) before the first roster is due.
 4. - [ ] **Tell the users:** Supervisors and Nursing Admins now press *Ask for approval* and wait for the Nursing Director before *Publish week* becomes available. **A Supervisor can no longer publish alone.**
-5. - [ ] Decide whether to accept that the two new roles are not covered by `MFA_REQUIRED_ROLES` (A5).
+5. - [ ] If `MFA_REQUIRED_ROLES` is set in `/etc/nurseapp/app.env`, add `NURSING_ADMIN,NURSING_DIRECTOR` to it (the built-in default already has them); each holder sets up an authenticator app at their next sign-in (A5).
 6. - [ ] Have the Arabic wording read by a native speaker.
 
 **Rollback note:** rolling back to the release before this one is safe for the schema, but that version lets a Supervisor publish without approval again, and rosters already approved stay in `roster_approvals` unused.

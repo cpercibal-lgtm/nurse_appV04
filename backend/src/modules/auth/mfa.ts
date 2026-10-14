@@ -4,8 +4,8 @@
 //
 // Who is asked:
 // - every account with a confirmed authenticator, at every sign-in;
-// - holders of a role in MFA_REQUIRED_ROLES (System Admin, HR Admin and
-//   Supervisor by default) must set one up at their next sign-in before any
+// - holders of a role in MFA_REQUIRED_ROLES (System Admin, HR Admin,
+//   Supervisor, Nursing Admin and Nursing Director by default) must set one up at their next sign-in before any
 //   session is issued;
 // - never the break-glass account (spec §3.6: it must work in an emergency
 //   from the sealed envelopes; it has its own siren).

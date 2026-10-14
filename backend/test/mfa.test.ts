@@ -10,7 +10,7 @@ import { totp } from '../src/lib/totp.js';
 import { makeNurse, makeOrg, makeUser, openDb, ORIGIN, PASSWORD, signIn, TEST_URL, testApp } from './helpers.js';
 
 const describeDb = TEST_URL ? describe : describe.skip;
-const ON = { MFA_REQUIRED_ROLES: 'SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR' };
+const ON = { MFA_REQUIRED_ROLES: 'SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR,NURSING_ADMIN,NURSING_DIRECTOR' };
 
 describeDb('MFA (spec §3.5)', () => {
   let db: Db;
@@ -76,6 +76,14 @@ describeDb('MFA (spec §3.5)', () => {
     expect(await db.notification.count({ where: { recipientId: u.id, type: 'SECURITY', title: 'Two-factor sign-in turned on' } })).toBe(1);
     const hashes = await db.mfaRecoveryCode.findMany({ where: { userId: u.id } });
     expect(JSON.stringify(hashes)).not.toContain(ok.body.recoveryCodes[0]);
+  });
+
+  it('the roster approval roles (Nursing Admin, Nursing Director) must set up an authenticator too', async () => {
+    for (const role of ['NURSING_ADMIN', 'NURSING_DIRECTOR'] as const) {
+      const u = await makeUser(db, { roles: [{ role, scopeType: 'SYSTEM' }] });
+      const res = await login(app, u.email);
+      expect([res.status, res.body.mfa?.step, res.headers['set-cookie']]).toEqual([200, 'ENROLL', undefined]);
+    }
   });
 
   it('later sign-ins need a current code, and each code works once', async () => {
@@ -226,7 +234,7 @@ describeDb('MFA (spec §3.5)', () => {
     const base = { NODE_ENV: 'production', DATABASE_URL: 'postgresql://x/y', JWT_SECRET: 'x'.repeat(40), DOCUMENT_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'), PDPL_FIELD_ENCRYPTION_KEY: Buffer.alloc(32, 10).toString('base64'), PDPL_BLIND_INDEX_PEPPER: Buffer.alloc(32, 11).toString('base64') };
     expect(() => loadEnv(base)).toThrow(/MFA_ENCRYPTION_KEY: required in production/);
     const key = Buffer.alloc(32, 7).toString('base64');
-    expect(loadEnv({ ...base, MFA_ENCRYPTION_KEY: key }).MFA_REQUIRED_ROLES).toEqual(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR']);
+    expect(loadEnv({ ...base, MFA_ENCRYPTION_KEY: key }).MFA_REQUIRED_ROLES).toEqual(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR']);
     expect(() => loadEnv({ ...base, MFA_ENCRYPTION_KEY: key, MFA_REQUIRED_ROLES: 'SYSTEM_ADMIN' })).toThrow(/must include SYSTEM_ADMIN and HR_ADMIN/);
     expect(() => loadEnv({ ...base, MFA_ENCRYPTION_KEY: key, MFA_REQUIRED_ROLES: 'none' })).toThrow(/must include SYSTEM_ADMIN and HR_ADMIN/);
     expect(() => loadEnv({ ...base, MFA_ENCRYPTION_KEY: 'c2hvcnQ=' })).toThrow(/32 random bytes/);

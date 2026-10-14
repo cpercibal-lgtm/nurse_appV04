@@ -38,9 +38,9 @@ const EnvSchema = z.object({
    */
   MFA_REQUIRED_ROLES: z
     .string()
-    .default('SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR')
+    .default('SYSTEM_ADMIN,HR_ADMIN,SUPERVISOR,NURSING_ADMIN,NURSING_DIRECTOR')
     .transform((s) => (s.trim().toLowerCase() === 'none' ? [] : s.split(',').map((r) => r.trim()).filter(Boolean)))
-    .pipe(z.array(z.enum(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR']))),
+    .pipe(z.array(z.enum(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR']))),
   /** 32 random bytes, base64: encrypts the authenticator secrets at rest. Required in production. */
   MFA_ENCRYPTION_KEY: z
     .string()

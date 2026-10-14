@@ -27,7 +27,7 @@ import { appendAudit } from '../lib/audit.js';
 import { loadEnv } from '../config/env.js';
 import { createPrisma, type Db } from '../lib/prisma.js';
 
-export const MFA_ROLES = ['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR'] as const;
+export const MFA_ROLES = ['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR'] as const;
 export type MfaRole = (typeof MFA_ROLES)[number];
 
 /** Returns the .env text with MFA_REQUIRED_ROLES set to `roles` ("none" when empty); every other line is kept. */
@@ -120,7 +120,7 @@ async function main() {
   if (!['status', 'off', 'on'].includes(action ?? '')) {
     console.log([
       'usage: npm run mfa -w backend -- status',
-      '       npm run mfa -w backend -- off|on [ROLE...]        roles (SYSTEM_ADMIN default, HR_ADMIN, SUPERVISOR); restart the backend after',
+      '       npm run mfa -w backend -- off|on [ROLE...]        roles (SYSTEM_ADMIN default, HR_ADMIN, SUPERVISOR, NURSING_ADMIN, NURSING_DIRECTOR); restart the backend after',
       '       npm run mfa -w backend -- off|on <email|id>       one account: exempt it (password only) or clear the exemption; no restart',
     ].join('\n'));
     process.exitCode = 2;
