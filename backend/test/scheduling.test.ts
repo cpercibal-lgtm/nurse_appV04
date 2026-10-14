@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Express } from 'express';
 import { addDays, riyadhDate, toDbDate } from '../src/lib/dates.js';
+import { dispatchEmails } from '../src/jobs/email-dispatch.js';
+import type { OutgoingEmail } from '../src/lib/mailer.js';
 import type { Db } from '../src/lib/prisma.js';
 import { makeEmployee, makeNurse, makeOrg, makeTemplate, makeUser, openDb, signIn, TEST_URL, testApp } from './helpers.js';
 
@@ -222,6 +224,54 @@ describeDb('scheduling and attendance', () => {
       expect((await decide(otherDir, asked.body.id, { decision: 'approve' })).body.error.code).toBe('SCOPE_NOT_COVERED');
       expect((await requestApproval(otherNa, date, date)).body.error.code).toBe('SCOPE_NOT_COVERED');
       expect((await otherNa.get('/roster/approvals').query({ unitId: org.unitA.id })).status).toBe(403);
+    });
+
+    it('notices: the directors in scope hear of a request, never the asker, and the asker hears the outcome', async () => {
+      const { emp } = await makeNurse(db, org.unitA.id);
+      const date = addDays(today(), 32);
+      const askerUser = await makeUser(db, { roles: [{ role: 'NURSING_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] });
+      const asker = await signIn(app, askerUser.email);
+      const directorUser = await makeUser(db, { roles: [{ role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] });
+      const director = await signIn(app, directorUser.email);
+      const otherUnitDirector = await makeUser(db, { roles: [{ role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitC.id] }] });
+      const both = await makeUser(db, { roles: [{ role: 'NURSING_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitA.id] }, { role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] });
+      const notices = (userId: number) => db.notification.findMany({ where: { recipientId: userId, eventKey: { startsWith: 'roster-approval:' } }, orderBy: { id: 'asc' } });
+
+      await draft(asker, emp.id, date);
+      const asked = await requestApproval(asker, date, date);
+      const got = await notices(directorUser.id);
+      expect(got).toHaveLength(1);
+      expect(got[0]).toMatchObject({ type: 'APPROVAL', eventKey: `roster-approval:${asked.body.id}:asked` });
+      expect(got[0]!.message).toContain(date);
+      expect(got[0]!.messageAr).toBeTruthy();
+      expect(await notices(both.id)).toHaveLength(1); // a director in scope who is not the asker
+      expect(await notices(otherUnitDirector.id)).toHaveLength(0); // another unit's director
+      expect(await notices(askerUser.id)).toHaveLength(0);
+
+      // The e-mail button opens the roster page.
+      await db.notification.updateMany({ where: { emailStatus: 'PENDING', NOT: { recipientId: directorUser.id } }, data: { emailStatus: 'SKIPPED' } });
+      const sent: OutgoingEmail[] = [];
+      await dispatchEmails(db, { enabled: true, send: async (m: OutgoingEmail) => { sent.push(m); } }, { retryMax: 3, retryDelaySeconds: 0, baseUrl: 'https://nurse.aigh.sa/', domain: 'aigh.sa', hourlyLimit: 1000 });
+      expect(sent.find((m) => m.to === directorUser.email)!.text).toContain('https://nurse.aigh.sa/scheduling');
+
+      // A rejection reaches the asker with the reason, as a HIGH notice.
+      expect((await decide(director, asked.body.id, { decision: 'reject', note: 'Night cover is too thin' })).body.status).toBe('Rejected');
+      const rejected = await notices(askerUser.id);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0]).toMatchObject({ priority: 'HIGH', title: 'Roster rejected', eventKey: `roster-approval:${asked.body.id}:rejected` });
+      expect(rejected[0]!.message).toContain('Night cover is too thin');
+
+      const again = await requestApproval(asker, date, date);
+      expect((await decide(director, again.body.id, { decision: 'approve' })).body.status).toBe('Approved');
+      expect((await notices(askerUser.id)).map((n) => n.title)).toEqual(['Roster rejected', 'Roster approved']);
+
+      // Asking as a user who is also a director gives that user no notice of their own request.
+      const bothClient = await signIn(app, both.email);
+      const date2 = addDays(today(), 33);
+      await draft(bothClient, emp.id, date2);
+      const own = await requestApproval(bothClient, date2, date2);
+      expect((await notices(both.id)).filter((n) => n.eventKey === `roster-approval:${own.body.id}:asked`)).toHaveLength(0);
+      expect((await notices(directorUser.id)).filter((n) => n.eventKey === `roster-approval:${own.body.id}:asked`)).toHaveLength(1);
     });
 
     it('the database refuses a decision by the requester, a decision without a decider and a rejection without a reason', async () => {

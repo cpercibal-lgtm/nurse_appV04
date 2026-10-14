@@ -1010,6 +1010,7 @@ export const en = {
   annDeleteConfirm: 'Delete this draft?',
   annNotFound: 'This announcement is not available to you.',
   annOpen: 'Open announcement',
+  rosterOpen: 'Open roster',
   annElevateToSend: 'To send or approve announcements as a System Admin, first elevate your access in Nursing Administration → Privileged access.',
   annNoPatientData: 'Do not include patient information. Name staff only when necessary.',
   annKindLabel: 'Type',

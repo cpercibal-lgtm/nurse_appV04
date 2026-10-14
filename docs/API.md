@@ -204,7 +204,7 @@ Eligibility in every response is the **live engine for the shift date** (L7), no
 
 | Method | Endpoint | Purpose | Permission | Source |
 | :--- | :--- | :--- | :--- | :--- |
-| GET | `/api/v1/notifications?unread&page&pageSize` | Own notifications with the unread count; `announcementId` on an announcement (D-69) | EMP (own only, N2) | spec §7.1 |
+| GET | `/api/v1/notifications?unread&page&pageSize` | Own notifications with the unread count; `announcementId` on an announcement (D-69); `eventKey` (`roster-approval:<id>:asked\|approved\|rejected` on a roster approval notice, D-71) | EMP (own only, N2) | spec §7.1 |
 | POST | `/api/v1/notifications/:id/read` · `/read-all` | Acknowledge own; another user's id is 404 | EMP (recipient only) | spec §7.1 |
 | GET | `/api/v1/audit?resource&resourceId&actor&action&priority&from&to&page` | Search, newest first; BIGINT ids as strings; actor names resolved | **SA only (D-20)** | spec §9.1 |
 | GET | `/api/v1/pdpl/register` | Processing register (spec §8.3.2, D-54): lawful basis, purpose, retention per sensitive category → `{items[{id, dataCategory, lawfulBasis, purpose, retentionRule, isActive, updatedAt}]}` | HR, SA | D-54 |

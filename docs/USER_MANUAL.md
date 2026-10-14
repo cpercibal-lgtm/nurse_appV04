@@ -1827,7 +1827,7 @@ The weekly roster board of a unit. The Supervisor or Nursing Admin drafts shifts
 **Steps.**
 
 1. Resolve red (ineligible) drafts and gaps.
-2. Click Ask for approval. The Nursing Director sees the request on the same page and approves or rejects it (a rejection gives a reason). You cannot approve your own request.
+2. Click Ask for approval. The Nursing Director gets a notice (with an Open roster link) and approves or rejects it on the same page; a rejection gives a reason, and you are told the outcome. You cannot approve your own request.
 3. When the approval message turns green, click Publish week.
 4. Read the result: how many were published, which were blocked and why, and how many rely on a grace period or waiver.
 

@@ -98,7 +98,9 @@ export async function dispatchEmails(db: Db, mailer: Mailer, cfg: DispatchConfig
         continue;
       }
       // D-69: an announcement's button opens the announcement itself.
-      const link = n.announcementId ? `${base}/announcements?id=${n.announcementId}` : `${base}/notifications`;
+      // D-71: a roster approval notice opens the roster page.
+      const link = n.announcementId ? `${base}/announcements?id=${n.announcementId}`
+        : n.eventKey?.startsWith('roster-approval:') ? `${base}/scheduling` : `${base}/notifications`;
       const outcome = await attempt(mailer, cfg, n.emailAttempts, {
         to: n.recipient.email, ...renderEmail({ ...n, link }),
         messageId: `<notification-${n.id}@${cfg.domain}>`, urgent: URGENT.has(n.priority),

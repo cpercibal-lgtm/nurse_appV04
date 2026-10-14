@@ -25,7 +25,7 @@ import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-err
 import type { Db, DbClient } from '../../lib/prisma.js';
 import type { EngineFacts, EngineResult } from '../eligibility/engine.js';
 import { currentLogic } from '../eligibility/logic.js';
-import { loadFacts } from '../eligibility/state.service.js';
+import { loadFacts, recipientsForUnit } from '../eligibility/state.service.js';
 import { unitScope, type AuthContext, type UnitScope } from '../users/access.js';
 
 export const MAX_WINDOW_DAYS = 94; // S6
@@ -311,6 +311,21 @@ export function createSchedulingService(db: Db) {
           actorUserId: auth.user.id, action: 'ROSTER_APPROVAL_REQUESTED', resource: 'unit', resourceId: body.unitId,
           changes: { approvalId: row.id, from: body.from, to: body.to, drafts }, requestId,
         });
+        // D-71: the Nursing Directors whose scope covers the unit hear of it (in-app, e-mail, Telegram prompt).
+        const directors = (await recipientsForUnit(tx, 'NURSING_DIRECTOR', body.unitId)).filter((id) => id !== auth.user.id);
+        const code = (await tx.unit.findUniqueOrThrow({ where: { id: body.unitId }, select: { code: true } })).code;
+        const name = auth.user.displayName;
+        await tx.notification.createMany({
+          data: directors.map((recipientId) => ({
+            recipientId, type: 'APPROVAL' as const, priority: 'MEDIUM' as const,
+            title: 'Roster waiting for your approval',
+            message: `${name} asked you to approve the roster of ${code} for ${body.from} to ${body.to} (${drafts} draft shift${drafts === 1 ? '' : 's'}). Open Roster & Scheduling to approve or reject it.`,
+            titleAr: 'جدول بانتظار اعتمادك',
+            messageAr: `طلب ${name} اعتماد جدول الوحدة ${code} للفترة من ${body.from} إلى ${body.to} (${drafts} من المناوبات المسودة). افتح صفحة الجدول والمناوبات للاعتماد أو الرفض.`,
+            eventKey: `roster-approval:${row.id}:asked`,
+          })),
+          skipDuplicates: true,
+        });
         return { id: row.id, status: row.status, drafts };
       });
     },
@@ -333,6 +348,26 @@ export function createSchedulingService(db: Db) {
           actorUserId: auth.user.id, action: status === 'Approved' ? 'ROSTER_APPROVED' : 'ROSTER_REJECTED', resource: 'unit', resourceId: row.unitId,
           changes: { approvalId: id, from: dbDate(row.fromDate), to: dbDate(row.toDate), requestedById: row.requestedById, note: body.note ?? null },
           requestId, priority: 'HIGH',
+        });
+        // D-71: whoever asked hears the outcome, with the reason when it was rejected.
+        const code = (await tx.unit.findUniqueOrThrow({ where: { id: row.unitId }, select: { code: true } })).code;
+        const approved = status === 'Approved';
+        const range = `${dbDate(row.fromDate)} to ${dbDate(row.toDate)}`;
+        const rangeAr = `من ${dbDate(row.fromDate)} إلى ${dbDate(row.toDate)}`;
+        await tx.notification.createMany({
+          data: [{
+            recipientId: row.requestedById, type: 'APPROVAL' as const, priority: approved ? ('MEDIUM' as const) : ('HIGH' as const),
+            title: approved ? 'Roster approved' : 'Roster rejected',
+            message: approved
+              ? `${auth.user.displayName} approved the roster of ${code} for ${range}. It can be published now.`
+              : `${auth.user.displayName} rejected the roster of ${code} for ${range}: ${body.note}`,
+            titleAr: approved ? 'تم اعتماد الجدول' : 'تم رفض الجدول',
+            messageAr: approved
+              ? `اعتمد ${auth.user.displayName} جدول الوحدة ${code} ${rangeAr}. يمكن نشره الآن.`
+              : `رفض ${auth.user.displayName} جدول الوحدة ${code} ${rangeAr}: ${body.note}`,
+            eventKey: `roster-approval:${id}:${approved ? 'approved' : 'rejected'}`,
+          }],
+          skipDuplicates: true,
         });
         return { id, status };
       });
