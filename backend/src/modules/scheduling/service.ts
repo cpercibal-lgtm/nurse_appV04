@@ -1,6 +1,10 @@
 // Rosters (spec §6.2, §6.3; rules S1–S6, L7; decisions D-14, D-16, D-31, D-32).
 //
 // - Scoped Supervisors draft and publish (D-14); HR / System Admin read.
+// - D-71 (hospital reply C6, 2026-10-14): the Nursing Admin prepares and, like the Supervisor,
+//   publishes; the Nursing Director approves a unit's drafts for a date window first. Publishing
+//   needs an Approved window that covers the dates; any change to the drafts in an approved or
+//   pending window withdraws it. The requester never decides their own request.
 // - A nurse is scheduled only in their home unit (D-32): the engine checks the
 //   home unit's credential rules, so floating would skip the target's rules.
 // - Every eligibility figure here is the live engine for the shift date, never
@@ -47,9 +51,23 @@ const windowCheck = (w: { from: string; to: string }, ctx: z.RefinementCtx) => {
   if (w.to < w.from || daysBetween(w.from, w.to) + 1 > MAX_WINDOW_DAYS) ctx.addIssue({ code: 'custom', path: ['to'], message: `A window of 1–${MAX_WINDOW_DAYS} days is required (S6)` });
 };
 export const PublishBody = z.strictObject({ unitId: z.number().int().positive(), from: IsoDateStr, to: IsoDateStr }).superRefine(windowCheck);
+export const ApprovalRequestBody = PublishBody;
+export const ApprovalListQuery = z.object({
+  unitId: UnitId,
+  status: z.enum(['Pending', 'Approved', 'Rejected', 'Withdrawn']).optional(),
+});
+export const DecideBody = z.strictObject({
+  decision: z.enum(['approve', 'reject']),
+  note: z.string().trim().min(5).max(500).optional(),
+}).superRefine((b, ctx) => {
+  if (b.decision === 'reject' && !b.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Rejecting a roster needs a reason of at least 5 characters' });
+});
 export const GenerateBody = z.strictObject({ unitId: z.number().int().positive(), from: IsoDateStr, to: IsoDateStr, dryRun: z.boolean().default(true) }).superRefine(windowCheck);
 
-const READ_ROLES = ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'] as const;
+const READ_ROLES = ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR'] as const;
+/** D-71: who prepares and publishes a unit's roster. */
+const PREPARE_ROLES = ['SUPERVISOR', 'NURSING_ADMIN'] as const;
+const APPROVE_ROLES = ['NURSING_DIRECTOR'] as const;
 const covers = (s: UnitScope, unitId: number) => s.all || s.unitIds.has(unitId);
 const dates = (from: IsoDate, to: IsoDate) => Array.from({ length: daysBetween(from, to) + 1 }, (_, i) => addDays(from, i));
 const slim = (r: EngineResult) => ({ status: r.status, reasons: r.reasons });
@@ -75,8 +93,27 @@ export function createSchedulingService(db: Db) {
   async function assertSupervises(tx: DbClient, auth: AuthContext, unitId: number) {
     const unit = await tx.unit.findUnique({ where: { id: unitId }, select: { isActive: true } });
     if (!unit) throw notFound('Unit not found');
-    if (!covers(await unitScope(tx, auth, ['SUPERVISOR']), unitId)) throw new HttpError(403, 'SCOPE_NOT_COVERED', 'You do not supervise this unit');
+    if (!covers(await unitScope(tx, auth, PREPARE_ROLES), unitId)) throw new HttpError(403, 'SCOPE_NOT_COVERED', 'You do not manage this unit\'s roster');
     return unit;
+  }
+
+  /** Approvals still alive (Pending or Approved) whose window touches [from, to]. */
+  const overlapping = (unitId: number, from: IsoDate, to: IsoDate) => ({
+    unitId, status: { in: ['Pending', 'Approved'] as Array<'Pending' | 'Approved'> }, fromDate: { lte: toDbDate(to) }, toDate: { gte: toDbDate(from) },
+  });
+
+  /** D-71: the drafts in a window changed, so any approval request touching it no longer describes them. */
+  async function withdrawApprovals(tx: DbClient, auth: AuthContext, unitId: number, from: IsoDate, to: IsoDate, requestId?: string) {
+    // The same per-unit lock as publishing: a publication that has already read its approval finishes first,
+    // and one that starts later sees the withdrawal, so no draft is published under an approval that predates it.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('roster:publish'), ${unitId})`;
+    const alive = await tx.rosterApproval.findMany({ where: overlapping(unitId, from, to), select: { id: true, status: true } });
+    if (alive.length === 0) return;
+    await tx.rosterApproval.updateMany({ where: { id: { in: alive.map((a) => a.id) } }, data: { status: 'Withdrawn' } });
+    await appendAudit(tx, {
+      actorUserId: auth.user.id, action: 'ROSTER_APPROVAL_WITHDRAWN', resource: 'unit', resourceId: unitId,
+      changes: { approvalIds: alive.map((a) => a.id), wereApproved: alive.filter((a) => a.status === 'Approved').length, reason: 'drafts in the window changed' }, requestId,
+    });
   }
 
   /** Assignments of a unit/window with live eligibility, and coverage per date × shift. */
@@ -171,6 +208,7 @@ export function createSchedulingService(db: Db) {
         if (!emp) throw notFound('Employee not found');
         if (emp.unitId !== body.unitId) throw unprocessable('NOT_HOME_UNIT', 'A nurse can only be scheduled in their home unit (D-32)');
         const a = await tx.shiftAssignment.create({ data: { ...body, shiftDate: toDbDate(body.shiftDate), status: 'Draft', createdById: auth.user.id } });
+        await withdrawApprovals(tx, auth, body.unitId, body.shiftDate, body.shiftDate, requestId);
         const eligibility = await engineFor(tx)(body.employeeId, body.shiftDate);
         await appendAudit(tx, { actorUserId: auth.user.id, action: 'ASSIGNMENT_DRAFTED', resource: 'shift_assignment', resourceId: a.id, changes: { ...body, eligibility: eligibility.status }, requestId });
         return { id: a.id, status: a.status, eligibility: slim(eligibility) };
@@ -186,6 +224,7 @@ export function createSchedulingService(db: Db) {
         const changes = { employeeId: a.employeeId, unitId: a.unitId, shiftDate: dbDate(a.shiftDate), shiftType: a.shiftType, reason };
         if (a.status === 'Draft') {
           await tx.shiftAssignment.delete({ where: { id } });
+          await withdrawApprovals(tx, auth, a.unitId, dbDate(a.shiftDate), dbDate(a.shiftDate), requestId);
           await appendAudit(tx, { actorUserId: auth.user.id, action: 'ASSIGNMENT_DELETED', resource: 'shift_assignment', resourceId: id, changes, requestId });
           return { id, status: 'Deleted' as const };
         }
@@ -246,10 +285,77 @@ export function createSchedulingService(db: Db) {
           await tx.shiftAssignment.createMany({
             data: proposed.map((p) => ({ employeeId: p.employeeId, unitId: body.unitId, shiftDate: toDbDate(p.date), shiftType: p.shiftType, status: 'Draft' as const, createdById: auth.user.id })),
           });
+          await withdrawApprovals(tx, auth, body.unitId, from, body.to, requestId);
           await appendAudit(tx, { actorUserId: auth.user.id, action: 'ROSTER_AUTO_DRAFTED', resource: 'unit', resourceId: body.unitId, changes: { from, to: body.to, created: proposed.length, unfilled: unfilled.length }, requestId });
         }
         return { dryRun: body.dryRun, proposed, unfilled, targetsMissing };
       }, { timeout: 120_000 });
+    },
+
+    /** D-71: the roster preparer asks the Nursing Director to approve a unit's drafts for a window. */
+    async requestApproval(auth: AuthContext, body: z.infer<typeof ApprovalRequestBody>, requestId?: string) {
+      return db.$transaction(async (tx) => {
+        const unit = await assertSupervises(tx, auth, body.unitId);
+        if (!unit.isActive) throw unprocessable('UNIT_NOT_ACTIVE', 'The unit is inactive');
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('roster:approval'), ${body.unitId})`;
+        const drafts = await tx.shiftAssignment.count({
+          where: { unitId: body.unitId, status: 'Draft', shiftDate: { gte: toDbDate(body.from), lte: toDbDate(body.to) } },
+        });
+        if (drafts === 0) throw unprocessable('NOTHING_TO_APPROVE', 'There are no drafts in these dates to approve');
+        const alive = await tx.rosterApproval.findFirst({ where: overlapping(body.unitId, body.from, body.to), select: { id: true, status: true } });
+        if (alive) throw conflict('APPROVAL_EXISTS', alive.status === 'Pending' ? 'These dates are already waiting for the Nursing Director' : 'These dates are already approved', { approvalId: alive.id });
+        const row = await tx.rosterApproval.create({
+          data: { unitId: body.unitId, fromDate: toDbDate(body.from), toDate: toDbDate(body.to), requestedById: auth.user.id },
+        });
+        await appendAudit(tx, {
+          actorUserId: auth.user.id, action: 'ROSTER_APPROVAL_REQUESTED', resource: 'unit', resourceId: body.unitId,
+          changes: { approvalId: row.id, from: body.from, to: body.to, drafts }, requestId,
+        });
+        return { id: row.id, status: row.status, drafts };
+      });
+    },
+
+    /** D-71: a Nursing Director whose scope covers the unit approves or rejects; never their own request. */
+    async decideApproval(auth: AuthContext, id: number, body: z.infer<typeof DecideBody>, requestId?: string) {
+      return db.$transaction(async (tx) => {
+        const row = await tx.rosterApproval.findUnique({ where: { id } });
+        if (!row) throw notFound('Approval request not found');
+        if (!covers(await unitScope(tx, auth, APPROVE_ROLES), row.unitId)) throw new HttpError(403, 'SCOPE_NOT_COVERED', 'This unit is outside your approval scope');
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('roster:approval'), ${row.unitId})`;
+        if (row.requestedById === auth.user.id) throw new HttpError(403, 'SELF_APPROVAL_FORBIDDEN', 'You cannot decide a roster request you made yourself');
+        const status = body.decision === 'approve' ? 'Approved' : 'Rejected';
+        const done = await tx.rosterApproval.updateMany({
+          where: { id, status: 'Pending' },
+          data: { status, decidedById: auth.user.id, decidedAt: new Date(), note: body.note ?? null },
+        });
+        if (done.count === 0) throw conflict('NOT_PENDING', 'This request has already been decided or withdrawn');
+        await appendAudit(tx, {
+          actorUserId: auth.user.id, action: status === 'Approved' ? 'ROSTER_APPROVED' : 'ROSTER_REJECTED', resource: 'unit', resourceId: row.unitId,
+          changes: { approvalId: id, from: dbDate(row.fromDate), to: dbDate(row.toDate), requestedById: row.requestedById, note: body.note ?? null },
+          requestId, priority: 'HIGH',
+        });
+        return { id, status };
+      });
+    },
+
+    /** Approval requests for a unit (newest first), with the names of the people involved. */
+    async approvals(auth: AuthContext, q: z.infer<typeof ApprovalListQuery>) {
+      await assertRead(db, auth, q.unitId);
+      const rows = await db.rosterApproval.findMany({
+        where: { unitId: q.unitId, ...(q.status ? { status: q.status } : {}) }, orderBy: { id: 'desc' }, take: 100,
+      });
+      const ids = [...new Set(rows.flatMap((r) => [r.requestedById, r.decidedById].filter((x): x is number => x !== null)))];
+      const users = ids.length ? await db.user.findMany({ where: { id: { in: ids } }, select: { id: true, displayName: true } }) : [];
+      const name = new Map(users.map((u) => [u.id, u.displayName]));
+      return {
+        items: rows.map((r) => ({
+          id: r.id, unitId: r.unitId, from: dbDate(r.fromDate), to: dbDate(r.toDate), status: r.status,
+          requestedBy: { id: r.requestedById, name: name.get(r.requestedById) ?? null }, requestedAt: r.requestedAt.toISOString(),
+          decidedBy: r.decidedById === null ? null : { id: r.decidedById, name: name.get(r.decidedById) ?? null },
+          decidedAt: r.decidedAt?.toISOString() ?? null, note: r.note,
+        })),
+        total: rows.length,
+      };
     },
 
     /** L7, S3: every draft in the window is re-validated by the engine in one transaction. */
@@ -258,6 +364,12 @@ export function createSchedulingService(db: Db) {
         await assertSupervises(tx, auth, body.unitId);
         // One publication per unit at a time.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('roster:publish'), ${body.unitId})`;
+        // D-71: the Nursing Director has approved a window that covers every date being published.
+        const approved = await tx.rosterApproval.findFirst({
+          where: { unitId: body.unitId, status: 'Approved', fromDate: { lte: toDbDate(body.from) }, toDate: { gte: toDbDate(body.to) } },
+          select: { id: true },
+        });
+        if (!approved) throw conflict('APPROVAL_REQUIRED', 'The Nursing Director has not approved the roster for these dates. Ask for approval first.');
         const today = riyadhDate();
         const drafts = await tx.shiftAssignment.findMany({
           where: { unitId: body.unitId, status: 'Draft', shiftDate: { gte: toDbDate(body.from), lte: toDbDate(body.to) } },
@@ -286,7 +398,7 @@ export function createSchedulingService(db: Db) {
         }
         await appendAudit(tx, {
           actorUserId: auth.user.id, action: 'ROSTER_PUBLISHED', resource: 'unit', resourceId: body.unitId,
-          changes: { from: body.from, to: body.to, published: published.length, blocked: blocked.map((b) => ({ id: b.id, reasons: b.reasons.map((x) => x.code) })), reliedOnGraceOrWaiver: reliedOn },
+          changes: { from: body.from, to: body.to, approvalId: approved.id, published: published.length, blocked: blocked.map((b) => ({ id: b.id, reasons: b.reasons.map((x) => x.code) })), reliedOnGraceOrWaiver: reliedOn },
           requestId, priority: 'HIGH',
         });
         return { published: published.length, blocked, reliedOnGraceOrWaiver: reliedOn };

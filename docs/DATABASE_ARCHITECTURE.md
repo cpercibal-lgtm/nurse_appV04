@@ -95,6 +95,7 @@ Values kept out of the audit trail on purpose: salary and the emergency contact 
 | `20260925200000_approval_withdrawal` | `ApprovalStatus.WITHDRAWN` and `approval_requests.withdrawn_at`: the initiator may withdraw their own pending request (owner decision 2026-09-24) |
 | `20260926090000_drop_field_defs_legacy` | Drops `credential_templates.field_defs_legacy`, the unread JSON rollback copy (go-live preparation, owner decision 2026-09-24) |
 | `20261030090000_kpi_counting_basis` | `positions.counts_as_nurse`, `units.patient_care_area`, `units.inpatient_beds` — what the MoH Ada'a nurse-to-bed KPIs count (D-70), filled with the owner's 2026-10-07 values (one audit entry each) |
+| `20261031090000_roster_approval` | Roles `NURSING_ADMIN` and `NURSING_DIRECTOR`; table `roster_approvals` (the Nursing Director's approval of a unit's roster window, with checks: the decider is not the requester, a decision has a decider and time, a rejection has a reason) — D-71 |
 
 **Rules**
 

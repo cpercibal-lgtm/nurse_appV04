@@ -17,10 +17,10 @@ const DAY_MS = 24 * 3600_000;
  * R5 maximum assignment windows. Source: V03 NestJS reference implementation
  * (roles.service.ts); NOT stated in the specification — flagged in RBAC.md.
  */
-export const MAX_EXPIRY_DAYS: Record<AppRole, number> = { SUPERVISOR: 90, HR_ADMIN: 365, SYSTEM_ADMIN: 365 };
+export const MAX_EXPIRY_DAYS: Record<AppRole, number> = { SUPERVISOR: 90, NURSING_ADMIN: 365, NURSING_DIRECTOR: 365, HR_ADMIN: 365, SYSTEM_ADMIN: 365 };
 
 // R1: EMPLOYEE is implicit and not grantable — it is simply not in this enum.
-const Role = z.enum(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR']);
+const Role = z.enum(['SYSTEM_ADMIN', 'HR_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR']);
 const Scope = z.enum(['SYSTEM', 'DEPARTMENT', 'UNIT']);
 const ScopeIds = z.array(z.number().int().positive()).max(200).transform((ids) => [...new Set(ids)].sort((a, b) => a - b));
 
@@ -98,8 +98,10 @@ async function assertCovers(db: DbClient, auth: AuthContext, scopeType: ScopeTyp
   if (!scopeCovers(await unitScope(db, auth, ADMIN_ROLES), scopeIds)) throw forbid('SCOPE_NOT_COVERED', 'You do not cover every unit in this scope');
 }
 
-/** R10 (spec §8.1): promoting to System Admin or to system-wide HR Admin needs a second administrator. */
-const needsFourEyes = (role: AppRole, scopeType: ScopeType) => role === 'SYSTEM_ADMIN' || (role === 'HR_ADMIN' && scopeType === 'SYSTEM');
+/** Roles whose system-wide grant is as sensitive as a system-wide HR Admin (D-71: the two roster roles). */
+const WIDE_ROLES: readonly AppRole[] = ['HR_ADMIN', 'NURSING_ADMIN', 'NURSING_DIRECTOR'];
+/** R10 (spec §8.1): promoting to System Admin or to a system-wide HR Admin, Nursing Admin or Nursing Director needs a second administrator. */
+const needsFourEyes = (role: AppRole, scopeType: ScopeType) => role === 'SYSTEM_ADMIN' || (WIDE_ROLES.includes(role) && scopeType === 'SYSTEM');
 
 export function createRoleAssignmentService(db: Db) {
   async function list(auth: AuthContext, q: z.infer<typeof ListQuery>) {
@@ -203,7 +205,7 @@ export function createRoleAssignmentService(db: Db) {
   async function update(auth: AuthContext, id: number, input: UpdateInput, requestId?: string): Promise<GrantOutcome> {
     const existing = await db.roleAssignment.findUnique({ where: { id } });
     if (!existing || existing.revokedAt) throw notFound('Assignment not found or already revoked');
-    const upgradingToSystem = existing.role === 'HR_ADMIN' && existing.scopeType !== 'SYSTEM' && input.scopeType === 'SYSTEM';
+    const upgradingToSystem = WIDE_ROLES.includes(existing.role) && existing.scopeType !== 'SYSTEM' && input.scopeType === 'SYSTEM';
     if (upgradingToSystem && !auth.breakGlass) {
       if (existing.userId === auth.user.id) throw forbid('SELF_UPDATE_FORBIDDEN', 'You cannot change your own assignment (R2)');
       await assertCovers(db, auth, 'SYSTEM', []);

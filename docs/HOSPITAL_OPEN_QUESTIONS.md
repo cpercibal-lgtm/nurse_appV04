@@ -60,10 +60,10 @@ Returned by Zemonette Pantig Magtalas (Nursing Admin / Administrator), signed 20
 
 | # | Answer | Effect |
 |---|---|---|
-| A6 | **Yes.** Read as: QMPS counts as a bedside nurse and is rostered on shifts. (The returned file showed "No"; the hospital contact corrected it to "Yes".) | The "for now" value ("not counted") no longer holds. HR sets the QMPS position flag in Workforce; no release is needed. The Nurse to Bed Ratio (QFR-55) rises slightly, so confirm the intent before changing the flag. |
+| A6 | **QMPS is not a bedside nurse.** (The returned file showed "No"; the hospital contact first said "Yes", then confirmed QMPS is not a bedside nurse.) | Matches the "for now" value (not counted in the Nurse to Bed Ratio, QFR-55). No change to the QMPS position flag in Workforce. |
 | C3 | **Nursing Director** approves leave. | How leave is recorded was not answered. |
 | C6 | **Nursing Director** approves; **Nursing Admin** prepares; **Nursing Admin and Supervisors** publish. | Differs from today, where the supervisor publishes. Needs a written rule and a system change (a Nursing Admin who prepares and publishes, and a Nursing Director approval step). Not built yet. |
-| D1 | Staff use their **mobile internet**, so there is no single hospital address or range. | There is nothing to allowlist. Mobile carriers can put unrelated users behind one address, so the 20-failures-per-15-minutes limit per address can lock out unrelated staff. The per-account limit (5 attempts) still protects each login. Proposed: IT raises the per-address limit; the new value is not yet chosen. |
+| D1 | Staff use their **mobile internet**, so there is no single hospital address or range. | There is nothing to allowlist. Mobile carriers can put unrelated users behind one address, so the 20-failures-per-15-minutes limit per address can lock out unrelated staff. The per-account limit (5 attempts) still protects each login. The setting is `LOGIN_THROTTLE_MAX_PER_CLIENT` (default 20); the recommended value is **100**, set by IT in `/etc/nurseapp/app.env` (see `ops/vps/README.md`). |
 
 ### Not answered
 

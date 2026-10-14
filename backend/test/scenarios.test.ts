@@ -25,13 +25,19 @@ const licence = (issue: string, expiry: string) => ({ trackingData: { licence_nu
 describeDb('business scenarios, end to end', () => {
   let db: Db;
   let app: Express;
-  let hr: Client; let hr2: Client; let sup: Client; let nurseA: Client;
+  let hr: Client; let hr2: Client; let sup: Client; let dir: Client; let nurseA: Client;
   let supId: number;
   let unitId: number;
   const ids = { a: 0, b: 0, lic: 0, train: 0, aLicence: 0, aTomorrow: 0, bTomorrow: 0, bToday: 0 };
 
   const state = async (employeeId: number) => db.eligibilityState.findUniqueOrThrow({ where: { employeeId } });
   const codes = async (employeeId: number) => ((await state(employeeId)).reasons as Array<{ code: string }>).map((r) => r.code);
+  /** D-71: the supervisor asks, the Nursing Director approves the day, and only then can it be published. */
+  const approveDay = async (date: string) => {
+    const asked = await sup.post('/roster/approvals', { unitId, from: date, to: date });
+    expect(asked.status).toBe(201);
+    expect((await dir.post(`/roster/approvals/${asked.body.id}/decision`, { decision: 'approve' })).body.status).toBe('Approved');
+  };
   const coverage = async (date: string) => (await sup.get(`/coverage?unitId=${unitId}&from=${date}&to=${date}`)).body.coverage.find((c: { shiftType: string }) => c.shiftType === 'Morning');
 
   beforeAll(async () => {
@@ -44,6 +50,7 @@ describeDb('business scenarios, end to end', () => {
     const supUser = await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'UNIT', scopeIds: [unitId] }] });
     supId = supUser.id;
     sup = await signIn(app, supUser.email);
+    dir = await signIn(app, (await makeUser(db, { roles: [{ role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [unitId] }] })).email);
   });
   afterAll(async () => { await db.$disconnect(); });
 
@@ -105,6 +112,7 @@ describeDb('business scenarios, end to end', () => {
     const bDraft = await sup.post('/shift-assignments', { employeeId: ids.b, unitId, shiftDate: tomorrow(), shiftType: 'Morning' });
     ids.bTomorrow = bDraft.body.id;
     expect(bDraft.body.eligibility.status).toBe('INELIGIBLE');
+    await approveDay(tomorrow());
     const pub = await idem(sup.post('/roster/publish', { unitId, from: tomorrow(), to: tomorrow() }));
     expect(pub.body.published).toBe(1);
     expect(pub.body.blocked[0].reasons.map((r: { code: string }) => r.code)).toContain('CREDENTIAL_MISSING');
@@ -133,6 +141,7 @@ describeDb('business scenarios, end to end', () => {
 
   it('8. attendance gap: a published nurse who has not clocked in 30 minutes after the start raises one critical alert', async () => {
     ids.bToday = (await sup.post('/shift-assignments', { employeeId: ids.b, unitId, shiftDate: today(), shiftType: 'Morning' })).body.id;
+    await approveDay(today());
     const pub = await idem(sup.post('/roster/publish', { unitId, from: today(), to: today() }));
     expect(pub.body.published).toBe(1);
     await attendanceAlerts(db, new Date(`${today()}T07:45:00+03:00`));

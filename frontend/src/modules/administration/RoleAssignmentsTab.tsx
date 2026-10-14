@@ -98,7 +98,7 @@ export function RoleAssignmentsTab() {
             />
           </Form.Item>
           <Form.Item name="role" label={t('role')} rules={[{ required: true }]}>
-            <Select options={['SUPERVISOR', 'HR_ADMIN', 'SYSTEM_ADMIN'].map((r) => ({ value: r, label: r }))} />
+            <Select options={['SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR', 'HR_ADMIN', 'SYSTEM_ADMIN'].map((r) => ({ value: r, label: r }))} />
           </Form.Item>
           <Form.Item name="scopeType" label={t('scopeType')} rules={[{ required: true }]}>
             <Select options={[{ value: 'UNIT', label: t('units') }, { value: 'DEPARTMENT', label: t('departments') }, { value: 'SYSTEM', label: t('systemWide') }]} />

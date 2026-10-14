@@ -1,5 +1,6 @@
-// Roster board (spec §6.2, §6.3). Supervisors draft and publish their units
-// (D-14); HR and System Admins read. Every eligibility tag is the server's
+// Roster board (spec §6.2, §6.3). Supervisors and Nursing Admins draft, ask the
+// Nursing Director for approval and publish (D-14, D-71); the Nursing Director
+// approves; HR and System Admins read. Every eligibility tag is the server's
 // live engine result for the shift date; publication re-checks all of them.
 // Employees see their own and their home unit's published shifts (S2).
 
@@ -13,7 +14,7 @@ import { describeApiError } from '../../lib/errors';
 import { useUnits } from '../administration/api';
 import { EligibilityTag, ReasonList } from '../credentials/components';
 import { SHIFTS, type ShiftType } from '../workforce/api';
-import { useBoard, useOwnRoster, usePool, useRosterAction, type Assignment, type GenerateResult, type OwnShift, type PublishResult } from './api';
+import { useApprovals, useBoard, useOwnRoster, usePool, useRosterAction, type Assignment, type GenerateResult, type OwnShift, type PublishResult, type RosterApproval } from './api';
 
 import { GuideHelp } from '../guidelines/GuideHelp';
 const ELIG_COLOR = { ELIGIBLE: 'green', ELIGIBLE_WITH_POLICY_WARNING: 'orange', ELIGIBLE_WITH_GRACE: 'gold', INELIGIBLE: 'red' } as const;
@@ -42,14 +43,16 @@ export default function SchedulingPage() {
   const { t } = useTranslation();
   const { message, modal } = App.useApp();
   const { hasRole } = usePermissions();
-  const staff = hasRole('HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR');
-  const canWrite = hasRole('SUPERVISOR'); // D-14
+  const staff = hasRole('HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR');
+  const canWrite = hasRole('SUPERVISOR', 'NURSING_ADMIN'); // D-14, D-71: prepare, ask for approval, publish
+  const canApprove = hasRole('NURSING_DIRECTOR'); // D-71
   const units = useUnits();
   const [unitId, setUnitId] = useState<number>();
   const [weekStart, setWeekStart] = useState(dayjs().startOf('day'));
   const from = weekStart.format('YYYY-MM-DD');
   const to = weekStart.add(6, 'day').format('YYYY-MM-DD');
   const board = useBoard(unitId, from, to);
+  const approvals = useApprovals(unitId);
   const action = useRosterAction();
   const [slot, setSlot] = useState<{ unitId: number; date: string; shiftType: ShiftType } | null>(null);
   const pool = usePool(slot);
@@ -60,6 +63,12 @@ export default function SchedulingPage() {
   const days = Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day').format('YYYY-MM-DD'));
   const cell = (date: string, s: ShiftType) => board.data?.assignments.filter((a) => a.shiftDate === date && a.shiftType === s) ?? [];
   const cov = (date: string, s: ShiftType) => board.data?.coverage.find((c) => c.date === date && c.shiftType === s);
+  // D-71: what the Nursing Director has said about the dates on screen.
+  const items = approvals.data?.items ?? [];
+  const covering = items.find((a) => a.status === 'Approved' && a.from <= from && a.to >= to);
+  const pending = items.find((a) => a.status === 'Pending' && a.from <= to && a.to >= from);
+  const rejected = !covering && !pending ? items.find((a) => a.status === 'Rejected' && a.from <= to && a.to >= from) : undefined;
+  const draftCount = board.data?.assignments.filter((a) => a.status === 'Draft').length ?? 0;
 
   async function run<T>(a: Parameters<typeof action.mutateAsync>[0]): Promise<T | undefined> {
     try { return (await action.mutateAsync(a)) as T; } catch (e) { message.error(describeApiError(e)); return undefined; }
@@ -98,6 +107,24 @@ export default function SchedulingPage() {
     });
   }
 
+  async function ask() {
+    if (!unitId) return;
+    if (await run({ kind: 'ask', body: { unitId, from, to } }) !== undefined) message.success(t('approvalAsked'));
+  }
+
+  async function approve(a: RosterApproval) {
+    if (await run({ kind: 'decide', id: a.id, decision: 'approve' }) !== undefined) message.success(t('saved'));
+  }
+
+  function rejectRequest(a: RosterApproval) {
+    let note = '';
+    modal.confirm({
+      title: t('reject'), content: <Input.TextArea rows={2} placeholder={t('decisionReasonHint')} onChange={(e) => { note = e.target.value; }} />,
+      okButtonProps: { danger: true }, okText: t('reject'), cancelText: t('cancel'),
+      onOk: async () => { if (await run({ kind: 'decide', id: a.id, decision: 'reject', note }) !== undefined) message.success(t('saved')); },
+    });
+  }
+
   async function generate(dryRun: boolean) {
     if (!unitId) return;
     const out = await run<GenerateResult>({ kind: 'generate', body: { unitId, from, to, dryRun } });
@@ -116,11 +143,27 @@ export default function SchedulingPage() {
         {canWrite && unitId && (
           <Space>
             <Button onClick={() => generate(true)} loading={action.isPending}>{t('autoFill')}</Button>
-            <Button type="primary" onClick={publish} loading={action.isPending}>{t('publishWeek')}</Button>
+            <Tooltip title={covering ? undefined : t('approvalNeeded')}>
+              <Button onClick={ask} loading={action.isPending} disabled={draftCount === 0 || pending !== undefined || covering !== undefined}>{t('askApproval')}</Button>
+            </Tooltip>
+            <Tooltip title={covering ? undefined : t('approvalNeeded')}>
+              <Button type="primary" onClick={publish} loading={action.isPending} disabled={!covering}>{t('publishWeek')}</Button>
+            </Tooltip>
           </Space>
         )}
       </Flex>
-      {!canWrite && <Alert type="info" showIcon title={t('rosterReadOnly')} style={{ marginBottom: 12 }} />}
+      {!canWrite && !canApprove && <Alert type="info" showIcon title={t('rosterReadOnly')} style={{ marginBottom: 12 }} />}
+      {unitId && covering && <Alert type="success" showIcon style={{ marginBottom: 12 }} title={t('approvalApprovedMsg', { name: covering.decidedBy?.name ?? '—', from: covering.from, to: covering.to })} />}
+      {unitId && pending && (
+        <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('approvalPendingMsg', { name: pending.requestedBy.name ?? '—', from: pending.from, to: pending.to })}
+          action={canApprove ? (
+            <Space>
+              <Button size="small" type="primary" onClick={() => approve(pending)} loading={action.isPending}>{t('approve')}</Button>
+              <Button size="small" danger onClick={() => rejectRequest(pending)}>{t('reject')}</Button>
+            </Space>
+          ) : undefined} />
+      )}
+      {unitId && rejected && <Alert type="error" showIcon style={{ marginBottom: 12 }} title={t('approvalRejectedMsg', { name: rejected.decidedBy?.name ?? '—', note: rejected.note ?? '' })} />}
       {board.error && <Alert type="error" showIcon title={describeApiError(board.error)} style={{ marginBottom: 12 }} />}
       {!unitId ? <Empty description={t('chooseUnit')} /> : (
         <div style={{ overflowX: 'auto' }}>

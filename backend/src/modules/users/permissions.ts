@@ -49,8 +49,13 @@ export const PERMISSIONS = {
   // Scheduling — spec §8.1: HR "coverage/read view by default"; scoped
   // Supervisor drafts and publishes (D-14). Employees read their own and
   // home-unit published schedule through /roster/me.
-  'roster.read': ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'],
-  'roster.write': ['SUPERVISOR'],
+  // D-71 (hospital reply C6, 2026-10-14): the Nursing Admin prepares (drafts, asks for approval)
+  // and, like the Supervisor, publishes; the Nursing Director approves, and a roster is published
+  // only after that approval. Unit scope is enforced in the service.
+  'roster.read': ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR', 'NURSING_ADMIN', 'NURSING_DIRECTOR'],
+  'roster.write': ['SUPERVISOR', 'NURSING_ADMIN'], // draft, auto-generate, ask for approval
+  'roster.publish': ['SUPERVISOR', 'NURSING_ADMIN'],
+  'roster.approve': ['NURSING_DIRECTOR'],
   'attendance.read': ['HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR'],
   // D-65: badge events are delivered by the badge system (an API client with the attendance.ingest scope), never by a person.
   'attendance.ingest': [],
@@ -117,7 +122,7 @@ export const ACCESS_MATRIX = {
     { area: 'Employee Master', cells: ['Maintain source fields within scope', 'Assigned-unit baseline/compliance view; private fields suppressed', 'Own profile; phone update'] },
     { area: 'Contracts', cells: ['Scoped create, approval, renewal, termination', 'Scoped reduced read view', 'Own reduced read view'] },
     { area: 'Credentials', cells: ['Scoped upload, review, validity decisions', 'Scoped compliance view; no evidence downloads', 'Own submission, evidence, alerts'] },
-    { area: 'Scheduling', cells: ['Coverage/read view by default', 'Scoped draft and publish', 'Published personal/home-unit view'] },
+    { area: 'Scheduling', cells: ['Coverage/read view by default', 'Scoped draft and publish (after the Nursing Director approves); the Nursing Admin prepares and publishes too', 'Published personal/home-unit view'] },
     { area: 'Notifications', cells: ['Own recipient rows', 'Own recipient rows', 'Own recipient rows'] },
     { area: 'Announcements', cells: ['Send within scope (second administrator approves); cancel in scope', 'Send to own units at once', 'Read those addressed to them'] },
   ],
