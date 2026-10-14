@@ -51,3 +51,24 @@ The system will not invent these. Please tell us what the hospital's rule is, or
 - **A and B:** HR changes them in Workforce (beds, units, positions, flags); no software release is needed.
 - **C:** each answer becomes a written rule and a change to the system. Until then the feature stays as it is.
 - **D:** a setting change by IT.
+
+## Replies received 2026-10-14
+
+Returned by Zemonette Pantig Magtalas (Nursing Admin / Administrator), signed 2026-10-14. The Director of Nursing has not signed, so the credential and position rules (U2) are still open.
+
+### Answered
+
+| # | Answer | Effect |
+|---|---|---|
+| A6 | **Yes.** Read as: QMPS counts as a bedside nurse and is rostered on shifts. (The returned file showed "No"; the hospital contact corrected it to "Yes".) | The "for now" value ("not counted") no longer holds. HR sets the QMPS position flag in Workforce; no release is needed. The Nurse to Bed Ratio (QFR-55) rises slightly, so confirm the intent before changing the flag. |
+| C3 | **Nursing Director** approves leave. | How leave is recorded was not answered. |
+| C6 | **Nursing Director** approves; **Nursing Admin** prepares; **Nursing Admin and Supervisors** publish. | Differs from today, where the supervisor publishes. Needs a written rule and a system change (a Nursing Admin who prepares and publishes, and a Nursing Director approval step). Not built yet. |
+| D1 | Staff use their **mobile internet**, so there is no single hospital address or range. | There is nothing to allowlist. Mobile carriers can put unrelated users behind one address, so the 20-failures-per-15-minutes limit per address can lock out unrelated staff. The per-account limit (5 attempts) still protects each login. Proposed: IT raises the per-address limit; the new value is not yet chosen. |
+
+### Not answered
+
+The form was marked "Yes" against questions that cannot be answered with yes or no. These stay open and the "for now" values stay in force: A1 to A5, B1 to B7, C1 and C2.
+
+Partial answers:
+- **C4:** "Yes, Yes". On-call is part of the roster and is paid or counted, but the rule was not given.
+- **C5:** "Removed it". Unclear whether the legend was removed from the paper roster or the request was dropped. The duty-code meanings are still missing.
