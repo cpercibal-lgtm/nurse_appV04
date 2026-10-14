@@ -66,11 +66,14 @@ export async function evaluateFor(tx: DbClient, employeeId: number, date: IsoDat
   return engine(await loadFacts(tx, employeeId, now), { date, today: riyadhDate(now), now });
 }
 
+/** Roles that receive unit notices: D-71 adds the Nursing Director (roster approval requests). */
+export type NoticeRole = 'HR_ADMIN' | 'SUPERVISOR' | 'NURSING_DIRECTOR';
+
 /**
  * Active holders of a role whose scope covers a unit (system-wide, the unit's
  * department, or the unit itself) — recipients of unit notices (N2).
  */
-export async function recipientsForUnit(tx: DbClient, role: 'HR_ADMIN' | 'SUPERVISOR', unitId: number | null, now = new Date()): Promise<number[]> {
+export async function recipientsForUnit(tx: DbClient, role: NoticeRole, unitId: number | null, now = new Date()): Promise<number[]> {
   const unit = unitId === null ? null : await tx.unit.findUnique({ where: { id: unitId }, select: { departmentId: true } });
   return inScope(await liveGrants(tx, role, now), unitId, unit?.departmentId ?? null);
 }
@@ -79,7 +82,7 @@ export async function recipientsForUnit(tx: DbClient, role: 'HR_ADMIN' | 'SUPERV
  * recipientsForUnit for many units: loads the role's grants and the unit →
  * department map once, so a job that notifies per record makes two queries, not two per record.
  */
-export async function unitRecipients(tx: DbClient, role: 'HR_ADMIN' | 'SUPERVISOR', now = new Date()) {
+export async function unitRecipients(tx: DbClient, role: NoticeRole, now = new Date()) {
   const grants = await liveGrants(tx, role, now);
   const departments = new Map((await tx.unit.findMany({ select: { id: true, departmentId: true } })).map((u) => [u.id, u.departmentId]));
   return (unitId: number | null) => inScope(grants, unitId, unitId === null ? null : departments.get(unitId) ?? null);
@@ -87,7 +90,7 @@ export async function unitRecipients(tx: DbClient, role: 'HR_ADMIN' | 'SUPERVISO
 
 type Grant = { userId: number; scopeType: string; scopeIds: number[] };
 
-const liveGrants = (tx: DbClient, role: 'HR_ADMIN' | 'SUPERVISOR', now: Date): Promise<Grant[]> => tx.roleAssignment.findMany({
+const liveGrants = (tx: DbClient, role: NoticeRole, now: Date): Promise<Grant[]> => tx.roleAssignment.findMany({
   where: {
     role, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }], user: { isActive: true },
   },

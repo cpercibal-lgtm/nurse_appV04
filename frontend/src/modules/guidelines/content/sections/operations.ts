@@ -305,7 +305,7 @@ export const OPERATIONS: GuideSection[] = [
         who: 'Supervisor or Nursing Admin of the unit, after the Nursing Director has approved the week.',
         roles: ['SUPERVISOR'],
         before: ['The Nursing Director has approved the dates (see the approval message above the board). Changing, adding or removing a draft in an approved week withdraws the approval; ask again.'],
-        steps: ['Resolve red (ineligible) drafts and gaps.', 'Click Ask for approval. The Nursing Director sees the request on the same page and approves or rejects it (a rejection gives a reason). You cannot approve your own request.', 'When the approval message turns green, click Publish week.', 'Read the result: how many were published, which were blocked and why, and how many rely on a grace period or waiver.'],
+        steps: ['Resolve red (ineligible) drafts and gaps.', 'Click Ask for approval. The Nursing Director gets a notice (with an Open roster link) and approves or rejects it on the same page; a rejection gives a reason, and you are told the outcome. You cannot approve your own request.', 'When the approval message turns green, click Publish week.', 'Read the result: how many were published, which were blocked and why, and how many rely on a grace period or waiver.'],
         result: 'In one step every draft is re-checked for its date: eligible ones are Published; ineligible ones stay Draft with the reasons. Grace or waiver reliance is recorded and audited. Shortages warn but never block.',
         approval: 'The Nursing Director approves the unit and dates before publication.',
         next: 'Attendance on the day.',

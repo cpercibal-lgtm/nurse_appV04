@@ -6,6 +6,8 @@ export interface NotificationRow {
   titleAr: string | null; messageAr: string | null; employeeId: number | null; readAt: string | null; createdAt: string;
   /** D-69: set on an announcement; the item opens it. */
   announcementId: number | null;
+  /** D-71: `roster-approval:<id>:…` on a roster approval notice; the item opens the roster page. */
+  eventKey: string | null;
 }
 export interface NotificationPage { items: NotificationRow[]; total: number; unread: number; page: number; pageSize: number }
 

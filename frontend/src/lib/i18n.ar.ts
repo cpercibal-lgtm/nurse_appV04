@@ -1012,6 +1012,7 @@ export const ar: Record<keyof typeof en, string> = {
   annDeleteConfirm: 'هل تريد حذف هذه المسودة؟',
   annNotFound: 'هذا الإعلان غير متاح لك.',
   annOpen: 'فتح الإعلان',
+  rosterOpen: 'فتح الجدول',
   annElevateToSend: 'لإرسال الإعلانات أو الموافقة عليها بصفتك مدير النظام، ارفع صلاحياتك أولاً من إدارة التمريض ← الصلاحيات المميزة.',
   annNoPatientData: 'لا تُدرج معلومات المرضى. اذكر أسماء الموظفين عند الضرورة فقط.',
   annKindLabel: 'النوع',

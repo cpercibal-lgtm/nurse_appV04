@@ -35,6 +35,7 @@ export default function NotificationsPage() {
         renderItem={(n) => (
           <List.Item actions={[
             ...(n.announcementId ? [<Link key="o" to={`/announcements?id=${n.announcementId}`} onClick={() => { if (!n.readAt) void read(n.id); }}>{t('annOpen')}</Link>] : []),
+            ...(n.eventKey?.startsWith('roster-approval:') ? [<Link key="ro" to="/scheduling" onClick={() => { if (!n.readAt) void read(n.id); }}>{t('rosterOpen')}</Link>] : []),
             ...(n.readAt ? [] : [<Button key="r" size="small" onClick={() => read(n.id)}>{t('markRead')}</Button>]),
           ]}>
             <List.Item.Meta
