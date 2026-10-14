@@ -62,6 +62,8 @@ const FAMILIES: Record<string, string[]> = {
   priority_: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
   baselineSection_: ['departments', 'units', 'positions', 'credentialCategories', 'credentialTemplates'],
   baselineStatus_: ['CREATE', 'UNCHANGED', 'CONFLICT', 'REJECTED'],
+  importStatus_: ['CREATE', 'UNCHANGED', 'CONFLICT', 'REJECTED'], // staff import (D-72)
+  importStaffFile_: ['NOT_XLSX', 'NO_SHEET', 'TOO_LARGE', 'EMPTY', 'VERSION_2', 'WRONG_HEADER', 'TOO_MANY_ROWS'],
   approvalStatus_: ['PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'WITHDRAWN'],
   fieldType_: ['text', 'date', 'date_hijri', 'select', 'number', 'country', 'reference'],
   nationalityRule_: ['ALL', 'ONLY', 'EXCEPT'], // credential types by nationality (owner decision 2026-10-04)

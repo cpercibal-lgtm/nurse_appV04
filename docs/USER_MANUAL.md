@@ -429,7 +429,47 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 ![Onboarding a nurse](generated/flows/onboarding.svg)
 
-### 5.3 Edit a staff record
+### 5.3 Import staff from the template
+
+**Status:** Implemented  
+**Roles:** HR Admin, System Admin
+
+**Purpose.** Load many nurses at once (up to 1,000 per file) instead of onboarding them one by one. Each row becomes what Onboard employee creates: the employee and a Draft first contract.
+
+**Who can perform it.** HR Admin or System Admin. Every row's unit must be in your scope; a row without a unit (Unassigned) needs hospital-wide access.
+
+**Before you start.**
+
+- The staff import template, version 3 (no Salary column). Download the current one from the import screen so its lists match the system.
+- For each person: the same details as Onboard employee, chosen from the drop-down lists.
+
+**Steps.**
+
+1. Open Nurses and click Import staff.
+2. Click Download the current template. Fill the Staff sheet, one person per row, choosing from the lists; the Check column must say OK on every filled row.
+3. Click Choose the filled file and pick the saved .xlsx. Nothing is written yet: every row is checked and shown as New, Already there, Conflict or Problem, with what to fix.
+4. If any row is a Problem or Conflict, fix it in the file and choose it again (Download the problems gives the list as CSV).
+5. When every row is ready, click Import, read the confirmation and confirm.
+
+**System result.** All the New people are created in one step, or none if something changed meanwhile. Each gets a Draft contract and the usual audit entry; the import itself is audited (who, how many, the file fingerprint). The file is not stored.
+
+**Approval.** Each contract must be approved by a different HR administrator (Contracts), as after onboarding.
+
+**Next step.** Contracts: upload each signed copy and Submit. Then send each nurse the registration invitation and record credentials.
+
+**Common problems.**
+
+- *"This is template version 2"* — Version 2 still has a Salary column. Download the current template and copy the rows across without salaries; salary is entered in the application only.
+- *Conflict: "exists with different values"* — The job number belongs to someone already in the system. The import never changes existing staff: correct the row, or change the person under Nurses → Edit.
+- *Problem: "Not a listed facility" (or city, unit…)* — The value is not in the system any more, or the file is old. Download the current template and choose from its lists.
+- *Problem: "outside your assigned scope" / "Only system-wide HR can leave an employee Unassigned"* — Choose a unit you cover, or ask a hospital-wide HR Admin to import those rows.
+- *Already there* — The person exists with the same details: nothing to do. A file in which everyone is already there has nothing to import.
+
+**Related.** [Contracts](#6-contracts) · [Credentials](#7-credentials)
+
+![Onboarding a nurse](generated/flows/onboarding.svg)
+
+### 5.4 Edit a staff record
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -461,7 +501,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Eligibility](#8-eligibility) · [Roster and scheduling](#11-roster-and-scheduling)
 
-### 5.4 Change a nurse's position
+### 5.5 Change a nurse's position
 
 **Status:** Implemented  
 **Roles:** HR Admin
@@ -489,7 +529,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Workforce](#9-workforce) · [Eligibility](#8-eligibility)
 
-### 5.5 Assign a unit and position from the list (right-click)
+### 5.6 Assign a unit and position from the list (right-click)
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -526,7 +566,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Eligibility](#8-eligibility) · [Roster and scheduling](#11-roster-and-scheduling)
 
-### 5.6 Delete a staff record
+### 5.7 Delete a staff record
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -549,7 +589,7 @@ The staff master record: one row per employee with job number, name, unit, posit
 
 **Related.** [Nursing Administration](#15-nursing-administration)
 
-### 5.7 Send a login invitation
+### 5.8 Send a login invitation
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
