@@ -1,5 +1,7 @@
 # Server deployment checklist
 
+A short list of only the steps for the current release, written for IT: [IT_HANDOVER.md](IT_HANDOVER.md).
+
 A tick-box list for putting V04 on the production server and for later releases. It does not replace the guides; each step says where the detail is. Layout: one Ubuntu 24.04 VPS in the Kingdom, blue/green releases through GitHub Actions ([ops/vps/README.md](../ops/vps/README.md), decision D-57).
 
 Use it twice: **Part A** once, for a new server; **Part B** for every release after that. Record the date and your initials beside each step. Stop at the first step that fails; do not skip ahead.
@@ -19,7 +21,6 @@ These are decisions, not tasks. Production should not open until each is settled
 - [ ] **Telegram bot** is not set up; alerts stay in the Dev Console inbox (`NOTIFICATION_DRIVER=mock`). Accept or set it up (A12).
 - [ ] **Hospital questions** ([HOSPITAL_OPEN_QUESTIONS.md](HOSPITAL_OPEN_QUESTIONS.md)): the 72 unnamed beds, 281 vs 286, ICU Extension, Assistant Nurse licence, C1, C2, C5 are unanswered. The KPI figures use the "for now" values until HR changes them in Workforce.
 - [ ] A **native Arabic speaker** has read the roster approval screens and notices.
-- [ ] **Two-factor sign-in** does not yet cover the Nursing Admin and Nursing Director roles (see A5).
 
 ---
 
