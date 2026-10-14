@@ -210,14 +210,21 @@ for (const name of BROWSERS) {
       const dialog = page.getByRole('dialog');
       await dialog.getByLabel('Code').fill(code);
       await dialog.getByLabel('Name').fill(`Smoke test department (${name})`);
-      // A WebKit run once never sent the request (no POST in the API log) and only the cell wait below timed
-      // out. Say which step failed: the form did not take the text, the click did not submit, or the API refused.
+      // WebKit runs sometimes never sent the request: Submit showed its busy spinner and no POST reached the API.
+      // Cause: the browser reported "offline" (WebKit does this by itself now and then) and react-query pauses a
+      // save while the browser says offline. The app now sends it anyway (services/queryClient.ts, networkMode
+      // "always"; decision D-1). This step makes that case happen on purpose in every browser, so a return of the
+      // old behaviour fails every run instead of one run in several.
       assert.equal(await dialog.getByLabel('Code').inputValue(), code, 'the Code field took the text');
+      assert.equal(await dialog.getByLabel('Name').inputValue(), `Smoke test department (${name})`, 'the Name field took the text');
+      await page.evaluate(() => window.dispatchEvent(new Event('offline')));
       const posted = page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/departments', { timeout: 15_000 });
       await dialog.getByRole('button', { name: 'Submit' }).click();
       const response = await posted.catch(async () => {
         const shown = await dialog.innerText().catch(() => '(the dialog is gone)');
-        throw new Error(`Submit sent no POST /api/v1/departments within 15 s; the dialog shows: ${shown.replace(/\s+/g, ' ').slice(0, 300)}`);
+        const busy = await dialog.getByRole('button', { name: 'Submit' }).evaluate((b) => b.classList.contains('ant-btn-loading')).catch(() => 'unknown');
+        const online = await page.evaluate(() => navigator.onLine).catch(() => 'unknown');
+        throw new Error(`Submit sent no POST /api/v1/departments within 15 s (Submit shows busy: ${busy}; navigator.onLine: ${online}); the dialog shows: ${shown.replace(/\s+/g, ' ').slice(0, 300)}`);
       });
       assert.ok(response.ok(), `POST /api/v1/departments answered ${response.status()}`);
       await page.getByRole('cell', { name: code, exact: true }).waitFor({ timeout: 15_000 });

@@ -4,6 +4,9 @@ All notable changes to the AIGH Nursing Workforce Management System. Versions fo
 
 ## [Unreleased]
 
+### Fixed
+- **Submit could do nothing when the browser wrongly reported "offline"** (found as the flaky WebKit department step in CI). react-query pauses a save while the browser says offline: nothing was sent, no message was shown, Submit kept its spinner until an "online" event. Safari / WebKit reports offline briefly and wrongly, so on a phone a save could hang. The app now always sends the request and shows the server's answer or "the server could not be reached" (`networkMode: 'always'`, decision D-1). A unit test covers it, and the smoke test now makes the browser report offline before Submit in every browser, with a failure message that says whether Submit was busy and what `navigator.onLine` was.
+
 ### Added
 - **Server deployment checklist** ([docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)): open decisions, a new-server installation (Part A), every later release (Part B), and the steps the roster approval release needs on an existing server. Records one gap: two-factor sign-in does not cover the Nursing Admin and Nursing Director roles.
 - **Notices for the Nursing Director** (D-71): a roster approval request now sends every Nursing Director in scope (not the asker) an in-app notice, e-mail and Telegram prompt, with an *Open roster* link; the asker is told when it is approved, or rejected with the reason. No migration.
