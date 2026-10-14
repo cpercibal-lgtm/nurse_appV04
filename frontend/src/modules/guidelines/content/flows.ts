@@ -251,7 +251,9 @@ export const FLOWS: Flow[] = [
       { kind: 'step', label: '+ : pick from the eligible pool (live check for that date)', role: 'SUPERVISOR' },
       { kind: 'step', label: 'Or Auto-fill: preview, then create drafts', role: 'SUPERVISOR' },
       { kind: 'step', label: 'Resolve gaps and red (ineligible) drafts', role: 'SUPERVISOR' },
-      { kind: 'step', label: 'Publish week', role: 'SUPERVISOR' },
+      { kind: 'step', label: 'Ask for approval (Supervisor or Nursing Admin)', role: 'SUPERVISOR' },
+      { kind: 'step', label: 'The Nursing Director approves the week (a rejection gives a reason: change the drafts and ask again)', role: 'SUPERVISOR' },
+      { kind: 'step', label: 'Publish week (changing a draft after approval withdraws it)', role: 'SUPERVISOR' },
       {
         kind: 'decision', label: 'Each draft re-checked', branches: [
           { label: 'Eligible', nodes: [{ kind: 'end', label: 'Published (visible to the nurse)' }] },

@@ -1,7 +1,7 @@
 // DTO types shared by the frontend. The backend is authoritative; these mirror
 // its responses (docs/API.md) and grow with each domain module.
 
-export type AppRole = 'SYSTEM_ADMIN' | 'HR_ADMIN' | 'SUPERVISOR';
+export type AppRole = 'SYSTEM_ADMIN' | 'HR_ADMIN' | 'SUPERVISOR' | 'NURSING_ADMIN' | 'NURSING_DIRECTOR';
 export type ScopeType = 'SYSTEM' | 'DEPARTMENT' | 'UNIT';
 
 export interface RoleGrant {

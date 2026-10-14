@@ -26,6 +26,10 @@ enum AppRole {
   SYSTEM_ADMIN
   HR_ADMIN
   SUPERVISOR
+  /// D-71 (hospital reply C6, 2026-10-14): prepares and publishes rosters.
+  NURSING_ADMIN
+  /// D-71: approves rosters before they are published.
+  NURSING_DIRECTOR
   // EMPLOYEE is implicit for every active user and is never stored (rule R1).
 }
 
@@ -242,6 +246,7 @@ model Unit {
   coverageTargets        CoverageTarget[]
   credentialRequirements CredentialRequirement[]
   shiftAssignments       ShiftAssignment[]
+  rosterApprovals        RosterApproval[]
 
   @@index([departmentId])
   @@map("units")
@@ -947,6 +952,36 @@ model ShiftAssignment {
   @@index([unitId, shiftDate])
   @@index([shiftDate])
   @@map("shift_assignments")
+}
+
+enum RosterApprovalStatus {
+  Pending
+  Approved
+  Rejected
+  /// The drafts in the window changed after the request; a new request is needed.
+  Withdrawn
+}
+
+/// D-71: the Nursing Director's approval of one unit's drafts for a date window. A roster
+/// is published only inside a window covered by an Approved row; any change to the drafts
+/// in that window withdraws the row. The requester and the decider are different people.
+model RosterApproval {
+  id            Int                  @id @default(autoincrement())
+  unitId        Int                  @map("unit_id")
+  fromDate      DateTime             @map("from_date") @db.Date
+  toDate        DateTime             @map("to_date") @db.Date
+  status        RosterApprovalStatus @default(Pending)
+  requestedById Int                  @map("requested_by_id")
+  requestedAt   DateTime             @default(now()) @map("requested_at") @db.Timestamptz
+  decidedById   Int?                 @map("decided_by_id")
+  decidedAt     DateTime?            @map("decided_at") @db.Timestamptz
+  /// Required when rejecting; optional when approving.
+  note          String?
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, status])
+  @@map("roster_approvals")
 }
 
 // ════════════════════════════════════════════════════════════════════════════

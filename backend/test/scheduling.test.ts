@@ -19,6 +19,8 @@ describeDb('scheduling and attendance', () => {
   let org: Awaited<ReturnType<typeof makeOrg>>;
   let sup: Client; // supervises unit A
   let hr: Client; // system-wide HR: read only for rosters (D-14)
+  let dir: Client; // Nursing Director of unit A: approves rosters (D-71)
+  let na: Client; // Nursing Admin of unit A: prepares and publishes (D-71)
 
   beforeAll(async () => {
     db = openDb();
@@ -26,6 +28,8 @@ describeDb('scheduling and attendance', () => {
     org = await makeOrg(db);
     sup = await signIn(app, (await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] })).email);
     hr = await signIn(app, (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'SYSTEM' }] })).email);
+    dir = await signIn(app, (await makeUser(db, { roles: [{ role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] })).email);
+    na = await signIn(app, (await makeUser(db, { roles: [{ role: 'NURSING_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] })).email);
   });
   afterAll(async () => { await db.$disconnect(); });
 
@@ -33,6 +37,14 @@ describeDb('scheduling and attendance', () => {
     c.post('/shift-assignments', { employeeId, unitId, shiftDate, shiftType });
   const publish = (c: Client, from = tomorrow(), to = tomorrow()) =>
     c.post('/roster/publish', { unitId: org.unitA.id, from, to }).set('Idempotency-Key', randomUUID());
+  const requestApproval = (c: Client, from = tomorrow(), to = tomorrow(), unitId = org.unitA.id) => c.post('/roster/approvals', { unitId, from, to });
+  const decide = (c: Client, id: number, body: Record<string, unknown>) => c.post(`/roster/approvals/${id}/decision`, body);
+  /** The Nursing Director's approval of the drafts in a window (D-71): the supervisor asks, the director approves. */
+  const approve = async (from = tomorrow(), to = tomorrow()) => {
+    const asked = await requestApproval(sup, from, to);
+    expect(asked.status).toBe(201);
+    expect((await decide(dir, asked.body.id, { decision: 'approve' })).body.status).toBe('Approved');
+  };
 
   describe('drafting (S1, D-14, D-32)', () => {
     it('only the unit supervisor drafts, only for home-unit nurses, never twice in one slot, never in the past', async () => {
@@ -71,6 +83,7 @@ describeDb('scheduling and attendance', () => {
       for (const e of [ok, noContract, waived]) ids.push((await draft(sup, e.id, date)).body.id as number);
       expect((await sup.post('/roster/publish', { unitId: org.unitA.id, from: date, to: date })).body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
       expect((await publish(hr, date, date)).status).toBe(403);
+      await approve(date, date);
       const res = await publish(sup, date, date);
       expect(res.body.published).toBe(2);
       expect(res.body.blocked).toHaveLength(1);
@@ -87,6 +100,7 @@ describeDb('scheduling and attendance', () => {
       const supUser = await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] });
       const date = addDays(today(), 3);
       const id = (await draft(sup, emp.id, date)).body.id;
+      await approve(date, date);
       await publish(sup, date, date);
       expect((await db.shiftAssignment.findUniqueOrThrow({ where: { id } })).status).toBe('Published');
 
@@ -109,11 +123,115 @@ describeDb('scheduling and attendance', () => {
       const { emp } = await makeNurse(db, org.unitA.id);
       const date = addDays(today(), 4);
       const id = (await draft(sup, emp.id, date)).body.id;
+      await approve(date, date);
       await publish(sup, date, date);
       expect((await sup.del(`/shift-assignments/${id}`)).body.error.code).toBe('VALIDATION_FAILED');
       expect((await sup.del(`/shift-assignments/${id}`).send({ reason: 'Nurse on leave' })).body.status).toBe('Cancelled');
       const d2 = (await draft(sup, emp.id, date, 'Evening')).body.id;
       expect((await sup.del(`/shift-assignments/${d2}`)).body.status).toBe('Deleted');
+    });
+  });
+
+  describe('roster approval chain (D-71, hospital reply C6)', () => {
+    it('a roster cannot be published until the Nursing Director approves; the Nursing Admin prepares and publishes', async () => {
+      const { emp } = await makeNurse(db, org.unitA.id);
+      const date = addDays(today(), 20);
+      const id = (await draft(na, emp.id, date)).body.id;
+      expect(id).toBeGreaterThan(0);
+      // Nobody publishes an unapproved roster.
+      expect((await publish(na, date, date)).body.error.code).toBe('APPROVAL_REQUIRED');
+      expect((await publish(sup, date, date)).body.error.code).toBe('APPROVAL_REQUIRED');
+      // The Director neither drafts nor publishes; HR neither asks nor decides.
+      expect((await draft(dir, emp.id, addDays(today(), 21))).status).toBe(403);
+      expect((await publish(dir, date, date)).status).toBe(403);
+      expect((await requestApproval(hr, date, date)).status).toBe(403);
+
+      const asked = await requestApproval(na, date, date);
+      expect(asked.status).toBe(201);
+      expect(asked.body).toMatchObject({ status: 'Pending', drafts: 1 });
+      expect((await requestApproval(sup, date, date)).body.error.code).toBe('APPROVAL_EXISTS');
+      expect((await decide(na, asked.body.id, { decision: 'approve' })).status).toBe(403); // the preparer cannot approve
+      expect((await publish(na, date, date)).body.error.code).toBe('APPROVAL_REQUIRED'); // still pending
+
+      expect((await decide(dir, asked.body.id, { decision: 'approve' })).body.status).toBe('Approved');
+      expect((await decide(dir, asked.body.id, { decision: 'approve' })).body.error.code).toBe('NOT_PENDING');
+      const res = await publish(na, date, date);
+      expect(res.body.published).toBe(1);
+      expect((await db.shiftAssignment.findUniqueOrThrow({ where: { id } })).status).toBe('Published');
+      expect(await db.auditEntry.count({ where: { action: 'ROSTER_APPROVED', resourceId: String(org.unitA.id), priority: 'HIGH' } })).toBeGreaterThan(0);
+
+      const list = await hr.get('/roster/approvals').query({ unitId: org.unitA.id, status: 'Approved' });
+      expect(list.body.items.find((a: { id: number }) => a.id === asked.body.id)).toMatchObject({ from: date, to: date, requestedBy: { name: 'Test User' }, decidedBy: { name: 'Test User' } });
+    });
+
+    it('there must be drafts to approve; a rejection needs a reason, blocks publishing and can be asked again', async () => {
+      const { emp } = await makeNurse(db, org.unitA.id);
+      const date = addDays(today(), 22);
+      expect((await requestApproval(sup, date, date)).body.error.code).toBe('NOTHING_TO_APPROVE');
+      await draft(sup, emp.id, date);
+      const asked = await requestApproval(sup, date, date);
+      expect((await decide(dir, asked.body.id, { decision: 'reject' })).status).toBe(400);
+      expect((await decide(dir, asked.body.id, { decision: 'reject', note: 'Night cover is too thin' })).body.status).toBe('Rejected');
+      expect((await publish(sup, date, date)).body.error.code).toBe('APPROVAL_REQUIRED');
+      const again = await requestApproval(sup, date, date);
+      expect(again.status).toBe(201);
+      expect((await decide(dir, again.body.id, { decision: 'approve' })).body.status).toBe('Approved');
+      expect((await publish(sup, date, date)).body.published).toBe(1);
+    });
+
+    it('a director never decides their own request', async () => {
+      const { emp } = await makeNurse(db, org.unitA.id);
+      const date = addDays(today(), 23);
+      const both = await signIn(app, (await makeUser(db, { roles: [
+        { role: 'NURSING_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitA.id] }, { role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitA.id] },
+      ] })).email);
+      await draft(both, emp.id, date);
+      const asked = await requestApproval(both, date, date);
+      expect((await decide(both, asked.body.id, { decision: 'approve' })).body.error.code).toBe('SELF_APPROVAL_FORBIDDEN');
+      expect((await decide(dir, asked.body.id, { decision: 'approve' })).body.status).toBe('Approved');
+    });
+
+    it('changing the drafts withdraws the approval; it must cover every date published', async () => {
+      const first = (await makeNurse(db, org.unitA.id)).emp;
+      const second = (await makeNurse(db, org.unitA.id)).emp;
+      const date = addDays(today(), 24);
+      await draft(sup, first.id, date);
+      await approve(date, date);
+      // A new draft in the approved window withdraws the approval.
+      const extra = (await draft(sup, second.id, date)).body.id;
+      expect((await publish(sup, date, date)).body.error.code).toBe('APPROVAL_REQUIRED');
+      expect(await db.auditEntry.count({ where: { action: 'ROSTER_APPROVAL_WITHDRAWN', resourceId: String(org.unitA.id) } })).toBeGreaterThan(0);
+      // So does removing one.
+      await approve(date, date);
+      expect((await sup.del(`/shift-assignments/${extra}`)).body.status).toBe('Deleted');
+      expect((await publish(sup, date, date)).body.error.code).toBe('APPROVAL_REQUIRED');
+      // An approval for one day does not cover two.
+      const next = addDays(date, 1);
+      await draft(sup, first.id, next);
+      await approve(date, date);
+      expect((await publish(sup, date, next)).body.error.code).toBe('APPROVAL_REQUIRED');
+    });
+
+    it('keeps to the unit: a director or admin of another unit can neither decide nor ask', async () => {
+      const { emp } = await makeNurse(db, org.unitA.id);
+      const date = addDays(today(), 26);
+      await draft(sup, emp.id, date);
+      const asked = await requestApproval(sup, date, date);
+      const otherDir = await signIn(app, (await makeUser(db, { roles: [{ role: 'NURSING_DIRECTOR', scopeType: 'UNIT', scopeIds: [org.unitC.id] }] })).email);
+      const otherNa = await signIn(app, (await makeUser(db, { roles: [{ role: 'NURSING_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitC.id] }] })).email);
+      expect((await decide(otherDir, asked.body.id, { decision: 'approve' })).body.error.code).toBe('SCOPE_NOT_COVERED');
+      expect((await requestApproval(otherNa, date, date)).body.error.code).toBe('SCOPE_NOT_COVERED');
+      expect((await otherNa.get('/roster/approvals').query({ unitId: org.unitA.id })).status).toBe(403);
+    });
+
+    it('the database refuses a decision by the requester, a decision without a decider and a rejection without a reason', async () => {
+      const u = await makeUser(db);
+      const other = await makeUser(db);
+      const base = { unitId: org.unitA.id, fromDate: toDbDate(addDays(today(), 30)), toDate: toDbDate(addDays(today(), 30)), requestedById: u.id };
+      await expect(db.rosterApproval.create({ data: { ...base, status: 'Approved', decidedById: u.id, decidedAt: new Date() } })).rejects.toThrow();
+      await expect(db.rosterApproval.create({ data: { ...base, status: 'Approved' } })).rejects.toThrow();
+      await expect(db.rosterApproval.create({ data: { ...base, status: 'Rejected', decidedById: other.id, decidedAt: new Date() } })).rejects.toThrow();
+      await expect(db.rosterApproval.create({ data: { ...base, status: 'Approved', decidedById: other.id, decidedAt: new Date() } })).resolves.toBeTruthy();
     });
   });
 

@@ -15,7 +15,9 @@ Roles and scopes are read from the database on every request, so a revocation ap
 | Role | Stored? | Meaning |
 | :--- | :--- | :--- |
 | `EMPLOYEE` | **No** — implicit for every active account (R1) | Self-service: own profile and phones, own contracts (read), own credentials, own roster and attendance, own notifications, own sessions |
-| `SUPERVISOR` | Role assignment | Scoped unit view; drafts and publishes rosters (D-14); issues waivers |
+| `SUPERVISOR` | Role assignment | Scoped unit view; drafts and publishes rosters (D-14, publishing needs the Nursing Director's approval, D-71); issues waivers |
+| `NURSING_ADMIN` | Role assignment (D-71) | Prepares rosters: drafts, auto-generates, asks the Nursing Director for approval, and publishes (hospital reply C6, 2026-10-14). Reads the roster board in scope |
+| `NURSING_DIRECTOR` | Role assignment (D-71) | Approves or rejects a unit's roster for a date window before it is published; never decides a request they made themselves. Reads the roster board in scope |
 | `HR_ADMIN` | Role assignment | Maintains employees, contracts, credentials, organisation within scope; issues waivers |
 | `SYSTEM_ADMIN` | Role assignment, **dormant** | Counts only during an active PAM elevation (R13). Audit, jobs, administration |
 
@@ -58,8 +60,10 @@ Generated from `backend/src/modules/users/permissions.ts`. **`backend/test/docs.
 | `employees.assign` | HR_ADMIN, SYSTEM_ADMIN | Unit and/or position from the Nurses list (right-click), with a reason, and its preview (owner decision 2026-10-05); System Admin only while elevated |
 | `contracts.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Contract list and records |
 | `contracts.manage` | HR_ADMIN, SYSTEM_ADMIN | Create, renew, transition, upload contract copies |
-| `roster.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Roster board, pool, coverage |
-| `roster.write` | SUPERVISOR | Draft, generate, publish (D-14) |
+| `roster.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR, NURSING_ADMIN, NURSING_DIRECTOR | Roster board, coverage, approval requests |
+| `roster.write` | SUPERVISOR, NURSING_ADMIN | Draft, generate, ask for approval (D-14, D-71) |
+| `roster.publish` | SUPERVISOR, NURSING_ADMIN | Publish an approved window (D-71) |
+| `roster.approve` | NURSING_DIRECTOR | Approve or reject a unit's roster window (D-71); the requester cannot decide their own request |
 | `attendance.read` | HR_ADMIN, SYSTEM_ADMIN, SUPERVISOR | Clock events and the gap view |
 | `attendance.ingest` | — | No role holds it. Delivering badge events: only an API client holding the `attendance.ingest` scope (the badge system), never a person (D-65) |
 | `audit.read` | SYSTEM_ADMIN | Audit search and chain verification (D-20) |

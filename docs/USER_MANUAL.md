@@ -1730,9 +1730,9 @@ The MoH Ada'a nurse-to-bed indicators, for one shift or a month. KPI A rates the
 
 ## 11. Roster and scheduling
 
-The weekly roster board of a unit. Supervisors draft shifts from the nurses who are eligible on each date, check coverage, and publish. Eligibility is checked live for every shift date and again at publication. Employees see their own shifts and their home unit's published schedule.
+The weekly roster board of a unit. The Supervisor or Nursing Admin drafts shifts from the nurses who are eligible on each date and checks coverage; the Nursing Director approves the week; then it is published. Eligibility is checked live for every shift date and again at publication. Employees see their own shifts and their home unit's published schedule.
 
-**Who:** Supervisor (draft and publish their units); HR Admin and System Admin (read); employees (own shifts)  
+**Who:** Supervisor and Nursing Admin (draft, ask for approval, publish their units); Nursing Director (approves); HR Admin and System Admin (read); employees (own shifts)  
 **Screen:** `/scheduling`  
 **Where:** Side menu → Roster & Scheduling. Choose a unit and a week.
 
@@ -1818,22 +1818,28 @@ The weekly roster board of a unit. Supervisors draft shifts from the nurses who 
 
 **Purpose.** Make the week's drafts official so nurses see them.
 
-**Who can perform it.** Supervisor of the unit.
+**Who can perform it.** Supervisor or Nursing Admin of the unit, after the Nursing Director has approved the week.
+
+**Before you start.**
+
+- The Nursing Director has approved the dates (see the approval message above the board). Changing, adding or removing a draft in an approved week withdraws the approval; ask again.
 
 **Steps.**
 
 1. Resolve red (ineligible) drafts and gaps.
-2. Click Publish week.
-3. Read the result: how many were published, which were blocked and why, and how many rely on a grace period or waiver.
+2. Click Ask for approval. The Nursing Director sees the request on the same page and approves or rejects it (a rejection gives a reason). You cannot approve your own request.
+3. When the approval message turns green, click Publish week.
+4. Read the result: how many were published, which were blocked and why, and how many rely on a grace period or waiver.
 
 **System result.** In one step every draft is re-checked for its date: eligible ones are Published; ineligible ones stay Draft with the reasons. Grace or waiver reliance is recorded and audited. Shortages warn but never block.
 
-**Approval.** None.
+**Approval.** The Nursing Director approves the unit and dates before publication.
 
 **Next step.** Attendance on the day.
 
 **Common problems.**
 
+- *Publish week is greyed out* — The Nursing Director has not approved these dates yet, or a draft changed after the approval. Click Ask for approval.
 - *Some drafts stayed Draft* — Those nurses are ineligible on that date: see the reasons, fix them or choose someone else.
 
 **Related.** [Eligibility](#8-eligibility) · [Attendance](#12-attendance)

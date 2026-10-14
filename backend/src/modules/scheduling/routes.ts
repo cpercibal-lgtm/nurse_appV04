@@ -9,7 +9,7 @@ import { idempotent } from '../../middleware/idempotency.js';
 import { EventsQuery, GapsQuery, OwnEventsQuery, type AttendanceService } from '../attendance/service.js';
 import { IngestBody, ingestEvents } from '../attendance/ingest.js';
 import { HttpError } from '../../lib/http-errors.js';
-import { BoardQuery, CancelBody, CreateBody, GenerateBody, OwnQuery, PoolQuery, PublishBody, type SchedulingService } from './service.js';
+import { ApprovalListQuery, ApprovalRequestBody, BoardQuery, CancelBody, CreateBody, DecideBody, GenerateBody, OwnQuery, PoolQuery, PublishBody, type SchedulingService } from './service.js';
 
 const IdParam = z.object({ id: z.coerce.number().int().positive() });
 
@@ -35,7 +35,15 @@ export function createSchedulingRouter(db: Db, roster: SchedulingService, attend
   r.post('/roster/auto-generate', authorize('roster.write'), async (req, res) => {
     res.json(await roster.generate(authOf(res), GenerateBody.parse(req.body), rid(res)));
   });
-  r.post('/roster/publish', authorize('roster.write'), idempotent(db, 'roster.publish'), async (req, res) => {
+  // D-71: the preparer asks, the Nursing Director decides, then the roster can be published.
+  r.get('/roster/approvals', authorize('roster.read'), async (req, res) => { res.json(await roster.approvals(authOf(res), ApprovalListQuery.parse(req.query))); });
+  r.post('/roster/approvals', authorize('roster.write'), async (req, res) => {
+    res.status(201).json(await roster.requestApproval(authOf(res), ApprovalRequestBody.parse(req.body), rid(res)));
+  });
+  r.post('/roster/approvals/:id/decision', authorize('roster.approve'), async (req, res) => {
+    res.json(await roster.decideApproval(authOf(res), IdParam.parse(req.params).id, DecideBody.parse(req.body), rid(res)));
+  });
+  r.post('/roster/publish', authorize('roster.publish'), idempotent(db, 'roster.publish'), async (req, res) => {
     res.json(await roster.publish(authOf(res), PublishBody.parse(req.body), rid(res)));
   });
   r.get('/coverage', authorize('roster.read'), async (req, res) => { res.json(await roster.coverage(authOf(res), BoardQuery.parse(req.query))); });

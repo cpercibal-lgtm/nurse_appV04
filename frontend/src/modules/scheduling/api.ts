@@ -32,6 +32,17 @@ export interface Gap {
 }
 export interface ClockEvent { id: number; employeeId: number; eventType: string; eventTimestamp: string; source: string | null; employee?: { jobNumber: string; fullName: string } }
 
+export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected' | 'Withdrawn';
+export interface RosterApproval {
+  id: number; unitId: number; from: string; to: string; status: ApprovalStatus;
+  requestedBy: { id: number; name: string | null }; requestedAt: string;
+  decidedBy: { id: number; name: string | null } | null; decidedAt: string | null; note: string | null;
+}
+
+export const useApprovals = (unitId: number | undefined) => useQuery({
+  queryKey: ['roster', 'approvals', unitId], enabled: unitId !== undefined, retry: false,
+  queryFn: () => http.get<{ items: RosterApproval[]; total: number }>(`/roster/approvals?unitId=${unitId}`),
+});
 export const useBoard = (unitId: number | undefined, from: string, to: string) => useQuery({
   queryKey: ['roster', unitId, from, to], enabled: unitId !== undefined, retry: false,
   queryFn: () => http.get<Board>(`/roster?unitId=${unitId}&from=${from}&to=${to}`),
@@ -55,7 +66,9 @@ type Action =
   | { kind: 'assign'; body: { employeeId: number; unitId: number; shiftDate: string; shiftType: ShiftType; notes?: string } }
   | { kind: 'remove'; id: number; reason?: string }
   | { kind: 'generate'; body: { unitId: number; from: string; to: string; dryRun: boolean } }
-  | { kind: 'publish'; body: { unitId: number; from: string; to: string }; key: string };
+  | { kind: 'publish'; body: { unitId: number; from: string; to: string }; key: string }
+  | { kind: 'ask'; body: { unitId: number; from: string; to: string } }
+  | { kind: 'decide'; id: number; decision: 'approve' | 'reject'; note?: string };
 
 export function useRosterAction() {
   const qc = useQueryClient();
@@ -66,6 +79,8 @@ export function useRosterAction() {
         case 'remove': return http.delete(`/shift-assignments/${a.id}`, a.reason ? { reason: a.reason } : undefined);
         case 'generate': return http.post<GenerateResult>('/roster/auto-generate', a.body);
         case 'publish': return http.post<PublishResult>('/roster/publish', a.body, { idempotencyKey: a.key });
+        case 'ask': return http.post('/roster/approvals', a.body);
+        case 'decide': return http.post(`/roster/approvals/${a.id}/decision`, { decision: a.decision, ...(a.note ? { note: a.note } : {}) });
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['roster'] }),

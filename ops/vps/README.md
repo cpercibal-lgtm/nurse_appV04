@@ -69,6 +69,8 @@ It refuses to overwrite an existing settings file: new keys would make the store
 
 **Then, at once: copy `/etc/nurseapp` to the hospital's offline key store** (an encrypted USB key in a safe, a password manager vault — two places). A VPS has no key-management service: these files are the keys. Without `PDPL_FIELD_ENCRYPTION_KEY` and `DOCUMENT_ENCRYPTION_KEY` no backup can be read. Rotating a key later: [DEPLOYMENT.md "Rotating a key"](../../docs/DEPLOYMENT.md#rotating-a-key).
 
+Sign-in limit for mobile users: staff reach the system over mobile internet (hospital reply D1, 2026-10-14), so many people can share one carrier address. Set `LOGIN_THROTTLE_MAX_PER_CLIENT=100` in `app.env` (the default is 20 failed attempts per address in 15 minutes); the per-account limit of 5 still applies to every account.
+
 Later edits (e.g. the SMTP relay): edit `app.env`, then `sudo /opt/nurseapp/vps/deploy.sh restart` — the live release is started again in the other colour and switched in the same way as a release, without interruption.
 
 ## 4. Settings reference
