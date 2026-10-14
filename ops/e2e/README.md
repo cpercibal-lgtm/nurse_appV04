@@ -45,7 +45,7 @@ Runs after the session test, in **Chromium, Firefox and WebKit** (the engine of 
 | :--- | :--- | :--- |
 | 1 | The API is up; the sign-in page passes the accessibility scan; sign-in with password and authenticator code | Build smoke, AUTH |
 | 2 | **Every page in the HR menu** opens without the error screen or an uncaught script error, and passes the accessibility scan | FUN, COMP-01, A11Y |
-| 3 | A department created in Workforce is still listed after a reload | FUN-01 |
+| 3 | A department created in Workforce is still listed after a reload. Just before Submit the test makes the browser report "offline" (a WebKit browser does this by itself now and then): the save must still be sent (`networkMode: 'always'` in `frontend/src/services/queryClient.ts`), as a paused save left Submit spinning with nothing sent | FUN-01 |
 | 4 | Arabic switches the layout to right-to-left; three pages stay right-to-left after loading and pass the scan | LOC-03, A11Y |
 | 5 | The System Admin audit trail is not in the HR menu | AZ |
 | 6 | Sign-out returns to the sign-in page, and a protected page then redirects there | AUTH-03 |
