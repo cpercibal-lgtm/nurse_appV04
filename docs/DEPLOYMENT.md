@@ -5,7 +5,7 @@ How to run V04 and what must be settled before production. Two production layout
 - **A single VPS (D-57)** — Ubuntu 24.04, PostgreSQL 15 on the host, the API, worker, web server and ClamAV as containers, Caddy for HTTPS, blue/green releases with no dropped requests: [ops/vps/README.md](../ops/vps/README.md). The server must be in a data centre **in the Kingdom** (spec §8.3.6) — Hostinger has none, so it can serve staging with synthetic data only.
 - **Google Cloud, Dammam (`me-central2`, D-49) — alternative, not chosen** — two Compute Engine VMs behind a regional HTTPS load balancer: [ops/gcp/README.md](../ops/gcp/README.md). Its **Deploy** workflow skips itself while the `GCP_PROJECT` variable is unset.
 
-This guide covers the settings, jobs, database, backups and monitoring that apply however the processes are run.
+This guide covers the settings, jobs, database, backups and monitoring that apply however the processes are run. For a step-by-step, tick-box list for the server, use [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md).
 
 > **Production prerequisites are still open.** With `NODE_ENV=production` the API starts only with `UPLOAD_SCANNER=clamav` and a reachable `CLAMAV_HOST` configured (D-10, [§2.1](#21-malware-scanner-clamav)); [§6](#6-known-gaps-before-production) lists what else must be settled first.
 
