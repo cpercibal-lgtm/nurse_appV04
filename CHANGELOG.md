@@ -5,6 +5,7 @@ All notable changes to the AIGH Nursing Workforce Management System. Versions fo
 ## [Unreleased]
 
 ### Added
+- **Hospital replies recorded** ([docs/HOSPITAL_OPEN_QUESTIONS.md](docs/HOSPITAL_OPEN_QUESTIONS.md), 2026-10-14): QMPS counts as a bedside nurse (A6), the Nursing Director approves leave (C3), the roster chain is Nursing Admin prepares, Nursing Director approves, Nursing Admin and Supervisors publish (C6), and staff reach the system over mobile internet (D1). The other items stay open.
 - **"Skip to main content" link** (WCAG 2.4.1, found while writing the manual accessibility test). The first Tab stop on every signed-in page, shown when focused, in English and Arabic; Enter moves focus past the side menu to the page content. The smoke test (CI) now checks that it is the first link and that it works.
 - **Manual accessibility test** ([docs/ACCESSIBILITY_MANUAL_TEST.md](docs/ACCESSIBILITY_MANUAL_TEST.md)): keyboard, NVDA, zoom and sign-in steps with pass criteria and a result table, for the checks the automatic scan cannot make (QA checklist A11Y-01 to A11Y-03, A11Y-05, A11Y-06, A11Y-08).
 - **Questions for the hospital** ([docs/HOSPITAL_OPEN_QUESTIONS.md](docs/HOSPITAL_OPEN_QUESTIONS.md)): the open facts and decisions (the 72 unnamed beds, 281 vs 286, ICU Extension, AN licence, names, roster rules, shared network address) on one page to send to the hospital.
