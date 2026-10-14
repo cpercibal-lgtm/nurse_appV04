@@ -11,7 +11,7 @@ name: nurseapp-edge
 
 services:
   caddy:
-    image: caddy:2.8@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f
+    image: caddy:2.11@sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772
     restart: unless-stopped
     ports: ["80:80", "443:443", "443:443/udp"]   # the only published ports on the VPS
     environment:
