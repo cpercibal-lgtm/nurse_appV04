@@ -20,6 +20,8 @@ export interface ContractRow {
   contractTypeCode: string | null; contractTypeName: string | null; contractTypeNameAr: string | null;
   view: 'FULL' | 'REDUCED';
   createdById?: number | null; submittedById?: number | null; approvedById?: number | null; approvedAt?: string | null;
+  /** The version for edits (If-Match); in the full view only. */
+  updatedAt?: string;
 }
 export interface ContractDoc { id: number; version: number; fileName: string; sizeBytes: number; scanStatus: string; uploadedAt: string }
 export interface Renewable {
@@ -76,6 +78,7 @@ type Action =
   | { kind: 'create'; body: { employeeId: number; startDate: string; endDate: string; contractTypeCode?: string }; key: string }
   | { kind: 'renew'; priorId: number; body: { startDate: string; endDate: string; contractTypeCode?: string }; key: string }
   | { kind: 'transition'; id: number; action: ContractAction; reason?: string }
+  | { kind: 'dates'; id: number; version?: string; body: { startDate: string; endDate: string; reason: string } }
   | { kind: 'upload'; id: number; file: File };
 
 export function useContractAction() {
@@ -87,8 +90,11 @@ export function useContractAction() {
         case 'renew': return http.post(`/contracts/${a.priorId}/renew`, a.body, { idempotencyKey: a.key });
         case 'transition': return http.post<{ status: ContractStatus; eligibility: string | null }>(`/contracts/${a.id}/transition`, { action: a.action, ...(a.reason ? { reason: a.reason } : {}) });
         case 'upload': return http.upload(`/contracts/${a.id}/documents`, a.file);
+        // Draft only (owner request 2026-10-15); the server refuses any other status.
+        case 'dates': return http.patch(`/contracts/${a.id}/dates`, a.body, { ifMatch: a.version });
       }
     },
     onSuccess: () => Promise.all(['contracts', 'employees', 'eligibility'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),
+    onError: (e) => isStaleRecord(e) && qc.invalidateQueries({ queryKey: ['contracts'] }),
   });
 }
