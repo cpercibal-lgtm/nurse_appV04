@@ -4,6 +4,9 @@ All notable changes to the AIGH Nursing Workforce Management System. Versions fo
 
 ## [Unreleased]
 
+### Changed
+- **Nurses list: the row under the mouse is easy to see** (owner request, 2026-10-15). It turns brand green with white text (contrast 6.4:1), and the nurse that is open stays highlighted, so it is clear which row a click will open.
+
 ### Fixed
 - **Submit could do nothing when the browser wrongly reported "offline"** (found as the flaky WebKit department step in CI). react-query pauses a save while the browser says offline: nothing was sent, no message was shown, Submit kept its spinner until an "online" event. Safari / WebKit reports offline briefly and wrongly, so on a phone a save could hang. The app now always sends the request and shows the server's answer or "the server could not be reached" (`networkMode: 'always'`, decision D-1). A unit test covers it, and the smoke test now makes the browser report offline before Submit in every browser, with a failure message that says whether Submit was busy and what `navigator.onLine` was.
 

@@ -125,3 +125,10 @@ body {
 .skip-link { position: absolute; inset-inline-start: 8px; top: -64px; z-index: 1100; padding: 10px 16px; border-radius: 6px; background: #0b5d3b; color: #fff; font-weight: 600; text-decoration: none; }
 .skip-link:focus { top: 8px; outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px #0b5d3b; }
 .app-content:focus { outline: none; }
+
+/* Lists you pick from (Nurses): the row under the mouse, and the one that is open, turn brand green with white
+   text so the choice is obvious (owner request, 2026-10-15). White on #1a6b4e is 6.4:1 (WCAG AA). Tags keep their
+   own colours. Specific enough to win over Ant Design's hover background. */
+.pick-table .ant-table-tbody > tr.ant-table-row:hover > td,
+.pick-table .ant-table-tbody > tr.ant-table-row > td.ant-table-cell-row-hover,
+.pick-table .ant-table-tbody > tr.ant-table-row.pick-row-active > td { background: var(--brand) !important; color: #fff; }

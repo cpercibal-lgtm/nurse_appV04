@@ -164,6 +164,7 @@ export default function NursesPage() {
       </Flex>
       <Table<EmployeeRow>
         rowKey="id" loading={employees.isLoading} dataSource={employees.data?.items} scroll={{ x: true }}
+        className="pick-table" rowClassName={(r) => (r.id === selected ? 'pick-row-active' : '')}
         pagination={{ current: filter.page, pageSize: 50, total: employees.data?.total, onChange: (page) => setFilter({ ...filter, page }) }}
         onRow={(r) => ({
           onClick: () => setSelected(r.id), style: { cursor: 'pointer' },
