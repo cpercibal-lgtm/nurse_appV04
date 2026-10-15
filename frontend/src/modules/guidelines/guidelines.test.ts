@@ -39,6 +39,19 @@ describe('Guidelines content', () => {
     expect(menuTable.rows.length).toBe(MODULES.length);
   });
 
+  it('guides date corrections through the uploaded copy and a different HR approver', () => {
+    const task = sectionById('contracts')!.tasks.find((t) => t.id === 'request-contract-date-change')!;
+    expect(task.purpose).toContain('Correct a typing error');
+    expect(task.purpose).toContain('match the uploaded contract copy');
+    expect(task.before).toContain('The signed contract copy is uploaded (Contract copy). The new dates must be exactly the dates written on it.');
+    const reviewStep = task.steps.find((s) => s.includes('Open contract copy'))!;
+    expect(reviewStep).toContain('Another HR administrator');
+    expect(reviewStep).toContain('requested dates match the document exactly');
+    expect(reviewStep).toContain('With no discrepancy they click Approve');
+    expect(reviewStep).toContain('otherwise they write a note and click Reject');
+    expect(JSON.stringify(task)).not.toMatch(/addendum/i);
+  });
+
   it('every "?" help button points at a section (and task) that exists', () => {
     const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
       const p = join(dir, f);
@@ -95,6 +108,9 @@ describe('search', () => {
     ['How do I approve a request?', 'approvals/decide-request'],
     ['What does TRANSITION mean?', 'credentials/requirements'],
     ['What is ELIGIBLE_WITH_GRACE?', 'eligibility/read-eligibility'],
+    ['correct contract date', 'contracts/request-contract-date-change'],
+    ['contract date typo', 'contracts/request-contract-date-change'],
+    ['wrong contract date', 'contracts/request-contract-date-change'],
   ])('%s → %s', (q, expected) => expect(top(q)).toBe(expected));
 
   it('finds nothing for nonsense and for an empty query', () => {
