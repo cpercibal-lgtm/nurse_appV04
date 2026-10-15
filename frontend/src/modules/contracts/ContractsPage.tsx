@@ -43,6 +43,11 @@ export default function ContractsPage() {
   const [pending, setPending] = useState<{ row: ContractRow; action: ContractAction } | null>(null);
   const [reason, setReason] = useState('');
   const [docsFor, setDocsFor] = useState<ContractRow | null>(null);
+  // Edit dates (owner request 2026-10-15): Draft contracts only.
+  const [redating, setRedating] = useState<ContractRow | null>(null);
+  const [datesForm] = Form.useForm<{ start: Dayjs; end: Dayjs; reason: string }>();
+  const newStart = Form.useWatch('start', datesForm);
+  const newEnd = Form.useWatch('end', datesForm);
   // Picker search runs on the server (all employees in scope, not just a first page); typing is debounced.
   const [pickerInput, setPickerInput] = useState('');
   const [pickerQ, setPickerQ] = useState('');
@@ -115,6 +120,9 @@ export default function ContractsPage() {
               <Flex gap={4} wrap>
                 {r.view === 'FULL' && <Button size="small" onClick={() => setDocsFor(r)}>{t('contractCopy')}</Button>}
                 {!staff && <Button size="small" onClick={() => setDocsFor(r)}>{t('contractCopy')}</Button>}
+                {hr && r.view === 'FULL' && r.status === 'Draft' && (
+                  <Button size="small" onClick={() => { datesForm.setFieldsValue({ start: dayjs(r.startDate), end: dayjs(r.endDate), reason: '' }); setRedating(r); }}>{t('editContractDates')}</Button>
+                )}
                 {hr && r.view === 'FULL' && actionsFor(r).map((a) => (
                   <Button key={a} size="small" danger={a === 'terminate' || a === 'suspend'} type={a === 'approve' ? 'primary' : 'default'}
                     onClick={() => (NEEDS_REASON.includes(a) ? setPending({ row: r, action: a }) : void transition(r, a))}>{t(`contractAction_${a}`)}</Button>
@@ -165,6 +173,29 @@ export default function ContractsPage() {
         onOk={() => pending && transition(pending.row, pending.action, reason)} okText={t('submit')} cancelText={t('cancel')}
         okButtonProps={{ disabled: reason.trim().length < 5, loading: action.isPending, danger: pending?.action !== 'reinstate' }} destroyOnHidden>
         <Input.TextArea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('decisionReasonHint')} maxLength={500} />
+      </Modal>
+
+      <Modal title={redating ? `${t('editContractDates')} #${redating.id} — ${redating.jobNumber} ${redating.employeeName}` : ''} open={redating !== null}
+        onCancel={() => setRedating(null)} onOk={() => datesForm.submit()} okText={t('submit')} cancelText={t('cancel')}
+        okButtonProps={{ loading: action.isPending }} destroyOnHidden forceRender>
+        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('editContractDatesHint')} />
+        {redating && <p className="meta-text">{t('editContractDatesNow', { start: redating.startDate, end: redating.endDate })}</p>}
+        <Form form={datesForm} layout="vertical" onFinish={async (v) => {
+          if (!redating) return;
+          const out = await run({ kind: 'dates', id: redating.id, version: redating.updatedAt, body: { startDate: v.start.format('YYYY-MM-DD'), endDate: v.end.format('YYYY-MM-DD'), reason: v.reason.trim() } }, t('saved'));
+          if (out) setRedating(null);
+        }}>
+          <Flex gap={8}>
+            <Form.Item name="start" label={t('contractStart')} extra={newStart ? toHijriShort(newStart) : undefined} rules={[{ required: true }]} style={{ flex: 1 }}><DatePicker style={{ width: '100%' }} /></Form.Item>
+            <Form.Item name="end" label={t('contractEnd')} extra={newEnd ? toHijriShort(newEnd) : undefined} style={{ flex: 1 }}
+              rules={[{ required: true }, { validator: (_, v: Dayjs | undefined) => (!v || !newStart || v.isAfter(newStart, 'day') ? Promise.resolve() : Promise.reject(new Error(t('contractEndAfterStart')))) }]}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Flex>
+          <Form.Item name="reason" label={t('reason')} rules={[{ required: true, whitespace: true, min: 5, message: t('editContractDatesReason') }]}>
+            <Input.TextArea rows={2} maxLength={500} placeholder={t('editContractDatesReason')} />
+          </Form.Item>
+        </Form>
       </Modal>
 
       <Drawer title={docsFor ? `${t('contractCopy')} #${docsFor.id}` : ''} open={docsFor !== null} onClose={() => setDocsFor(null)} size={560} destroyOnHidden>

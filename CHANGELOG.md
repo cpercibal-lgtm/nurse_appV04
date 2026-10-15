@@ -5,6 +5,7 @@ All notable changes to the AIGH Nursing Workforce Management System. Versions fo
 ## [Unreleased]
 
 ### Changed
+- **Contracts: Edit dates** (owner request, 2026-10-15). A Draft contract's start and end dates can be corrected from the Contracts list (*Edit dates*), with a reason; the Hijri dates are recomputed and the change is audited from → to (`PATCH /contracts/:id/dates`). Only Drafts: a contract awaiting approval is returned to Draft first, and an approved or active one is renewed or terminated, never re-dated, so the second administrator always approves the dates that cover the nurse.
 - **Nurses list: the row under the mouse is easy to see** (owner request, 2026-10-15). It turns brand green with white text (contrast 6.4:1), and the nurse that is open stays highlighted, so it is clear which row a click will open.
 
 ### Fixed

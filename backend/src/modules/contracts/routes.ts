@@ -8,7 +8,7 @@ import type { Db } from '../../lib/prisma.js';
 import { decodeFileName } from '../../lib/uploads.js';
 import { authOf, authorize } from '../../middleware/authorize.js';
 import { idempotent } from '../../middleware/idempotency.js';
-import { CreateBody, ListQuery, PickerQuery, RenewBody, TransitionBody, type ContractService } from './service.js';
+import { CreateBody, DatesBody, ListQuery, PickerQuery, RenewBody, TransitionBody, type ContractService } from './service.js';
 import { fileHeaders, LinkBody } from '../documents/access.js';
 import { ContractTypeCreateBody, ContractTypeQuery, ContractTypeUpdateBody, createContractTypeService } from './contract-types.js';
 
@@ -44,6 +44,10 @@ export function createContractsRouter(db: Db, contracts: ContractService, maxUpl
   r.get('/contracts/:id', async (req, res) => { res.json(await contracts.get(authOf(res), IdParam.parse(req.params).id)); });
   r.post('/contracts/:id/renew', authorize('contracts.manage'), idempotent(db, 'contracts.renew'), async (req, res) => {
     res.status(201).json(await contracts.renew(authOf(res), IdParam.parse(req.params).id, RenewBody.parse(req.body ?? {}), rid(res)));
+  });
+  // Draft only (owner request 2026-10-15); If-Match = the contract's updatedAt.
+  r.patch('/contracts/:id/dates', authorize('contracts.manage'), async (req, res) => {
+    res.json(await contracts.updateDates(authOf(res), IdParam.parse(req.params).id, DatesBody.parse(req.body), rid(res), ifMatch(req)));
   });
   r.post('/contracts/:id/transition', authorize('contracts.manage'), async (req, res) => {
     res.json(await contracts.transition(authOf(res), IdParam.parse(req.params).id, TransitionBody.parse(req.body), rid(res)));

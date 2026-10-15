@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Express } from 'express';
 import { findChainBreaks } from '../src/lib/audit.js';
-import { addDays, riyadhDate, toDbDate } from '../src/lib/dates.js';
+import { addDays, dbDate, riyadhDate, toDbDate } from '../src/lib/dates.js';
 import type { Db } from '../src/lib/prisma.js';
 import { FILES, makeEmployee, makeNurse, makeOrg, makeTemplate, makeUser, openDb, signIn, TEST_URL, testApp, uniq, jobPost } from './helpers.js';
 
@@ -788,7 +788,7 @@ describeDb('workforce, employees and contracts', () => {
       ['POST', '/positions'], ['PATCH', '/positions/SN'], ['PUT', '/coverage-targets'], ['GET', '/kpi/nurse-to-bed?date=2026-01-01&shift=Night'],
       ['GET', '/employees'], ['POST', '/employees/onboard'], ['PATCH', '/employees/1'], ['POST', '/employees/1/position'], ['DELETE', '/employees/1'],
       ['GET', '/contracts'], ['GET', '/contracts/creatable'], ['GET', '/contracts/renewable'], ['POST', '/contracts'],
-      ['POST', '/contracts/1/renew'], ['POST', '/contracts/1/transition'], ['POST', '/contracts/1/documents'],
+      ['POST', '/contracts/1/renew'], ['POST', '/contracts/1/transition'], ['POST', '/contracts/1/documents'], ['PATCH', '/contracts/1/dates'],
     ];
     it.each(STAFF_ONLY)('%s %s is forbidden to an employee', async (method, path) => {
       const nurse = await signIn(app, (await makeUser(db)).email);
@@ -835,6 +835,41 @@ describeDb('workforce, employees and contracts', () => {
       expect((await act(hr, id, 'terminate', 'Resigned with notice')).body.status).toBe('Terminated');
       expect((await act(hr, id, 'reinstate', 'Try again')).body.error.code).toBe('TRANSITION_NOT_ALLOWED');
       expect((await db.eligibilityState.findUniqueOrThrow({ where: { employeeId: emp.id } })).status).toBe('INELIGIBLE');
+    });
+
+    it('edits the dates of a Draft only, with a reason, audited from → to; never after submit or approval (owner request 2026-10-15)', async () => {
+      const { emp, id } = await draftFor(hr);
+      const dates = (body: object) => hr.patch(`/contracts/${id}/dates`, body);
+      const before = await db.contract.findUniqueOrThrow({ where: { id } });
+      const newStart = addDays(today(), 10); const newEnd = addDays(today(), 374);
+      expect((await dates({ startDate: newStart, endDate: newEnd })).body.error.code).toBe('VALIDATION_FAILED'); // no reason
+      expect((await dates({ startDate: newEnd, endDate: newStart, reason: 'Typing error' })).body.error.code).toBe('CONTRACT_DATES_INVALID');
+      expect((await dates({ startDate: dbDate(before.startDate), endDate: dbDate(before.endDate), reason: 'Typing error' })).body.error.code).toBe('DATES_UNCHANGED');
+      // A version the caller loaded earlier than the stored one is refused (If-Match).
+      expect((await dates({ startDate: newStart, endDate: newEnd, reason: 'Typing error' }).set('If-Match', `"${new Date(0).toISOString()}"`)).body.error.code).toBe('STALE_RECORD');
+
+      const ok = await dates({ startDate: newStart, endDate: newEnd, reason: 'Start date agreed with the nurse' }).set('If-Match', `"${before.updatedAt.toISOString()}"`);
+      expect(ok.status).toBe(200);
+      expect(ok.body).toMatchObject({ id, status: 'Draft', startDate: newStart, endDate: newEnd, startDateHijri: expect.stringMatching(/^14\d\d-\d\d-\d\d$/) });
+      const stored = await db.contract.findUniqueOrThrow({ where: { id } });
+      expect([dbDate(stored.startDate), dbDate(stored.endDate)]).toEqual([newStart, newEnd]);
+      expect(stored.startDateHijri).not.toBe(before.startDateHijri);
+      const audit = await db.auditEntry.findFirstOrThrow({ where: { action: 'CONTRACT_DATES_CHANGED', resourceId: String(id) } });
+      expect(audit.changes).toMatchObject({ employeeId: emp.id, from: { startDate: dbDate(before.startDate) }, to: { startDate: newStart, endDate: newEnd }, reason: 'Start date agreed with the nurse' });
+
+      // Scope and roles: HR of another unit, a supervisor and the employee cannot.
+      const otherHr = await signIn(app, (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitC.id] }] })).email);
+      expect((await otherHr.patch(`/contracts/${id}/dates`, { startDate: newStart, endDate: addDays(newEnd, 1), reason: 'Typing error' })).body.error.code).toBe('SCOPE_NOT_COVERED');
+
+      // Submitted: return to Draft first; approved: never.
+      await hr.upload(`/contracts/${id}/documents`, FILES.pdf, 'application/pdf');
+      await act(hr, id, 'submit');
+      const pending = await dates({ startDate: newStart, endDate: addDays(newEnd, 1), reason: 'Typing error' });
+      expect([pending.status, pending.body.error.code, pending.body.error.message]).toEqual([409, 'CONTRACT_NOT_DRAFT', 'Return the contract to Draft before changing its dates']);
+      await act(hr2, id, 'approve');
+      const approved = await dates({ startDate: newStart, endDate: addDays(newEnd, 1), reason: 'Typing error' });
+      expect([approved.status, approved.body.error.code]).toEqual([409, 'CONTRACT_NOT_DRAFT']);
+      expect(dbDate((await db.contract.findUniqueOrThrow({ where: { id } })).endDate)).toBe(newEnd);
     });
 
     it('a future period is Approved (C2); an overlapping renewal cannot be approved (C4); return goes back to Draft', async () => {

@@ -29,10 +29,16 @@
 // no editing afterwards: the approver approves the type with the contract.
 // Contracts from before the field stay unclassified (null). Information only —
 // eligibility, renewal and approval rules do not read it.
+//
+// Editing the dates (owner request, 2026-10-15): only while the contract is a Draft,
+// so the approver always approves the dates that will cover. A contract awaiting
+// approval is returned to Draft first; an approved one is renewed or terminated, never
+// re-dated. The change needs a reason and is audited from → to.
 
 import { z } from 'zod';
 import type { Contract, ContractStatus } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
+import { assertUnchanged } from '../../lib/concurrency.js';
 import { addDays, daysBetween, dbDate, isIsoDate, riyadhDate, toDbDate } from '../../lib/dates.js';
 import { toHijriIso } from '../../lib/hijri.js';
 import { conflict, HttpError, notFound, unprocessable } from '../../lib/http-errors.js';
@@ -51,6 +57,8 @@ const Reason = z.string().trim().min(5, 'A reason of at least 5 characters is re
 // The type is chosen at Onboard employee (owner decision 2026-10-04): a new contract or renewal carries the
 // employee's previous type unless one is given (the API still accepts it).
 export const CreateBody = z.strictObject({ employeeId: z.number().int().positive(), startDate: IsoDate, endDate: IsoDate, contractTypeCode: TypeCode.optional() });
+/** Owner request 2026-10-15: correct the period of a Draft contract (before it is submitted for approval). */
+export const DatesBody = z.strictObject({ startDate: IsoDate, endDate: IsoDate, reason: Reason });
 export const RenewBody = z.strictObject({ startDate: IsoDate.optional(), endDate: IsoDate.optional(), contractTypeCode: TypeCode.optional() });
 export const TransitionBody = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('submit') }),
@@ -284,6 +292,34 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
         const pre = renewalPeriodAfter({ startDate: dbDate(prior.startDate), endDate: dbDate(prior.endDate) });
         const c = await createDraft(tx, auth, emp, body.startDate ?? pre.start, body.endDate ?? pre.end, type, 'CONTRACT_RENEWAL_CREATED', { renewedFromId: prior.id }, requestId);
         return { id: c.id };
+      });
+    },
+
+    /** Draft only (see the header). `expected`: the version the caller loaded (If-Match); a newer one is refused. */
+    async updateDates(auth: AuthContext, id: number, body: z.infer<typeof DatesBody>, requestId?: string, expected: Date | null = null) {
+      return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${id} FOR UPDATE`;
+        const c = await loadForHr(tx, auth, id);
+        if (c.employee.deletedAt) throw notFound('Employee not found');
+        if (auth.user.employeeId === c.employeeId) throw new HttpError(403, 'SELF_ACTION_FORBIDDEN', 'You cannot manage your own contract');
+        assertUnchanged(expected, c);
+        if (c.status !== 'Draft') {
+          throw conflict('CONTRACT_NOT_DRAFT', c.status === 'PendingApproval'
+            ? 'Return the contract to Draft before changing its dates'
+            : `The dates of a ${c.status} contract cannot be changed: renew or terminate it instead`, { status: c.status });
+        }
+        if (body.endDate <= body.startDate) throw unprocessable('CONTRACT_DATES_INVALID', 'The contract end must be after its start (C5)');
+        const from = { startDate: dbDate(c.startDate), endDate: dbDate(c.endDate) };
+        if (from.startDate === body.startDate && from.endDate === body.endDate) throw unprocessable('DATES_UNCHANGED', 'The contract already has these dates');
+        const updated = await tx.contract.update({
+          where: { id },
+          data: { startDate: toDbDate(body.startDate), endDate: toDbDate(body.endDate), startDateHijri: toHijriIso(body.startDate), endDateHijri: toHijriIso(body.endDate) },
+        });
+        await appendAudit(tx, {
+          actorUserId: auth.user.id, action: 'CONTRACT_DATES_CHANGED', resource: 'contract', resourceId: id,
+          changes: { employeeId: c.employeeId, from, to: { startDate: body.startDate, endDate: body.endDate }, reason: body.reason }, requestId,
+        });
+        return { id, status: updated.status, ...dates(updated), updatedAt: updated.updatedAt };
       });
     },
 
