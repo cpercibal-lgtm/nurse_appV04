@@ -934,7 +934,7 @@ describeDb('workforce, employees and contracts', () => {
       await ask(hr, { startDate: later, endDate: addDays(longer, 5), reason: 'Typed the wrong end' });
       expect((await decide(hr, 'withdraw')).body.status).toBe('Withdrawn');
       await ask(hr, { startDate: later, endDate: addDays(longer, 5), reason: 'Extension agreed' });
-      expect((await decide(hr2, 'reject', 'No signed addendum on file')).body.status).toBe('Rejected');
+      expect((await decide(hr2, 'reject', 'Does not match the contract copy')).body.status).toBe('Rejected');
       expect(await db.auditEntry.count({ where: { action: 'CONTRACT_DATE_CHANGE_REJECTED', resourceId: String(id) } })).toBe(1);
       expect(dbDate((await db.contract.findUniqueOrThrow({ where: { id } })).endDate)).toBe(longer);
 
@@ -961,7 +961,7 @@ describeDb('workforce, employees and contracts', () => {
       const emp = await makeEmployee(db, own.id);
       const start = addDays(today(), 10); const end = addDays(today(), 300);
       const c = await db.contract.create({ data: { employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Approved', startDate: toDbDate(start), endDate: toDbDate(end) } });
-      const ask = (body: object) => hr.post(`/contracts/${c.id}/date-change`, { reason: 'Signed addendum', ...body });
+      const ask = (body: object) => hr.post(`/contracts/${c.id}/date-change`, { reason: 'Typing error, see contract copy', ...body });
       const decide = (decision: string, note?: string) => hr2.post(`/contracts/${c.id}/date-change/decision`, { decision, ...(note ? { note } : {}) });
 
       for (const longer of [{ startDate: today(), endDate: end }, { startDate: start, endDate: addDays(end, 30) }]) {

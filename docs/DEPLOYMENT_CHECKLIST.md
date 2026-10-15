@@ -158,6 +158,6 @@ For a server that already runs an earlier version, the roster approval work (pul
 # This release: changing the dates of an approved contract (D-73)
 
 1. - [ ] **Deploy** through the workflow (Part B). The migration `20261101090000_contract_date_changes` adds the table `contract_date_changes`. It is forward-only; the previous version still works with it. `02_grants.sql` covers the new table.
-2. - [ ] **Tell HR:** *Edit dates* on an Approved or Active contract now sends the new dates for approval; a different HR administrator approves them with *Review date change*. Upload the signed addendum to the contract copy first.
+2. - [ ] **Tell HR:** *Edit dates* on an Approved or Active contract corrects a typing error in its dates; it sends the new dates for approval. A different HR administrator opens *Review date change*, clicks *Open contract copy*, and approves only when the dates match the uploaded contract copy exactly.
 
 **Rollback note:** safe for the schema; requests waiting in `contract_date_changes` are not shown by the previous version and are never applied.
