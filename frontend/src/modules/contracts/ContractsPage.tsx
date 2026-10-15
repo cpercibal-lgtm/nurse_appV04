@@ -1,12 +1,15 @@
 // Contracts (spec §4). HR: create, renew, upload the copy, and move a contract
 // along the map of decision D-29 — the creator or submitter cannot approve
 // (D-30). Supervisors get the reduced read view, employees their own.
+// Dates (owner request 2026-10-15): a Draft is edited directly; an Approved or Active
+// contract gets a request that a different HR administrator approves or rejects.
 
 import { useEffect, useState } from 'react';
 import { Alert, App, Button, Card, DatePicker, Drawer, Flex, Form, Input, Modal, Select, Space, Table, Tag, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../hooks/useAuth';
 import { usePermissions } from '../../hooks/usePermissions';
 import { describeApiError } from '../../lib/errors';
 import { toHijriShort } from '../../lib/hijri';
@@ -14,7 +17,7 @@ import { http } from '../../services/http';
 import { GuideHelp } from '../guidelines/GuideHelp';
 import {
   CONTRACT_STATUSES, NEEDS_REASON, TRANSITIONS, useContractAction, useContractDocs, useContracts, useContractTypes, useCreatable, useRenewable,
-  type ContractAction, type ContractRow, type ContractStatus, type Renewable,
+  type ContractAction, type ContractRow, type ContractStatus, type DateDecision, type Renewable,
 } from './api';
 import { ContractTypesDrawer } from './ContractTypesDrawer';
 import { keyAfterError } from '../../lib/idempotency';
@@ -31,6 +34,7 @@ export default function ContractsPage() {
   const { hasRole } = usePermissions();
   const staff = hasRole('HR_ADMIN', 'SYSTEM_ADMIN', 'SUPERVISOR');
   const hr = hasRole('HR_ADMIN', 'SYSTEM_ADMIN');
+  const myId = useAuth((s) => s.user?.id);
   const [filter, setFilter] = useState<{ status?: ContractStatus; contractTypeCode?: string; page: number }>({ page: 1 });
   const contracts = useContracts(filter, staff);
   // Every type for the filter (old contracts may carry an inactive one). New contracts and renewals carry the
@@ -43,8 +47,11 @@ export default function ContractsPage() {
   const [pending, setPending] = useState<{ row: ContractRow; action: ContractAction } | null>(null);
   const [reason, setReason] = useState('');
   const [docsFor, setDocsFor] = useState<ContractRow | null>(null);
-  // Edit dates (owner request 2026-10-15): Draft contracts only.
+  // Edit dates (owner request 2026-10-15): a Draft directly; an Approved or Active contract by request.
   const [redating, setRedating] = useState<ContractRow | null>(null);
+  const byRequest = redating !== null && covers(redating.status);
+  const [reviewing, setReviewing] = useState<ContractRow | null>(null);
+  const [note, setNote] = useState('');
   const [datesForm] = Form.useForm<{ start: Dayjs; end: Dayjs; reason: string }>();
   const newStart = Form.useWatch('start', datesForm);
   const newEnd = Form.useWatch('end', datesForm);
@@ -87,6 +94,14 @@ export default function ContractsPage() {
     if (out) { message.info(t('contractNowStatus', { status: t(`contract_${out.status}`), eligibility: out.eligibility ?? '—' })); setPending(null); setReason(''); }
   }
 
+  async function decideDates(row: ContractRow, decision: DateDecision) {
+    const out = await run({ kind: 'dateDecision', id: row.id, decision, note: note.trim() || undefined }, t(`dateChangeDone_${decision}`)) as
+      { contractStatus: ContractStatus; eligibility: string | null } | undefined;
+    if (!out) return;
+    if (decision === 'approve') message.info(t('contractNowStatus', { status: t(`contract_${out.contractStatus}`), eligibility: out.eligibility ?? '—' }));
+    setReviewing(null); setNote('');
+  }
+
   const actionsFor = (r: ContractRow) => (Object.keys(TRANSITIONS) as ContractAction[]).filter((a) => TRANSITIONS[a].includes(r.status));
 
   return (
@@ -113,15 +128,22 @@ export default function ContractsPage() {
           { title: t('employee'), render: (_, r) => `${r.jobNumber} — ${r.employeeName}` },
           { title: t('unit'), render: (_, r) => r.unitCode ?? t('unassigned') },
           { title: t('contractType'), render: (_, r) => (r.contractTypeName ? typeLabel({ name: r.contractTypeName, nameAr: r.contractTypeNameAr }) : <Tag>{t('contractTypeNone')}</Tag>) },
-          { title: t('period'), render: (_, r) => <>{r.startDate} → {r.endDate}<div className="meta-text">{r.startDateHijri} → {r.endDateHijri} AH</div></> },
+          { title: t('period'), render: (_, r) => (
+            <>{r.startDate} → {r.endDate}<div className="meta-text">{r.startDateHijri} → {r.endDateHijri} AH</div>
+              {r.pendingDateChange && <Tag color="gold" style={{ marginTop: 4 }}>{t('dateChangePending', { start: r.pendingDateChange.startDate, end: r.pendingDateChange.endDate })}</Tag>}
+            </>
+          ) },
           { title: t('status'), render: (_, r) => <><Tag color={COLOR[r.status]}>{t(`contract_${r.status}`)}</Tag>{!covers(r.status) && <Tag>{t('noCoverage')}</Tag>}</> },
           {
             title: '', render: (_, r) => (
               <Flex gap={4} wrap>
                 {r.view === 'FULL' && <Button size="small" onClick={() => setDocsFor(r)}>{t('contractCopy')}</Button>}
                 {!staff && <Button size="small" onClick={() => setDocsFor(r)}>{t('contractCopy')}</Button>}
-                {hr && r.view === 'FULL' && r.status === 'Draft' && (
+                {hr && r.view === 'FULL' && (r.status === 'Draft' || covers(r.status)) && !r.pendingDateChange && (
                   <Button size="small" onClick={() => { datesForm.setFieldsValue({ start: dayjs(r.startDate), end: dayjs(r.endDate), reason: '' }); setRedating(r); }}>{t('editContractDates')}</Button>
+                )}
+                {hr && r.view === 'FULL' && r.pendingDateChange && (
+                  <Button size="small" type={r.pendingDateChange.requestedById === myId ? 'default' : 'primary'} onClick={() => { setNote(''); setReviewing(r); }}>{t('reviewDateChange')}</Button>
                 )}
                 {hr && r.view === 'FULL' && actionsFor(r).map((a) => (
                   <Button key={a} size="small" danger={a === 'terminate' || a === 'suspend'} type={a === 'approve' ? 'primary' : 'default'}
@@ -176,13 +198,16 @@ export default function ContractsPage() {
       </Modal>
 
       <Modal title={redating ? `${t('editContractDates')} #${redating.id} — ${redating.jobNumber} ${redating.employeeName}` : ''} open={redating !== null}
-        onCancel={() => setRedating(null)} onOk={() => datesForm.submit()} okText={t('submit')} cancelText={t('cancel')}
+        onCancel={() => setRedating(null)} onOk={() => datesForm.submit()} okText={byRequest ? t('sendForApproval') : t('submit')} cancelText={t('cancel')}
         okButtonProps={{ loading: action.isPending }} destroyOnHidden forceRender>
-        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('editContractDatesHint')} />
+        <Alert type="info" showIcon style={{ marginBottom: 12 }} title={byRequest ? t('editContractDatesApprovalHint') : t('editContractDatesHint')} />
         {redating && <p className="meta-text">{t('editContractDatesNow', { start: redating.startDate, end: redating.endDate })}</p>}
         <Form form={datesForm} layout="vertical" onFinish={async (v) => {
           if (!redating) return;
-          const out = await run({ kind: 'dates', id: redating.id, version: redating.updatedAt, body: { startDate: v.start.format('YYYY-MM-DD'), endDate: v.end.format('YYYY-MM-DD'), reason: v.reason.trim() } }, t('saved'));
+          const body = { startDate: v.start.format('YYYY-MM-DD'), endDate: v.end.format('YYYY-MM-DD'), reason: v.reason.trim() };
+          const out = byRequest
+            ? await run({ kind: 'dateChange', id: redating.id, version: redating.updatedAt, body }, t('dateChangeSent'))
+            : await run({ kind: 'dates', id: redating.id, version: redating.updatedAt, body }, t('saved'));
           if (out) setRedating(null);
         }}>
           <Flex gap={8}>
@@ -196,6 +221,38 @@ export default function ContractsPage() {
             <Input.TextArea rows={2} maxLength={500} placeholder={t('editContractDatesReason')} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal title={reviewing ? `${t('reviewDateChange')} #${reviewing.id} — ${reviewing.jobNumber} ${reviewing.employeeName}` : ''} open={reviewing !== null}
+        onCancel={() => setReviewing(null)} destroyOnHidden
+        footer={reviewing?.pendingDateChange && (reviewing.pendingDateChange.requestedById === myId
+          ? [<Button key="close" onClick={() => setReviewing(null)}>{t('cancel')}</Button>,
+            <Button key="withdraw" danger loading={action.isPending} onClick={() => void decideDates(reviewing, 'withdraw')}>{t('withdraw')}</Button>]
+          : [<Button key="close" onClick={() => setReviewing(null)}>{t('cancel')}</Button>,
+            <Button key="reject" danger disabled={note.trim().length < 5} loading={action.isPending} onClick={() => void decideDates(reviewing, 'reject')}>{t('reject')}</Button>,
+            <Button key="approve" type="primary" loading={action.isPending} onClick={() => void decideDates(reviewing, 'approve')}>{t('approve')}</Button>])}>
+        {reviewing?.pendingDateChange && (() => {
+          const p = reviewing.pendingDateChange;
+          const mine = p.requestedById === myId;
+          return (
+            <>
+              <Alert type={mine ? 'info' : 'warning'} showIcon style={{ marginBottom: 12 }} title={mine ? t('dateChangeOwnHint') : t('dateChangeReviewHint')} />
+              <Table size="small" pagination={false} rowKey="k" style={{ marginBottom: 12 }}
+                dataSource={[
+                  { k: 'now', label: t('dateChangeNow'), start: reviewing.startDate, end: reviewing.endDate, hs: reviewing.startDateHijri, he: reviewing.endDateHijri },
+                  { k: 'new', label: t('dateChangeNew'), start: p.startDate, end: p.endDate, hs: p.startDateHijri, he: p.endDateHijri },
+                ]}
+                columns={[
+                  { title: '', dataIndex: 'label', width: 110 },
+                  { title: t('contractStart'), render: (_, x) => <>{x.start}{x.hs && <div className="meta-text">{x.hs} AH</div>}</> },
+                  { title: t('contractEnd'), render: (_, x) => <>{x.end}{x.he && <div className="meta-text">{x.he} AH</div>}</> },
+                ]} />
+              <p>{t('dateChangeAsked', { name: p.requestedByName, at: new Date(p.requestedAt).toLocaleString() })}</p>
+              <p><strong>{t('reason')}:</strong> {p.reason}</p>
+              {!mine && <Input.TextArea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder={t('dateChangeNoteHint')} />}
+            </>
+          );
+        })()}
       </Modal>
 
       <Drawer title={docsFor ? `${t('contractCopy')} #${docsFor.id}` : ''} open={docsFor !== null} onClose={() => setDocsFor(null)} size={560} destroyOnHidden>

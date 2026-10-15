@@ -30,10 +30,17 @@
 // Contracts from before the field stay unclassified (null). Information only —
 // eligibility, renewal and approval rules do not read it.
 //
-// Editing the dates (owner request, 2026-10-15): only while the contract is a Draft,
-// so the approver always approves the dates that will cover. A contract awaiting
-// approval is returned to Draft first; an approved one is renewed or terminated, never
-// re-dated. The change needs a reason and is audited from → to.
+// Editing the dates (owner request, 2026-10-15): a Draft is edited in place, so the
+// approver always approves the dates that will cover. A contract awaiting approval is
+// returned to Draft first. The change needs a reason and is audited from → to.
+//
+// Changing the dates of an Approved or Active contract (owner request, 2026-10-15) is a
+// request (contract_date_changes) that a different HR administrator approves or rejects —
+// four eyes, as D-30; the requester may withdraw it. One open request per contract. The
+// approval re-checks what an approval checks: the new period must still cover (C2) and
+// overlap no other covering contract (C4); a longer contract needs valid credentials, as a
+// renewal does. The status follows the new period (Approved ↔ Active) and eligibility is
+// re-evaluated. Suspending or terminating the contract withdraws an open request.
 
 import { z } from 'zod';
 import type { Contract, ContractStatus } from '../../generated/prisma/client.js';
@@ -59,6 +66,13 @@ const Reason = z.string().trim().min(5, 'A reason of at least 5 characters is re
 export const CreateBody = z.strictObject({ employeeId: z.number().int().positive(), startDate: IsoDate, endDate: IsoDate, contractTypeCode: TypeCode.optional() });
 /** Owner request 2026-10-15: correct the period of a Draft contract (before it is submitted for approval). */
 export const DatesBody = z.strictObject({ startDate: IsoDate, endDate: IsoDate, reason: Reason });
+/** Owner request 2026-10-15: ask for new dates on an Approved or Active contract; another HR administrator decides. */
+export const DateChangeBody = DatesBody;
+export const DateChangeDecisionBody = z.discriminatedUnion('decision', [
+  z.strictObject({ decision: z.literal('approve'), note: z.string().trim().max(500).optional() }),
+  z.strictObject({ decision: z.literal('reject'), note: Reason }),
+  z.strictObject({ decision: z.literal('withdraw'), note: z.string().trim().max(500).optional() }),
+]);
 export const RenewBody = z.strictObject({ startDate: IsoDate.optional(), endDate: IsoDate.optional(), contractTypeCode: TypeCode.optional() });
 export const TransitionBody = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('submit') }),
@@ -112,10 +126,18 @@ export function renewalPeriodAfter(prior: { startDate: string; endDate: string }
 }
 
 type TypeRef = { code: string; name: string; nameAr: string | null } | null;
-type WithRefs = Contract & { employee: { fullName: string; unitId: number | null; positionCode: string; unit: { code: string } | null }; contractType: TypeRef };
+type PendingChange = { id: number; toStartDate: Date; toEndDate: Date; reason: string; requestedById: number; requestedAt: Date; requestedBy: { displayName: string } };
+type WithRefs = Contract & {
+  employee: { fullName: string; unitId: number | null; positionCode: string; unit: { code: string } | null }; contractType: TypeRef;
+  dateChanges: PendingChange[];
+};
 const INCLUDE = {
   employee: { select: { fullName: true, unitId: true, positionCode: true, unit: { select: { code: true } } } },
   contractType: { select: { code: true, name: true, nameAr: true } },
+  dateChanges: {
+    where: { status: 'Pending' }, take: 1,
+    select: { id: true, toStartDate: true, toEndDate: true, reason: true, requestedById: true, requestedAt: true, requestedBy: { select: { displayName: true } } },
+  },
 } as const;
 
 function dates(c: Contract) {
@@ -134,7 +156,16 @@ function reducedView(c: WithRefs) {
 function fullView(c: WithRefs) {
   return {
     ...reducedView(c), createdById: c.createdById, submittedById: c.submittedById, approvedById: c.approvedById,
-    approvedAt: c.approvedAt, createdAt: c.createdAt, updatedAt: c.updatedAt, view: 'FULL' as const,
+    approvedAt: c.approvedAt, createdAt: c.createdAt, updatedAt: c.updatedAt, pendingDateChange: pendingView(c.dateChanges[0]), view: 'FULL' as const,
+  };
+}
+/** The open date-change request, HR view only. */
+function pendingView(p: PendingChange | undefined) {
+  if (!p) return null;
+  const startDate = dbDate(p.toStartDate); const endDate = dbDate(p.toEndDate);
+  return {
+    id: p.id, startDate, endDate, startDateHijri: toHijriIso(startDate), endDateHijri: toHijriIso(endDate), reason: p.reason,
+    requestedById: p.requestedById, requestedByName: p.requestedBy.displayName, requestedAt: p.requestedAt,
   };
 }
 const shape = (c: WithRefs, viewer: Viewer) => (viewer === 'HR' ? fullView(c) : reducedView(c));
@@ -158,6 +189,12 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
     if (clash) {
       throw conflict('CONTRACT_PERIOD_OVERLAP', `This period overlaps contract #${clash.id} (${dbDate(clash.startDate)} → ${dbDate(clash.endDate)}), which is approved or active`, { contractId: clash.id });
     }
+  }
+
+  /** C5, and the new period must differ from the current one. */
+  function assertNewPeriod(from: { startDate: string; endDate: string }, to: { startDate: string; endDate: string }) {
+    if (to.endDate <= to.startDate) throw unprocessable('CONTRACT_DATES_INVALID', 'The contract end must be after its start (C5)');
+    if (from.startDate === to.startDate && from.endDate === to.endDate) throw unprocessable('DATES_UNCHANGED', 'The contract already has these dates');
   }
 
   async function assertEmployee(tx: DbClient, auth: AuthContext, employeeId: number) {
@@ -306,11 +343,12 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
         if (c.status !== 'Draft') {
           throw conflict('CONTRACT_NOT_DRAFT', c.status === 'PendingApproval'
             ? 'Return the contract to Draft before changing its dates'
-            : `The dates of a ${c.status} contract cannot be changed: renew or terminate it instead`, { status: c.status });
+            : COVERING.includes(c.status)
+              ? `The dates of an ${c.status} contract change only after approval: request a date change instead`
+              : `The dates of a ${c.status} contract cannot be changed`, { status: c.status });
         }
-        if (body.endDate <= body.startDate) throw unprocessable('CONTRACT_DATES_INVALID', 'The contract end must be after its start (C5)');
         const from = { startDate: dbDate(c.startDate), endDate: dbDate(c.endDate) };
-        if (from.startDate === body.startDate && from.endDate === body.endDate) throw unprocessable('DATES_UNCHANGED', 'The contract already has these dates');
+        assertNewPeriod(from, body);
         const updated = await tx.contract.update({
           where: { id },
           data: { startDate: toDbDate(body.startDate), endDate: toDbDate(body.endDate), startDateHijri: toHijriIso(body.startDate), endDateHijri: toHijriIso(body.endDate) },
@@ -320,6 +358,91 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
           changes: { employeeId: c.employeeId, from, to: { startDate: body.startDate, endDate: body.endDate }, reason: body.reason }, requestId,
         });
         return { id, status: updated.status, ...dates(updated), updatedAt: updated.updatedAt };
+      });
+    },
+
+    /** Approved or Active only (see the header). Nothing changes on the contract until another HR administrator approves. */
+    async requestDateChange(auth: AuthContext, id: number, body: z.infer<typeof DateChangeBody>, requestId?: string, expected: Date | null = null) {
+      return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${id} FOR UPDATE`;
+        const c = await loadForHr(tx, auth, id);
+        if (c.employee.deletedAt) throw notFound('Employee not found');
+        if (auth.user.employeeId === c.employeeId) throw new HttpError(403, 'SELF_ACTION_FORBIDDEN', 'You cannot manage your own contract');
+        assertUnchanged(expected, c);
+        if (!COVERING.includes(c.status)) {
+          throw conflict('CONTRACT_NOT_COVERING', c.status === 'Draft'
+            ? 'A Draft contract\'s dates are edited directly, without a request'
+            : `Only an Approved or Active contract's dates can be changed by request; this one is ${c.status}`, { status: c.status });
+        }
+        const from = { startDate: dbDate(c.startDate), endDate: dbDate(c.endDate) };
+        assertNewPeriod(from, body);
+        if (await tx.contractDateChange.findFirst({ where: { contractId: id, status: 'Pending' }, select: { id: true } })) {
+          throw conflict('DATE_CHANGE_PENDING', 'This contract already has a date change waiting for approval');
+        }
+        // Checked now so HR learns at once; checked again at approval.
+        if (!coveringStatus(body.startDate, body.endDate, riyadhDate())) throw unprocessable('CONTRACT_PERIOD_ENDED', 'The new end date has already passed: terminate the contract instead');
+        await assertNoOverlap(tx, { id, employeeId: c.employeeId, startDate: toDbDate(body.startDate), endDate: toDbDate(body.endDate) });
+        const change = await tx.contractDateChange.create({
+          data: {
+            contractId: id, fromStartDate: c.startDate, fromEndDate: c.endDate, toStartDate: toDbDate(body.startDate), toEndDate: toDbDate(body.endDate),
+            reason: body.reason, requestedById: auth.user.id,
+          },
+        });
+        await appendAudit(tx, {
+          actorUserId: auth.user.id, action: 'CONTRACT_DATE_CHANGE_REQUESTED', resource: 'contract', resourceId: id,
+          changes: { employeeId: c.employeeId, changeId: change.id, from, to: { startDate: body.startDate, endDate: body.endDate }, reason: body.reason }, requestId,
+        });
+        return { id: change.id, contractId: id, status: change.status };
+      });
+    },
+
+    /** approve / reject: a different HR administrator than the requester. withdraw: the requester. */
+    async decideDateChange(auth: AuthContext, id: number, body: z.infer<typeof DateChangeDecisionBody>, requestId?: string) {
+      return db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM contracts WHERE id = ${id} FOR UPDATE`;
+        const c = await loadForHr(tx, auth, id);
+        if (c.employee.deletedAt) throw notFound('Employee not found');
+        if (auth.user.employeeId === c.employeeId) throw new HttpError(403, 'SELF_ACTION_FORBIDDEN', 'You cannot manage your own contract');
+        const change = await tx.contractDateChange.findFirst({ where: { contractId: id, status: 'Pending' } });
+        if (!change) throw new HttpError(404, 'NO_PENDING_DATE_CHANGE', 'This contract has no date change waiting for a decision');
+        const mine = change.requestedById === auth.user.id;
+        if (body.decision === 'withdraw' && !mine) throw new HttpError(403, 'NOT_REQUESTER', 'Only the HR administrator who asked can withdraw the request; reject it instead');
+        if (body.decision !== 'withdraw' && mine) {
+          throw new HttpError(403, 'SELF_APPROVAL_FORBIDDEN', 'A date change must be decided by a different HR administrator than the one who asked (D-30)');
+        }
+        const from = { startDate: dbDate(change.fromStartDate), endDate: dbDate(change.fromEndDate) };
+        const to = { startDate: dbDate(change.toStartDate), endDate: dbDate(change.toEndDate) };
+        const decided = { decidedById: auth.user.id, decidedAt: new Date(), note: body.note || null };
+        const base = { employeeId: c.employeeId, changeId: change.id, from, to, reason: change.reason, note: body.note || undefined, requestedById: change.requestedById };
+
+        if (body.decision !== 'approve') {
+          const status = body.decision === 'reject' ? 'Rejected' : 'Withdrawn';
+          await tx.contractDateChange.update({ where: { id: change.id }, data: { status, ...decided } });
+          await appendAudit(tx, { actorUserId: auth.user.id, action: `CONTRACT_DATE_CHANGE_${status.toUpperCase()}`, resource: 'contract', resourceId: id, changes: base, requestId });
+          return { id: change.id, contractId: id, status, contractStatus: c.status, ...dates(c), eligibility: null };
+        }
+
+        if (!COVERING.includes(c.status)) throw conflict('CONTRACT_NOT_COVERING', `The contract is ${c.status} now; reject the request`, { status: c.status });
+        if (dbDate(c.startDate) !== from.startDate || dbDate(c.endDate) !== from.endDate) {
+          throw conflict('DATE_CHANGE_OUTDATED', 'The contract\'s dates changed after this request was made; reject it and ask again');
+        }
+        const next = coveringStatus(to.startDate, to.endDate, riyadhDate());
+        if (!next) throw unprocessable('CONTRACT_PERIOD_ENDED', 'The new end date has already passed: reject the request and terminate the contract instead');
+        await assertNoOverlap(tx, { id, employeeId: c.employeeId, startDate: change.toStartDate, endDate: change.toEndDate });
+        // A longer contract (later end or earlier start) needs valid credentials, as a renewal does — even a first
+        // contract: this contract itself counts as the one held before, so the gate is never skipped.
+        if (to.endDate > from.endDate || to.startDate < from.startDate) await assertCredentialsAllowRenewal(tx, c.employeeId);
+        const updated = await tx.contract.update({
+          where: { id },
+          data: { startDate: change.toStartDate, endDate: change.toEndDate, startDateHijri: toHijriIso(to.startDate), endDateHijri: toHijriIso(to.endDate), status: next },
+        });
+        await tx.contractDateChange.update({ where: { id: change.id }, data: { status: 'Approved', ...decided } });
+        await appendAudit(tx, {
+          actorUserId: auth.user.id, action: 'CONTRACT_DATES_CHANGED', resource: 'contract', resourceId: id,
+          changes: { ...base, statusFrom: c.status, statusTo: next }, requestId, priority: 'HIGH',
+        });
+        const eligibility = await refreshEligibility(tx, c.employeeId, 'CONTRACT_DATES_CHANGED', { actorUserId: auth.user.id, requestId });
+        return { id: change.id, contractId: id, status: 'Approved' as const, contractStatus: next, ...dates(updated), eligibility: eligibility?.status ?? null };
       });
     },
 
@@ -369,6 +492,13 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
 
         await tx.contract.update({ where: { id }, data: { ...data, status: next } });
         const reason = 'reason' in body ? body.reason : undefined;
+        if (!COVERING.includes(next)) {
+          // A request to re-date a contract that no longer covers has nothing left to approve.
+          await tx.contractDateChange.updateMany({
+            where: { contractId: id, status: 'Pending' },
+            data: { status: 'Withdrawn', decidedById: auth.user.id, decidedAt: new Date(), note: `Contract ${next.toLowerCase()}` },
+          });
+        }
         await appendAudit(tx, {
           actorUserId: auth.user.id, action: `CONTRACT_${body.action.toUpperCase()}`, resource: 'contract', resourceId: id,
           changes: { employeeId: c.employeeId, from: c.status, to: next, reason }, requestId,
