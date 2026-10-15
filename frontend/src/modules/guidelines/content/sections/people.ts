@@ -368,7 +368,7 @@ export const PEOPLE: GuideSection[] = [
         before: [
           'The contract is Approved or Active and has no other date change waiting.',
           'The signed contract copy is uploaded (Contract copy). The new dates must be exactly the dates written on it.',
-          'Extending a contract needs valid mandatory credentials, as a renewal does.',
+          'A longer requested period needs valid mandatory credentials, as a renewal does.',
         ],
         steps: [
           'On the contract row click Edit dates.',
@@ -388,7 +388,7 @@ export const PEOPLE: GuideSection[] = [
         ],
         related: ['eligibility'],
         flow: 'contract-lifecycle',
-        keywords: ['correct contract date', 'contract date typo', 'wrong contract date', 'change approved contract date', 'extend contract', 'date change approval'],
+        keywords: ['correct contract date', 'contract date typo', 'wrong contract date', 'change approved contract date', 'date change approval'],
       },
       {
         id: 'submit-approve-contract',

@@ -856,7 +856,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 - The contract is Approved or Active and has no other date change waiting.
 - The signed contract copy is uploaded (Contract copy). The new dates must be exactly the dates written on it.
-- Extending a contract needs valid mandatory credentials, as a renewal does.
+- A longer requested period needs valid mandatory credentials, as a renewal does.
 
 **Steps.**
 
