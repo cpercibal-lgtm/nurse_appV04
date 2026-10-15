@@ -848,14 +848,14 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
 
-**Purpose.** Extend, shorten or move an Approved or Active contract, for example after a signed addendum, with a second HR administrator's approval.
+**Purpose.** Correct a typing error in the dates of an Approved or Active contract, so they match the uploaded contract copy, with a second HR administrator's approval.
 
 **Who can perform it.** Ask: HR Admin or System Admin within scope. Approve or reject: a different HR person in scope. Never on your own contract.
 
 **Before you start.**
 
 - The contract is Approved or Active and has no other date change waiting.
-- Upload the signed addendum to the contract copy so the approver can check it.
+- The signed contract copy is uploaded (Contract copy). The new dates must be exactly the dates written on it.
 - Extending a contract needs valid mandatory credentials, as a renewal does.
 
 **Steps.**
@@ -863,7 +863,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 1. On the contract row click Edit dates.
 2. Choose the new start and end dates (the Hijri dates are shown under them) and write the reason.
 3. Click Send for approval. The row shows "New dates waiting for approval"; the current dates stay in force.
-4. Another HR administrator clicks Review date change on the row, compares the current and requested dates, and clicks Approve, or writes a note and clicks Reject.
+4. Another HR administrator clicks Review date change on the row, clicks Open contract copy, and checks that the requested dates match the document exactly. With no discrepancy they click Approve; otherwise they write a note and click Reject.
 
 **System result.** On approval the period, its Hijri dates and the status change at once (Approved if the new start is in the future, Active if it covers today) and eligibility is re-evaluated. The audit trail keeps the old and new dates, the reason, who asked and who approved.
 

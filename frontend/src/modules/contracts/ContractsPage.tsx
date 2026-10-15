@@ -236,7 +236,8 @@ export default function ContractsPage() {
           const mine = p.requestedById === myId;
           return (
             <>
-              <Alert type={mine ? 'info' : 'warning'} showIcon style={{ marginBottom: 12 }} title={mine ? t('dateChangeOwnHint') : t('dateChangeReviewHint')} />
+              <Alert type={mine ? 'info' : 'warning'} showIcon style={{ marginBottom: 12 }} title={mine ? t('dateChangeOwnHint') : t('dateChangeReviewHint')}
+                action={<Button size="small" onClick={() => setDocsFor(reviewing)}>{t('dateChangeOpenCopy')}</Button>} />
               <Table size="small" pagination={false} rowKey="k" style={{ marginBottom: 12 }}
                 dataSource={[
                   { k: 'now', label: t('dateChangeNow'), start: reviewing.startDate, end: reviewing.endDate, hs: reviewing.startDateHijri, he: reviewing.endDateHijri },
