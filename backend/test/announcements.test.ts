@@ -58,7 +58,7 @@ describeDb('announcements (D-69)', () => {
     const hrUnitUser = await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitA.id] }] });
     const a1 = await makeUser(db, { employeeId: (await staff(org.unitA.id, `${uniq('a1')}@x.sa`)).id });
     const a2 = await makeUser(db, { employeeId: (await staff(org.unitA.id, `${uniq('a2')}@x.sa`)).id });
-    await db.user.update({ where: { id: a2.id }, data: { telegramChatId: String(Date.now()).slice(-9), telegramLinkedAt: new Date() } });
+    await db.user.update({ where: { id: a2.id }, data: { telegramChatId: `7${String(Date.now()).slice(-9)}`, telegramLinkedAt: new Date() } });
     const b = await makeUser(db, { employeeId: (await staff(org.unitB.id, `${uniq('b')}@x.sa`)).id });
     nurseAEmail = a1.email;
     // Unit A staff without an account: two records share one address (one e-mail), one uses an
