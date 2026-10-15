@@ -957,9 +957,8 @@ describeDb('workforce, employees and contracts', () => {
       const own = await db.unit.create({ data: { code: uniq('DC').toUpperCase().slice(0, 20), name: 'Date change gate unit', departmentId: org.dept.id } });
       const tpl = await makeTemplate(db);
       await db.credentialRequirement.create({ data: { templateId: tpl.id, unitId: own.id, positionCode: null, policyStatus: 'MANDATORY' } });
+      // The employee's only contract (a first contract is gated too when it grows), and the mandatory credential is missing.
       const emp = await makeEmployee(db, own.id);
-      // Not a first contract, and the mandatory credential is missing.
-      await db.contract.create({ data: { employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Expired', startDate: toDbDate(addDays(today(), -400)), endDate: toDbDate(addDays(today(), -36)) } });
       const start = addDays(today(), 10); const end = addDays(today(), 300);
       const c = await db.contract.create({ data: { employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Approved', startDate: toDbDate(start), endDate: toDbDate(end) } });
       const ask = (body: object) => hr.post(`/contracts/${c.id}/date-change`, { reason: 'Signed addendum', ...body });
