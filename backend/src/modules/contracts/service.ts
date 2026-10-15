@@ -429,7 +429,8 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
         const next = coveringStatus(to.startDate, to.endDate, riyadhDate());
         if (!next) throw unprocessable('CONTRACT_PERIOD_ENDED', 'The new end date has already passed: reject the request and terminate the contract instead');
         await assertNoOverlap(tx, { id, employeeId: c.employeeId, startDate: change.toStartDate, endDate: change.toEndDate });
-        if (to.endDate > from.endDate) await assertCredentialsAllowRenewal(tx, c.employeeId, id); // a longer contract, as a renewal
+        // A longer contract (later end or earlier start) needs valid credentials, as a renewal does.
+        if (to.endDate > from.endDate || to.startDate < from.startDate) await assertCredentialsAllowRenewal(tx, c.employeeId, id);
         const updated = await tx.contract.update({
           where: { id },
           data: { startDate: change.toStartDate, endDate: change.toEndDate, startDateHijri: toHijriIso(to.startDate), endDateHijri: toHijriIso(to.endDate), status: next },

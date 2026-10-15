@@ -953,6 +953,27 @@ describeDb('workforce, employees and contracts', () => {
       expect((await ask(hr, { startDate: later, endDate: addDays(longer, -5), reason: 'Shorter by five days' })).body.error.code).toBe('CONTRACT_NOT_COVERING');
     });
 
+    it('approving a longer period (later end or earlier start) needs valid credentials; a shorter one does not', async () => {
+      const own = await db.unit.create({ data: { code: uniq('DC').toUpperCase().slice(0, 20), name: 'Date change gate unit', departmentId: org.dept.id } });
+      const tpl = await makeTemplate(db);
+      await db.credentialRequirement.create({ data: { templateId: tpl.id, unitId: own.id, positionCode: null, policyStatus: 'MANDATORY' } });
+      const emp = await makeEmployee(db, own.id);
+      // Not a first contract, and the mandatory credential is missing.
+      await db.contract.create({ data: { employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Expired', startDate: toDbDate(addDays(today(), -400)), endDate: toDbDate(addDays(today(), -36)) } });
+      const start = addDays(today(), 10); const end = addDays(today(), 300);
+      const c = await db.contract.create({ data: { employeeId: emp.id, jobNumber: emp.jobNumber, status: 'Approved', startDate: toDbDate(start), endDate: toDbDate(end) } });
+      const ask = (body: object) => hr.post(`/contracts/${c.id}/date-change`, { reason: 'Signed addendum', ...body });
+      const decide = (decision: string, note?: string) => hr2.post(`/contracts/${c.id}/date-change/decision`, { decision, ...(note ? { note } : {}) });
+
+      for (const longer of [{ startDate: today(), endDate: end }, { startDate: start, endDate: addDays(end, 30) }]) {
+        expect((await ask(longer)).status).toBe(201);
+        expect((await decide('approve')).body.error.code).toBe('CREDENTIALS_BLOCK_RENEWAL');
+        await decide('reject', 'Credentials first');
+      }
+      expect((await ask({ startDate: addDays(start, 5), endDate: addDays(end, -5) })).status).toBe(201);
+      expect((await decide('approve')).body).toMatchObject({ status: 'Approved', startDate: addDays(start, 5), endDate: addDays(end, -5) });
+    });
+
     it('a future period is Approved (C2); an overlapping renewal cannot be approved (C4); return goes back to Draft', async () => {
       const { emp, id } = await draftFor(hr);
       await hr.upload(`/contracts/${id}/documents`, FILES.pdf, 'application/pdf');
