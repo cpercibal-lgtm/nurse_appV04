@@ -154,3 +154,10 @@ For a server that already runs an earlier version, the roster approval work (pul
 6. - [ ] Have the Arabic wording read by a native speaker.
 
 **Rollback note:** rolling back to the release before this one is safe for the schema, but that version lets a Supervisor publish without approval again, and rosters already approved stay in `roster_approvals` unused.
+
+# This release: changing the dates of an approved contract (D-73)
+
+1. - [ ] **Deploy** through the workflow (Part B). The migration `20261101090000_contract_date_changes` adds the table `contract_date_changes`. It is forward-only; the previous version still works with it. `02_grants.sql` covers the new table.
+2. - [ ] **Tell HR:** *Edit dates* on an Approved or Active contract now sends the new dates for approval; a different HR administrator approves them with *Review date change*. Upload the signed addendum to the contract copy first.
+
+**Rollback note:** safe for the schema; requests waiting in `contract_date_changes` are not shown by the previous version and are never applied.

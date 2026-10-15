@@ -22,7 +22,14 @@ export interface ContractRow {
   createdById?: number | null; submittedById?: number | null; approvedById?: number | null; approvedAt?: string | null;
   /** The version for edits (If-Match); in the full view only. */
   updatedAt?: string;
+  /** New dates waiting for another HR administrator (owner request 2026-10-15); in the full view only. */
+  pendingDateChange?: PendingDateChange | null;
 }
+export interface PendingDateChange {
+  id: number; startDate: string; endDate: string; startDateHijri: string | null; endDateHijri: string | null;
+  reason: string; requestedById: number; requestedByName: string; requestedAt: string;
+}
+export type DateDecision = 'approve' | 'reject' | 'withdraw';
 export interface ContractDoc { id: number; version: number; fileName: string; sizeBytes: number; scanStatus: string; uploadedAt: string }
 export interface Renewable {
   employeeId: number; jobNumber: string; fullName: string;
@@ -79,6 +86,8 @@ type Action =
   | { kind: 'renew'; priorId: number; body: { startDate: string; endDate: string; contractTypeCode?: string }; key: string }
   | { kind: 'transition'; id: number; action: ContractAction; reason?: string }
   | { kind: 'dates'; id: number; version?: string; body: { startDate: string; endDate: string; reason: string } }
+  | { kind: 'dateChange'; id: number; version?: string; body: { startDate: string; endDate: string; reason: string } }
+  | { kind: 'dateDecision'; id: number; decision: DateDecision; note?: string }
   | { kind: 'upload'; id: number; file: File };
 
 export function useContractAction() {
@@ -92,6 +101,10 @@ export function useContractAction() {
         case 'upload': return http.upload(`/contracts/${a.id}/documents`, a.file);
         // Draft only (owner request 2026-10-15); the server refuses any other status.
         case 'dates': return http.patch(`/contracts/${a.id}/dates`, a.body, { ifMatch: a.version });
+        // Approved or Active: a request that a different HR administrator approves or rejects.
+        case 'dateChange': return http.post(`/contracts/${a.id}/date-change`, a.body, { ifMatch: a.version });
+        case 'dateDecision': return http.post<{ status: string; contractStatus: ContractStatus; eligibility: string | null }>(
+          `/contracts/${a.id}/date-change/decision`, { decision: a.decision, ...(a.note ? { note: a.note } : {}) });
       }
     },
     onSuccess: () => Promise.all(['contracts', 'employees', 'eligibility'].map((k) => qc.invalidateQueries({ queryKey: [k] }))),

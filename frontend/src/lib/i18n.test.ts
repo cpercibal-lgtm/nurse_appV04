@@ -55,6 +55,7 @@ const FAMILIES: Record<string, string[]> = {
   marital_: ['Single', 'Married', 'Others'],
   contract_: ['Draft', 'PendingApproval', 'Approved', 'Active', 'Expired', 'Suspended', 'Terminated', 'Superseded'],
   contractAction_: ['submit', 'return', 'approve', 'suspend', 'reinstate', 'terminate'],
+  dateChangeDone_: ['approve', 'reject', 'withdraw'],
   elig_: ['ELIGIBLE', 'ELIGIBLE_WITH_GRACE', 'ELIGIBLE_WITH_POLICY_WARNING', 'INELIGIBLE'],
   cred_: ['PendingVerification', 'Valid', 'ExpiringSoon', 'Expired', 'Suspended', 'Revoked'],
   life_: ['Active', 'SubjectToRenew', 'OnProcess', 'Expired'],

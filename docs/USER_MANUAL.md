@@ -817,7 +817,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 **Before you start.**
 
-- The contract is a Draft. One that is Pending approval is first sent back with Return; an Approved or Active contract is never re-dated (renew or terminate it instead).
+- The contract is a Draft. One that is Pending approval is first sent back with Return. An Approved or Active contract is re-dated by request (see "Change the dates of an approved contract").
 
 **Steps.**
 
@@ -834,7 +834,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 **Common problems.**
 
 - *"Return the contract to Draft before changing its dates"* — It is Pending approval: click Return with a reason, then Edit dates.
-- *"cannot be changed: renew or terminate it instead"* — Approved and Active contracts already cover the nurse; their dates change only through a renewal or a termination.
+- *"change only after approval: request a date change instead"* — The contract is Approved or Active. Use Edit dates on it and Send for approval; another HR administrator approves the new dates.
 - *"Someone else changed this record"* — Another administrator changed the contract after you opened it. The list reloads; open Edit dates again.
 
 **Related.** [Eligibility](#8-eligibility)
@@ -843,7 +843,49 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 *The creator and the submitter can never approve. Only Approved and Active contracts cover a date. A renewal needs valid credentials (the ended contract itself does not count); a first contract is not checked.*
 
-### 6.6 Submit and approve a contract
+### 6.6 Change the dates of an approved contract
+
+**Status:** Implemented  
+**Roles:** HR Admin, System Admin
+
+**Purpose.** Extend, shorten or move an Approved or Active contract, for example after a signed addendum, with a second HR administrator's approval.
+
+**Who can perform it.** Ask: HR Admin or System Admin within scope. Approve or reject: a different HR person in scope. Never on your own contract.
+
+**Before you start.**
+
+- The contract is Approved or Active and has no other date change waiting.
+- Upload the signed addendum to the contract copy so the approver can check it.
+- Extending a contract needs valid mandatory credentials, as a renewal does.
+
+**Steps.**
+
+1. On the contract row click Edit dates.
+2. Choose the new start and end dates (the Hijri dates are shown under them) and write the reason.
+3. Click Send for approval. The row shows "New dates waiting for approval"; the current dates stay in force.
+4. Another HR administrator clicks Review date change on the row, compares the current and requested dates, and clicks Approve, or writes a note and clicks Reject.
+
+**System result.** On approval the period, its Hijri dates and the status change at once (Approved if the new start is in the future, Active if it covers today) and eligibility is re-evaluated. The audit trail keeps the old and new dates, the reason, who asked and who approved.
+
+**Approval.** Required: a different HR administrator than the one who asked.
+
+**Next step.** To cancel your own request, open Review date change and click Withdraw request.
+
+**Common problems.**
+
+- *"already has a date change waiting for approval"* — Only one request at a time. Have it approved or rejected, or withdraw it, then ask again.
+- *"must be decided by a different HR administrator"* — You asked for this change. Another HR administrator in scope must approve or reject it.
+- *"overlaps contract #…"* — The new period runs into the next approved contract. Shorten the request, or change the next contract first.
+- *"The new end date has already passed"* — A contract cannot be re-dated into the past. Terminate it instead.
+- *"Renew or verify these credentials…"* — A longer contract needs valid mandatory credentials. Renew or verify them, then approve again.
+
+**Related.** [Eligibility](#8-eligibility)
+
+![Contract approval](generated/flows/contract-lifecycle.svg)
+
+*The creator and the submitter can never approve. Only Approved and Active contracts cover a date. A renewal needs valid credentials (the ended contract itself does not count); a first contract is not checked.*
+
+### 6.7 Submit and approve a contract
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin
@@ -876,7 +918,7 @@ Employment contracts. A nurse is covered — and can be eligible — only on dat
 
 *The creator and the submitter can never approve. Only Approved and Active contracts cover a date. A renewal needs valid credentials (the ended contract itself does not count); a first contract is not checked.*
 
-### 6.7 Suspend, reinstate or terminate a contract
+### 6.8 Suspend, reinstate or terminate a contract
 
 **Status:** Implemented  
 **Roles:** HR Admin, System Admin

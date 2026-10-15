@@ -789,6 +789,7 @@ describeDb('workforce, employees and contracts', () => {
       ['GET', '/employees'], ['POST', '/employees/onboard'], ['PATCH', '/employees/1'], ['POST', '/employees/1/position'], ['DELETE', '/employees/1'],
       ['GET', '/contracts'], ['GET', '/contracts/creatable'], ['GET', '/contracts/renewable'], ['POST', '/contracts'],
       ['POST', '/contracts/1/renew'], ['POST', '/contracts/1/transition'], ['POST', '/contracts/1/documents'], ['PATCH', '/contracts/1/dates'],
+      ['POST', '/contracts/1/date-change'], ['POST', '/contracts/1/date-change/decision'],
     ];
     it.each(STAFF_ONLY)('%s %s is forbidden to an employee', async (method, path) => {
       const nurse = await signIn(app, (await makeUser(db)).email);
@@ -870,6 +871,86 @@ describeDb('workforce, employees and contracts', () => {
       const approved = await dates({ startDate: newStart, endDate: addDays(newEnd, 1), reason: 'Typing error' });
       expect([approved.status, approved.body.error.code]).toEqual([409, 'CONTRACT_NOT_DRAFT']);
       expect(dbDate((await db.contract.findUniqueOrThrow({ where: { id } })).endDate)).toBe(newEnd);
+    });
+
+    it('re-dates an Approved or Active contract only after a different HR administrator approves the request (owner request 2026-10-15)', async () => {
+      const { emp, id } = await draftFor(hr);
+      await hr.upload(`/contracts/${id}/documents`, FILES.pdf, 'application/pdf');
+      await act(hr, id, 'submit');
+      expect((await act(hr2, id, 'approve')).body.status).toBe('Active');
+      const before = await db.contract.findUniqueOrThrow({ where: { id } });
+      const start = dbDate(before.startDate); const end = dbDate(before.endDate);
+      const ask = (c: Client, body: object) => c.post(`/contracts/${id}/date-change`, body);
+      const decide = (c: Client, decision: string, note?: string) => c.post(`/contracts/${id}/date-change/decision`, { decision, ...(note ? { note } : {}) });
+
+      // A covering contract is never edited in place.
+      const direct = await hr.patch(`/contracts/${id}/dates`, { startDate: start, endDate: addDays(end, 30), reason: 'Extension agreed' });
+      expect([direct.status, direct.body.error.code, direct.body.error.message]).toEqual([409, 'CONTRACT_NOT_DRAFT', 'The dates of an Active contract change only after approval: request a date change instead']);
+      // The request is checked as the edit is, and the new period must still cover today.
+      expect((await ask(hr, { startDate: start, endDate: addDays(end, 30) })).body.error.code).toBe('VALIDATION_FAILED');
+      expect((await ask(hr, { startDate: end, endDate: start, reason: 'Typing error' })).body.error.code).toBe('CONTRACT_DATES_INVALID');
+      expect((await ask(hr, { startDate: start, endDate: end, reason: 'Typing error' })).body.error.code).toBe('DATES_UNCHANGED');
+      expect((await ask(hr, { startDate: addDays(today(), -400), endDate: addDays(today(), -1), reason: 'Ended last month' })).body.error.code).toBe('CONTRACT_PERIOD_ENDED');
+      expect((await ask(hr, { startDate: start, endDate: addDays(end, 30), reason: 'Extension agreed' }).set('If-Match', `"${new Date(0).toISOString()}"`)).body.error.code).toBe('STALE_RECORD');
+      expect((await decide(hr2, 'approve')).body.error.code).toBe('NO_PENDING_DATE_CHANGE');
+
+      // Asked: nothing changes on the contract yet; HR sees the open request.
+      const longer = addDays(end, 30);
+      const asked = await ask(hr, { startDate: start, endDate: longer, reason: 'Extension agreed with the nurse' }).set('If-Match', `"${before.updatedAt.toISOString()}"`);
+      expect(asked.status).toBe(201);
+      expect(asked.body).toMatchObject({ contractId: id, status: 'Pending' });
+      expect(dbDate((await db.contract.findUniqueOrThrow({ where: { id } })).endDate)).toBe(end);
+      expect((await hr2.get(`/contracts/${id}`)).body.pendingDateChange).toMatchObject({ id: asked.body.id, startDate: start, endDate: longer, reason: 'Extension agreed with the nurse', requestedByName: 'Test User' });
+      expect((await ask(hr2, { startDate: start, endDate: addDays(end, 60), reason: 'Another extension' })).body.error.code).toBe('DATE_CHANGE_PENDING');
+
+      // Four eyes: the requester neither approves nor rejects; only the requester withdraws; a rejection needs a reason.
+      expect((await decide(hr, 'approve')).body.error.code).toBe('SELF_APPROVAL_FORBIDDEN');
+      expect((await decide(hr, 'reject', 'Changed my mind')).body.error.code).toBe('SELF_APPROVAL_FORBIDDEN');
+      expect((await decide(hr2, 'withdraw')).body.error.code).toBe('NOT_REQUESTER');
+      expect((await decide(hr2, 'reject')).body.error.code).toBe('VALIDATION_FAILED');
+      const otherHr = await signIn(app, (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'UNIT', scopeIds: [org.unitC.id] }] })).email);
+      expect((await decide(otherHr, 'approve')).body.error.code).toBe('SCOPE_NOT_COVERED');
+
+      const approved = await decide(hr2, 'approve');
+      expect(approved.status).toBe(200);
+      expect(approved.body).toMatchObject({ status: 'Approved', contractStatus: 'Active', startDate: start, endDate: longer, endDateHijri: expect.stringMatching(/^14\d\d-\d\d-\d\d$/) });
+      const stored = await db.contract.findUniqueOrThrow({ where: { id } });
+      expect([dbDate(stored.endDate), stored.status]).toEqual([longer, 'Active']);
+      expect(stored.endDateHijri).not.toBe(before.endDateHijri);
+      expect(await db.contractDateChange.findUniqueOrThrow({ where: { id: asked.body.id } })).toMatchObject({ status: 'Approved', decidedById: expect.any(Number) });
+      const audit = await db.auditEntry.findFirstOrThrow({ where: { action: 'CONTRACT_DATES_CHANGED', resourceId: String(id) } });
+      expect(audit).toMatchObject({ priority: 'HIGH' });
+      expect(audit.changes).toMatchObject({ employeeId: emp.id, from: { startDate: start, endDate: end }, to: { startDate: start, endDate: longer }, statusFrom: 'Active', statusTo: 'Active' });
+      expect(await db.auditEntry.count({ where: { action: 'CONTRACT_DATE_CHANGE_REQUESTED', resourceId: String(id) } })).toBe(1);
+      expect((await decide(hr2, 'approve')).body.error.code).toBe('NO_PENDING_DATE_CHANGE');
+      expect((await hr.get(`/contracts/${id}`)).body.pendingDateChange).toBeNull();
+
+      // A later start makes the contract Approved, not Active (C2).
+      const later = addDays(today(), 10);
+      await ask(hr2, { startDate: later, endDate: longer, reason: 'Start moved by the hospital' });
+      expect((await decide(hr, 'approve')).body).toMatchObject({ contractStatus: 'Approved', startDate: later });
+
+      // Withdrawn by the requester, rejected by the other: the dates stay.
+      await ask(hr, { startDate: later, endDate: addDays(longer, 5), reason: 'Typed the wrong end' });
+      expect((await decide(hr, 'withdraw')).body.status).toBe('Withdrawn');
+      await ask(hr, { startDate: later, endDate: addDays(longer, 5), reason: 'Extension agreed' });
+      expect((await decide(hr2, 'reject', 'No signed addendum on file')).body.status).toBe('Rejected');
+      expect(await db.auditEntry.count({ where: { action: 'CONTRACT_DATE_CHANGE_REJECTED', resourceId: String(id) } })).toBe(1);
+      expect(dbDate((await db.contract.findUniqueOrThrow({ where: { id } })).endDate)).toBe(longer);
+
+      // C4: never into the next approved period.
+      const next = await idem(hr.post(`/contracts/${id}/renew`, {}));
+      await hr.upload(`/contracts/${next.body.id}/documents`, FILES.pdf, 'application/pdf');
+      await act(hr, next.body.id, 'submit');
+      expect((await act(hr2, next.body.id, 'approve')).body.status).toBe('Approved');
+      expect((await ask(hr, { startDate: later, endDate: addDays(longer, 5), reason: 'Extension agreed' })).body.error.code).toBe('CONTRACT_PERIOD_OVERLAP');
+
+      // Terminating the contract withdraws an open request.
+      await ask(hr, { startDate: later, endDate: addDays(longer, -5), reason: 'Shorter by five days' });
+      await act(hr2, id, 'terminate', 'Resigned before start');
+      expect(await db.contractDateChange.findFirstOrThrow({ where: { contractId: id }, orderBy: { id: 'desc' } })).toMatchObject({ status: 'Withdrawn', note: 'Contract terminated' });
+      expect((await decide(hr2, 'approve')).body.error.code).toBe('NO_PENDING_DATE_CHANGE');
+      expect((await ask(hr, { startDate: later, endDate: addDays(longer, -5), reason: 'Shorter by five days' })).body.error.code).toBe('CONTRACT_NOT_COVERING');
     });
 
     it('a future period is Approved (C2); an overlapping renewal cannot be approved (C4); return goes back to Draft', async () => {

@@ -99,6 +99,8 @@ model User {
   shadowDecisions    EligibilityShadowLog[]
   apiClientsCreated  ApiClient[]                 @relation("apiClientCreator")
   apiClientsRevoked  ApiClient[]                 @relation("apiClientRevoker")
+  contractDateChangesRequested ContractDateChange[] @relation("dateChangeRequester")
+  contractDateChangesDecided   ContractDateChange[] @relation("dateChangeDecider")
 
   @@map("users")
 }
@@ -458,11 +460,47 @@ model Contract {
   employee     Employee          @relation(fields: [employeeId], references: [id])
   contractType ContractType?     @relation(fields: [contractTypeCode], references: [code], onDelete: Restrict)
   documents    DocumentVersion[]
+  dateChanges  ContractDateChange[]
 
   @@index([employeeId, status])
   @@index([endDate])
   @@index([contractTypeCode])
   @@map("contracts")
+}
+
+enum ContractDateChangeStatus {
+  Pending
+  Approved
+  Rejected
+  /// Withdrawn by the requester, or by the system when the contract stopped covering (suspended, terminated).
+  Withdrawn
+}
+
+/// Owner request 2026-10-15: the dates of an Approved or Active contract change only after a different
+/// HR administrator approves the request (four eyes, as D-30). The period it replaced is kept.
+/// SQL: one Pending row per contract (partial unique index); requester ≠ decider on Approved/Rejected.
+model ContractDateChange {
+  id            Int                      @id @default(autoincrement())
+  contractId    Int                      @map("contract_id")
+  fromStartDate DateTime                 @map("from_start_date") @db.Date
+  fromEndDate   DateTime                 @map("from_end_date") @db.Date
+  toStartDate   DateTime                 @map("to_start_date") @db.Date
+  toEndDate     DateTime                 @map("to_end_date") @db.Date
+  reason        String                   @db.VarChar(500)
+  status        ContractDateChangeStatus @default(Pending)
+  requestedById Int                      @map("requested_by_id")
+  requestedAt   DateTime                 @default(now()) @map("requested_at") @db.Timestamptz
+  decidedById   Int?                     @map("decided_by_id")
+  decidedAt     DateTime?                @map("decided_at") @db.Timestamptz
+  /// Required when rejecting; optional otherwise.
+  note          String?                  @db.VarChar(500)
+
+  contract    Contract @relation(fields: [contractId], references: [id])
+  requestedBy User     @relation("dateChangeRequester", fields: [requestedById], references: [id])
+  decidedBy   User?    @relation("dateChangeDecider", fields: [decidedById], references: [id])
+
+  @@index([contractId])
+  @@map("contract_date_changes")
 }
 
 /// Facility master (owner decision 2026-10-03): the hospitals an employee actually works in,
