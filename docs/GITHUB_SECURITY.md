@@ -146,7 +146,7 @@ gh api -X PUT repos/percibalvillegas18/nurse_appV04/vulnerability-alerts
 gh api -X PUT repos/percibalvillegas18/nurse_appV04/automated-security-fixes
 ```
 
-Known and accepted: 4 high advisories in Prisma 7.10's own dependencies (`mysql2`, `deepmerge-ts`), not used by the application; re-check when Prisma is updated. `npm audit --omit=dev` reports none.
+`npm audit` reports 0. Prisma 7.10's own dependencies `mysql2` and `deepmerge-ts` had 4 high advisories; root `overrides` in `package.json` pin the fixed `mysql2` 3.24.5 and `deepmerge-ts` 8.0.2 ([security review §6](SECURITY_REVIEW_2026-10-04.md#6-dependencies)). When Prisma is updated, check whether it ships those versions itself, and remove the overrides if it does.
 
 ## 6. Code scanning (CodeQL) — template
 
