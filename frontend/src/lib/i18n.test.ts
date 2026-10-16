@@ -100,4 +100,44 @@ describe('translations', () => {
     const missing = Object.entries(FAMILIES).flatMap(([p, values]) => values.map((v) => p + v)).filter((k) => !keys.has(k));
     expect(missing).toEqual([]);
   });
+
+  it.each([
+    ['English', en, 'typing error', 'must match the uploaded contract copy', 'match it exactly', 'no discrepancy', 'Open contract copy'],
+    ['Arabic', ar, 'خطأ في الكتابة', 'يجب أن تطابق التواريخ الجديدة نسخة العقد المرفوعة', 'تطابقها تماماً', 'لم يوجد أي اختلاف', 'فتح نسخة العقد'],
+  ] as const)('%s describes date changes as corrections checked against the contract copy', (_, entries, typo, match, exact, discrepancy, openCopy) => {
+    const strings = Object.fromEntries(entries);
+    expect(strings.editContractDatesApprovalHint).toContain(typo);
+    expect(strings.editContractDatesApprovalHint).toContain(match);
+    expect(strings.dateChangeReviewHint).toContain(exact);
+    expect(strings.dateChangeReviewHint).toContain(discrepancy);
+    expect(strings.dateChangeOpenCopy).toBe(openCopy);
+    expect(`${strings.editContractDatesApprovalHint} ${strings.dateChangeReviewHint}`).not.toMatch(/addendum|ملحق/i);
+  });
+
+  it.each([
+    ['English', en, {
+      approver: 'another HR administrator approves your request',
+      unchanged: 'the current dates stay in force',
+      immediate: 'approving changes the contract at once',
+      rejection: 'Rejecting needs a note',
+      ownApprover: 'another HR administrator must approve or reject it',
+      withdraw: 'You can withdraw it',
+    }],
+    ['Arabic', ar, {
+      approver: 'يعتمد طلبك مسؤول موارد بشرية آخر',
+      unchanged: 'تبقى التواريخ الحالية سارية',
+      immediate: 'الاعتماد يغيّر العقد فوراً',
+      rejection: 'الرفض يتطلب ملاحظة',
+      ownApprover: 'يعتمده أو يرفضه مسؤول موارد بشرية آخر',
+      withdraw: 'يمكنك سحبه',
+    }],
+  ] as const)('%s explains approval safeguards and the consequences of each review action', (_, entries, expected) => {
+    const strings = Object.fromEntries(entries);
+    expect(strings.editContractDatesApprovalHint).toContain(expected.approver);
+    expect(strings.editContractDatesApprovalHint).toContain(expected.unchanged);
+    expect(strings.dateChangeReviewHint).toContain(expected.immediate);
+    expect(strings.dateChangeReviewHint).toContain(expected.rejection);
+    expect(strings.dateChangeOwnHint).toContain(expected.ownApprover);
+    expect(strings.dateChangeOwnHint).toContain(expected.withdraw);
+  });
 });
