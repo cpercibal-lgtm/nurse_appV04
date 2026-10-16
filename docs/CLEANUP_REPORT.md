@@ -101,7 +101,7 @@ Run on 2026-09-23 on Windows 11, Node 24.19 / npm 11.17, local PostgreSQL 17 (CI
 | No personal data in logs | `logging.test.ts` | ✅ |
 | Audit rows for mutations | Every step of the end-to-end story checked; chain intact on the development database (26 rows) and the test database (7 304 rows): `audit_chain_breaks` empty | ✅ for tested paths. **No generic "every mutation writes a row" test** (recorded since commit 10) |
 | RBAC documentation matches code | `docs.test.ts` | ✅ |
-| Dependency advisories | `npm audit` | ⚠ 4 high, all in the Prisma CLI's bundled `mysql2` / `deepmerge-ts`; not loaded by the running API; npm's fix downgrades Prisma — not applied ([DEPLOYMENT.md §6](DEPLOYMENT.md#6-known-gaps-before-production)) |
+| Dependency advisories | `npm audit` | ⚠ 4 high, all in the Prisma CLI's bundled `mysql2` / `deepmerge-ts`; not loaded by the running API; npm's fix downgrades Prisma — not applied. **2026-10-04:** root `overrides` pin the fixed `mysql2` and `deepmerge-ts`; `npm audit` reports 0 ([security review §6](SECURITY_REVIEW_2026-10-04.md#6-dependencies)) |
 
 ### 2.5 Business scenarios (`test/scenarios.test.ts` and module tests)
 
