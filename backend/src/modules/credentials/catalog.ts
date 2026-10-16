@@ -137,8 +137,6 @@ export const isCatalogPayload = (p: { kind: string }): p is CatalogApprovalPaylo
 export type CatalogOutcome = { status: 'APPLIED'; template: TemplateView } | { status: 'PENDING_APPROVAL'; requestId: number };
 export type CategoryOutcome = { status: 'APPLIED'; category: CredentialCategory } | { status: 'PENDING_APPROVAL'; requestId: number };
 
-/** Key order is not compared: stored approval payloads come back from jsonb with their keys re-sorted. */
-const same = sameValue;
 
 const Policy = z.enum(['MANDATORY', 'TRANSITION', 'OPTIONAL']);
 const RequirementFields = {
@@ -189,7 +187,7 @@ export function createCatalogService(db: Db) {
     if (!current) throw notFound('Template not found');
     const before: ChangedValues = {};
     for (const [k, v] of Object.entries(change) as Array<[keyof TemplateChange, unknown]>) {
-      if (v !== undefined && !same(current[k], v)) before[k] = current[k];
+      if (v !== undefined && !sameValue(current[k], v)) before[k] = current[k];
     }
     if (Object.keys(before).length === 0) throw new HttpError(400, 'NO_CHANGES', 'The request does not change the credential type');
     if (change.categoryCode && before.categoryCode !== undefined && !(await tx.credentialCategory.findUnique({ where: { code: change.categoryCode } }))) {
@@ -236,7 +234,7 @@ export function createCatalogService(db: Db) {
     const { current, before } = await changedFields(tx, id, change);
     if (expected) {
       for (const [k, v] of Object.entries(expected) as Array<[keyof TemplateChange, unknown]>) {
-        if (!same(current[k], v)) throw new HttpError(409, 'TEMPLATE_CHANGED_SINCE_REQUEST', 'The credential type has changed since this request was made — reject it and submit a new one');
+        if (!sameValue(current[k], v)) throw new HttpError(409, 'TEMPLATE_CHANGED_SINCE_REQUEST', 'The credential type has changed since this request was made — reject it and submit a new one');
       }
     }
     const { fieldDefs, ...columns } = change;
@@ -282,7 +280,7 @@ export function createCatalogService(db: Db) {
     if (!current) throw notFound('Category not found');
     const before: CategoryBefore = {};
     for (const [k, v] of Object.entries(change) as Array<[keyof CategoryChange, unknown]>) {
-      if (v !== undefined && !same(current[k], v)) before[k] = current[k];
+      if (v !== undefined && !sameValue(current[k], v)) before[k] = current[k];
     }
     if (Object.keys(before).length === 0) throw new HttpError(400, 'NO_CHANGES', 'The request does not change the category');
     return { current, before };
@@ -293,7 +291,7 @@ export function createCatalogService(db: Db) {
     const { current, before } = await categoryChanges(tx, code, change);
     if (expected) {
       for (const [k, v] of Object.entries(expected) as Array<[keyof CategoryChange, unknown]>) {
-        if (!same(current[k], v)) throw new HttpError(409, 'CATEGORY_CHANGED_SINCE_REQUEST', 'The category has changed since this request was made — reject it and submit a new one');
+        if (!sameValue(current[k], v)) throw new HttpError(409, 'CATEGORY_CHANGED_SINCE_REQUEST', 'The category has changed since this request was made — reject it and submit a new one');
       }
     }
     const row = await tx.credentialCategory.update({ where: { code }, data: change });

@@ -6,7 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -96,10 +96,19 @@ describeDb('exit package (spec §14.3)', () => {
     expect(summary.evidenceUnreadable.map((u) => u.documentId)).toContain(missing.id);
 
     const dir = join(root, 'out');
-    execFileSync('unzip', ['-q', zipPath, '-d', dir]);
+    if (process.platform === 'win32') {
+      await mkdir(dir);
+      execFileSync('tar', ['-xf', zipPath, '-C', dir]);
+    } else {
+      execFileSync('unzip', ['-q', zipPath, '-d', dir]);
+    }
     // Every entry is listed in the manifest with the right hash.
-    expect(execFileSync('sha256sum', ['--quiet', '-c', 'MANIFEST.sha256'], { cwd: dir }).toString()).toBe('');
-    const manifest = (await readFile(join(dir, 'MANIFEST.sha256'), 'utf8')).trim().split('\n').map((l) => l.slice(66));
+    const manifestLines = (await readFile(join(dir, 'MANIFEST.sha256'), 'utf8')).trim().split('\n');
+    for (const line of manifestLines) {
+      const name = line.slice(66);
+      expect(sha(await readFile(join(dir, name))), name).toBe(line.slice(0, 64));
+    }
+    const manifest = manifestLines.map((l) => l.slice(66));
     expect(manifest).toEqual(expect.arrayContaining(['README.txt', 'organisation.json', 'accounts.json', 'workforce_master.json', 'workforce_master.csv', 'contract_history.json', 'contract_events.csv', 'credential_archive.json', 'audit_manifest.csv']));
 
     // Evidence: decrypted, under the standard names.

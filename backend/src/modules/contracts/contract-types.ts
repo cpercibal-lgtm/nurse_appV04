@@ -93,4 +93,3 @@ export function createContractTypeService(db: Db) {
     },
   };
 }
-export type ContractTypeService = ReturnType<typeof createContractTypeService>;

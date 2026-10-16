@@ -20,7 +20,6 @@ import crypto from 'node:crypto';
 import { keyId, previousKey, withEither } from './keyring.js';
 
 export const SEALED_PREFIX = 'pdpl:v1:';
-export const BLIND_KEY_VERSION = 1;
 export const PDPL_CATEGORIES = ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID'] as const;
 export type PdplCategory = (typeof PDPL_CATEGORIES)[number];
 

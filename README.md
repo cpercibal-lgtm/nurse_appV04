@@ -43,6 +43,12 @@ DEMO_PASSWORD='choose-12-or-more-chars' npm run fixtures:demo -w backend
 
 ## Checks
 
+Backend integration tests require PostgreSQL to be running (`docker compose up -d --wait db`)
+and a separate, migrated database configured as `TEST_DATABASE_URL` in `backend/.env`.
+Use a fresh test database for full-suite verification, as CI does: integration tests retain
+their fixtures and repeated runs can make database-wide jobs exceed test timeouts.
+The exit-package test uses built-in `tar` on Windows and requires `unzip` on other platforms.
+
 ```bash
 npm run typecheck
 npm test                 # backend, frontend and the documentation link check

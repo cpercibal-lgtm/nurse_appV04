@@ -92,11 +92,9 @@ export const isBaselinePayload = (p: { kind: string }): p is BaselineApprovalPay
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 const orNull = (v: unknown) => (v === undefined ? null : v);
-/** Key order is not compared: stored approval payloads come back from jsonb with their keys re-sorted. */
-const same = sameValue;
 /** Keys whose values differ between the file row and the stored record. */
 function differences(fileRow: Record<string, unknown>, stored: Record<string, unknown>) {
-  return Object.keys(fileRow).filter((k) => !same(fileRow[k], stored[k])).map((k) => `${k}: stored ${JSON.stringify(stored[k] ?? null)}, file ${JSON.stringify(fileRow[k] ?? null)}`);
+  return Object.keys(fileRow).filter((k) => !sameValue(fileRow[k], stored[k])).map((k) => `${k}: stored ${JSON.stringify(stored[k] ?? null)}, file ${JSON.stringify(fileRow[k] ?? null)}`);
 }
 
 export function parseBaseline(raw: unknown): BaselineFile {

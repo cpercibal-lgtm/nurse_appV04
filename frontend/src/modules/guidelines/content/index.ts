@@ -8,7 +8,7 @@ import { OVERVIEW } from './sections/overview';
 import { PEOPLE } from './sections/people';
 import { SELF } from './sections/self';
 import { START } from './sections/start';
-import type { GuideSection, GuideTask } from './types';
+import type { GuideSection } from './types';
 
 const byId = <T extends { id: string }>(list: T[], id: string) => list.find((x) => x.id === id)!;
 const all = [...START, ...PEOPLE, ...CREDENTIALS, ...OPERATIONS, ...ADMIN, ...SELF, ...OVERVIEW];
@@ -25,7 +25,6 @@ if (SECTIONS.length !== all.length) throw new Error('Guidelines: a section is mi
 
 export const sectionNumber = (id: string) => ORDER.indexOf(id) + 1;
 export const sectionById = (id: string) => SECTIONS.find((s) => s.id === id);
-export const taskById = (sectionId: string, taskId: string): GuideTask | undefined => sectionById(sectionId)?.tasks.find((t) => t.id === taskId);
 
 export { FLOWS, flowById };
 export * from './types';
