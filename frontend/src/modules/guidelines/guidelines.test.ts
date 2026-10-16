@@ -113,6 +113,28 @@ describe('search', () => {
     ['wrong contract date', 'contracts/request-contract-date-change'],
   ])('%s → %s', (q, expected) => expect(top(q)).toBe(expected));
 
+  it.each([
+    'CORRECT CONTRACT DATE',
+    '  correct contract date  ',
+    'correct contract date?!',
+    'contract\tdate\n typo',
+  ])('finds the date correction procedure for %j', (q) => {
+    expect(top(q)).toBe('contracts/request-contract-date-change');
+  });
+
+  it('includes the approval procedure for a general date correction question', () => {
+    const hits = searchGuidelines('How do I correct a contract date?');
+    expect(hits.some((hit) => hit.section.id === 'contracts' && hit.task?.id === 'request-contract-date-change')).toBe(true);
+  });
+
+  it('keeps the date correction task as the single result when search is limited to one', () => {
+    const hits = searchGuidelines('correct contract date', 1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.section.id).toBe('contracts');
+    expect(hits[0]!.task?.id).toBe('request-contract-date-change');
+    expect(searchGuidelines('correct contract date', 0)).toEqual([]);
+  });
+
   it('finds nothing for nonsense and for an empty query', () => {
     expect(searchGuidelines('')).toEqual([]);
     expect(searchGuidelines('zzqx')).toEqual([]);
