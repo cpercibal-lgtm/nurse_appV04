@@ -14,7 +14,12 @@ describeDb('atomic idempotency', () => {
   let db: Db;
   let actorUserId: number;
   beforeAll(async () => { db = openDb(); actorUserId = (await makeUser(db)).id; });
-  afterAll(async () => { await db.$disconnect(); });
+  afterAll(async () => {
+    // Synthetic legacy states have no application endpoint to reconcile. Do
+    // not leave them behind as apparent unresolved operational requests.
+    await db.idempotencyKey.deleteMany({ where: { actorUserId, operation: 'test.write', requestPath: '/write' } });
+    await db.$disconnect();
+  });
 
   function appFor(client: Db, execute: (tx: Prisma.TransactionClient) => Promise<unknown>) {
     const app = express();

@@ -33,3 +33,11 @@
 - Root typecheck passed. Independent source review found no high/medium defects; its constraint-recovery coverage recommendation was added and passed.
 - Full project suite against a fresh migrated database: 54 backend files / 615 tests passed, 14 frontend files / 138 tests passed, documentation check passed (424 links in 32 files). PostgreSQL client concurrent-query deprecation warnings were emitted; no test failures.
 - Compatibility decision: refuse unresolved legacy idempotency records until reconciled; guessing their outcome could repeat a committed operation. Cost: an affected old request needs operator review.
+
+## Follow-up: PostgreSQL warning and legacy-state reconciliation
+
+- Approved by the user after commit `2e99daf`.
+- Root cause: Prisma's relation loader can call `PgTransaction.queryRaw` concurrently within a single awaited ORM operation. A real relation-loading regression reproduced the pg deprecation warning.
+- Fix: serialize the adapter's query/execute/commit/rollback calls per transaction. Pool queries and separate transactions remain independent; failed queries still permit rollback/savepoint recovery.
+- Reconciliation on 2026-10-17: application database `nurseapp` and older `nurseapp_test` had no unresolved records. Removed eight synthetic `test.write` records from `nurseapp_test_clean_20261016` and two from the previous review database. All had the test-only `/write` path. No business writes or real request outcomes were changed. The regression suite now removes its synthetic idempotency states after testing.
+- Focused verification: 18 tests passed without warnings; backend typecheck passed. Full project verification with `NODE_OPTIONS=--throw-deprecation` passed: 617 backend tests, 138 frontend tests, and documentation checks; no deprecation warnings. Final local database inventory confirmed zero unresolved records, including the new full-suite database. Independent follow-up review was unavailable due to the reviewer usage limit; the implementer reviewed the final diff.
