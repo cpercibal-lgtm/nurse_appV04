@@ -98,7 +98,8 @@ describeDb('exit package (spec §14.3)', () => {
     const dir = join(root, 'out');
     if (process.platform === 'win32') {
       await mkdir(dir);
-      execFileSync('tar', ['-xf', zipPath, '-C', dir]);
+      // Windows' own bsdtar reads ZIP; the GNU tar of Git Bash, often first on PATH, does not.
+      execFileSync(join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', zipPath, '-C', dir]);
     } else {
       execFileSync('unzip', ['-q', zipPath, '-d', dir]);
     }
