@@ -21,15 +21,15 @@ export function createNursesRouter(db: Db, nurses: NurseService, staffImport: St
   // Own record only (D-35): no permission, the caller's employee id is the target.
   r.patch('/employees/me/contact', async (req, res) => { res.json(await nurses.updateOwnContact(authOf(res), OwnContactBody.parse(req.body), rid(res), ifMatch(req))); });
   r.get('/employees/onboarding-defaults', authorize('employees.write'), async (_req, res) => { res.json(await nurses.onboardingDefaults()); });
-  r.post('/employees/onboard', authorize('employees.write'), idempotent(db, 'employees.onboard'), async (req, res) => {
-    res.status(201).json(await nurses.onboard(authOf(res), OnboardBody.parse(req.body), rid(res)));
-  });
+  r.post('/employees/onboard', authorize('employees.write'), idempotent(db, 'employees.onboard', async (req, res, tx) => {
+    return { code: 201, body: await nurses.onboard(authOf(res), OnboardBody.parse(req.body), rid(res), tx) };
+  }));
   // Staff import (D-72). Literal paths before /employees/:id. `check` writes nothing; the import is all or nothing.
   r.get('/employees/import/lists', authorize('employees.write'), async (_req, res) => { res.json(await staffImport.lists(authOf(res))); });
   r.post('/employees/import/check', authorize('employees.write'), async (req, res) => { res.json(await staffImport.check(authOf(res), ImportBody.parse(req.body))); });
-  r.post('/employees/import', authorize('employees.write'), idempotent(db, 'employees.import'), async (req, res) => {
-    res.status(201).json(await staffImport.commit(authOf(res), ImportBody.parse(req.body), rid(res)));
-  });
+  r.post('/employees/import', authorize('employees.write'), idempotent(db, 'employees.import', async (req, res, tx) => {
+    return { code: 201, body: await staffImport.commit(authOf(res), ImportBody.parse(req.body), rid(res), tx) };
+  }, { timeout: 120_000, maxWait: 10_000 }));
   // Own-or-scoped checks happen in the service.
   r.get('/employees/:id', async (req, res) => { res.json(await nurses.get(authOf(res), IdParam.parse(req.params).id)); });
   r.patch('/employees/:id', authorize('employees.write'), async (req, res) => {
@@ -42,9 +42,9 @@ export function createNursesRouter(db: Db, nurses: NurseService, staffImport: St
   r.get('/employees/:id/assignment/preview', authorize('employees.assign'), async (req, res) => {
     res.json(await nurses.previewAssignment(authOf(res), IdParam.parse(req.params).id, AssignmentPreviewQuery.parse(req.query)));
   });
-  r.post('/employees/:id/assignment', authorize('employees.assign'), idempotent(db, 'employees.assign'), async (req, res) => {
-    res.json(await nurses.assign(authOf(res), IdParam.parse(req.params).id, AssignmentBody.parse(req.body), rid(res)));
-  });
+  r.post('/employees/:id/assignment', authorize('employees.assign'), idempotent(db, 'employees.assign', async (req, res, tx) => {
+    return { body: await nurses.assign(authOf(res), IdParam.parse(req.params).id, AssignmentBody.parse(req.body), rid(res), tx) };
+  }));
   r.delete('/employees/:id', authorize('employees.write'), async (req, res) => {
     res.json(await nurses.remove(authOf(res), IdParam.parse(req.params).id, DeleteBody.parse(req.body).reason, rid(res)));
   });

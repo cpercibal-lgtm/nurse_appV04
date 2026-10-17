@@ -73,9 +73,9 @@ export function createUsersRouter(
   router.get('/users', authorize('accounts.read'), async (req, res) => {
     res.json(await accounts.list(authOf(res), ListAccountsQuery.parse(req.query)));
   });
-  router.post('/users', authorize('accounts.write'), idempotent(db, 'users.create'), async (req, res) => {
-    res.status(201).json(await accounts.create(authOf(res), CreateAccountBody.parse(req.body), res.locals.requestId));
-  });
+  router.post('/users', authorize('accounts.write'), idempotent(db, 'users.create', async (req, res, tx) => {
+    return { code: 201, body: await accounts.create(authOf(res), CreateAccountBody.parse(req.body), res.locals.requestId, tx) };
+  }));
   router.patch('/users/:id', authorize('accounts.write'), async (req, res) => {
     const { id } = IdParam.parse(req.params);
     res.json(await accounts.update(authOf(res), id, UpdateAccountBody.parse(req.body), res.locals.requestId, ifMatch(req)));
@@ -88,10 +88,10 @@ export function createUsersRouter(
   router.get('/role-assignments', authorize('roles.read'), async (req, res) => {
     res.json(await roles.list(authOf(res), ListQuery.parse(req.query)));
   });
-  router.post('/role-assignments', authorize('roles.write'), idempotent(db, 'role-assignments.grant'), async (req, res) => {
-    const out = await roles.grant(authOf(res), GrantBody.parse(req.body), res.locals.requestId);
-    res.status(out.status === 'GRANTED' ? 201 : 202).json(out);
-  });
+  router.post('/role-assignments', authorize('roles.write'), idempotent(db, 'role-assignments.grant', async (req, res, tx) => {
+    const out = await roles.grant(authOf(res), GrantBody.parse(req.body), res.locals.requestId, tx);
+    return { code: out.status === 'GRANTED' ? 201 : 202, body: out };
+  }));
   router.patch('/role-assignments/:id', authorize('roles.write'), async (req, res) => {
     const { id } = IdParam.parse(req.params);
     const out = await roles.update(authOf(res), id, UpdateBody.parse(req.body), res.locals.requestId);

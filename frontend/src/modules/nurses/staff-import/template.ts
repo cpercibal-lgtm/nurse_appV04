@@ -3,7 +3,6 @@
 
 import { readSheet, serialToIso, XlsxError, type Cell, type ListsSheet } from './xlsx';
 
-export const TEMPLATE_VERSION = 3;
 export const MAX_ROWS = 1000;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 

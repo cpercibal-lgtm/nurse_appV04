@@ -17,6 +17,7 @@
 //   targets; a missing target is "unspecified" (W8); a shortage warns, it
 //   never blocks (S4, S5). Date windows are at most 94 days (S6).
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import { SHIFT_TYPES, type ShiftType } from '../../config/shifts.js';
 import { appendAudit } from '../../lib/audit.js';
@@ -394,8 +395,8 @@ export function createSchedulingService(db: Db) {
     },
 
     /** L7, S3: every draft in the window is re-validated by the engine in one transaction. */
-    async publish(auth: AuthContext, body: z.infer<typeof PublishBody>, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async publish(auth: AuthContext, body: z.infer<typeof PublishBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         await assertSupervises(tx, auth, body.unitId);
         // One publication per unit at a time.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('roster:publish'), ${body.unitId})`;

@@ -18,20 +18,36 @@ export default function ConfirmEmailPage() {
   const { language, setLanguage } = usePreferences();
   const logout = useAuth((s) => s.logout);
   const [state, setState] = useState<{ kind: 'working' } | { kind: 'done'; email: string } | { kind: 'error'; message: string }>({ kind: 'working' });
-  const ran = useRef(false); // once, also under React's development double effects
+  const [token, setToken] = useState(tokenFromHash);
+  // Reuse each token's promise when StrictMode restarts effects or the user
+  // returns to a previous hash: confirmation tokens are single-use.
+  const confirmations = useRef(new Map<string, Promise<{ email: string }>>());
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-    const token = tokenFromHash();
+    const onHash = () => setToken(tokenFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  useEffect(() => {
     if (!token) { setState({ kind: 'error', message: t('emailConfirmNoToken') }); return; }
-    http.post<{ email: string }>('/auth/email-change/confirm', { token })
-      .then(async (out) => {
-        await logout().catch(() => undefined); // the server already ended the sessions; clear this tab too
-        setState({ kind: 'done', email: out.email });
-      })
-      .catch((e) => setState({ kind: 'error', message: describeApiError(e) }));
-  }, [logout, t]);
+    let active = true;
+    setState({ kind: 'working' });
+    let confirmation = confirmations.current.get(token);
+    if (!confirmation) {
+      confirmation = http.post<{ email: string }>('/auth/email-change/confirm', { token })
+        .then(async (out) => {
+          await logout().catch(() => undefined); // the server ended sessions, even if this link is no longer displayed
+          return out;
+        });
+      confirmations.current.set(token, confirmation);
+    }
+    confirmation.then(
+      (out) => { if (active) setState({ kind: 'done', email: out.email }); },
+      (e) => { if (active) setState({ kind: 'error', message: describeApiError(e) }); },
+    );
+    return () => { active = false; };
+  }, [token, logout, t]);
 
   return (
     <div className="login-backdrop">

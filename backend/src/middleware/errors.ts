@@ -42,7 +42,11 @@ export function fromPrismaError(e: Prisma.PrismaClientKnownRequestError): HttpEr
   if (e.code === 'P2002' || sqlState === '23505') return new HttpError(409, 'DUPLICATE', 'A record with this value already exists');
   if (e.code === 'P2003' || sqlState === '23503') return new HttpError(409, 'RELATED_RECORD_MISSING', 'A related record does not exist or is still in use');
   if (sqlState === '23514' || sqlState === '23P01') return new HttpError(422, 'CONSTRAINT_VIOLATION', 'The request breaks a data rule');
-  return new HttpError(400, 'INVALID_REQUEST', 'The request could not be processed');
+  if (['P1001', 'P1002', 'P1008', 'P1017', 'P2024', 'P2034', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT'].includes(e.code)
+    || sqlState?.startsWith('08') || ['40001', '40P01', '57P01', '57P02', '57P03', '53300'].includes(sqlState ?? '')) {
+    return new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is temporarily unavailable');
+  }
+  return new HttpError(500, 'INTERNAL_ERROR', 'Internal server error');
 }
 
 /** 404 for any /api path no router handled. */
@@ -54,6 +58,21 @@ export const unknownRoute: RequestHandler = (_req, _res, next) => {
 export const errorHandler: ErrorRequestHandler = (err: unknown, _req, res, next) => {
   if (res.headersSent) return next(err);
   const requestId = res.locals.requestId;
+  const httpError = toHttpError(err);
+  if (httpError.status >= 500) logger.error('unexpected error', { requestId, ...describeError(err) });
+  else if (err instanceof Prisma.PrismaClientKnownRequestError) logger.warn('rejected by database', { requestId, prismaCode: err.code, ...driverCause(err), mappedTo: httpError.code });
+
+  res.locals.errorCode = httpError.code; // for the request log (spec §9.2)
+  res.status(httpError.status).json(httpError.toBody());
+};
+
+function isBodyParserError(e: unknown): e is { type: string; status: number } {
+  return typeof e === 'object' && e !== null && typeof (e as { type?: unknown }).type === 'string'
+    && typeof (e as { status?: unknown }).status === 'number' && (e as { status: number }).status < 500;
+}
+
+/** Shared classification for responses saved by the idempotency transaction. */
+export function toHttpError(err: unknown): HttpError {
   let httpError: HttpError;
 
   if (err instanceof HttpError) {
@@ -63,21 +82,13 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, _req, res, next)
       err.issues.map((i) => ({ path: i.path.join('.'), message: i.message })));
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
     httpError = fromPrismaError(err);
-    logger.warn('rejected by database', { requestId, prismaCode: err.code, ...driverCause(err), mappedTo: httpError.code });
   } else if (isBodyParserError(err)) {
     httpError = err.type === 'entity.too.large'
       ? new HttpError(413, 'PAYLOAD_TOO_LARGE', 'The request body is too large')
       : new HttpError(400, 'MALFORMED_BODY', 'The request body could not be parsed');
   } else {
-    logger.error('unexpected error', { requestId, ...describeError(err) });
     httpError = new HttpError(500, 'INTERNAL_ERROR', 'Internal server error');
   }
 
-  res.locals.errorCode = httpError.code; // for the request log (spec §9.2)
-  res.status(httpError.status).json(httpError.toBody());
-};
-
-function isBodyParserError(e: unknown): e is { type: string; status: number } {
-  return typeof e === 'object' && e !== null && typeof (e as { type?: unknown }).type === 'string'
-    && typeof (e as { status?: unknown }).status === 'number' && (e as { status: number }).status < 500;
+  return httpError;
 }

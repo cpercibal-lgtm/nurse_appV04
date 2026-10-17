@@ -12,6 +12,7 @@
 // `announcement:<id>`. Nothing is edited once sent (owner Q4): a published
 // announcement is cancelled, which stops whatever has not been delivered yet.
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import type { Announcement, AnnouncementKind, AudienceType, AppRole } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
@@ -460,8 +461,8 @@ export function createAnnouncementService(db: Db, opts: { emailHourlyLimit: numb
     },
 
     /** Publishes at once (Supervisor to own units, break-glass) or opens a four-eyes request. Identifiers only (idempotent route). */
-    async submit(auth: AuthContext, id: number, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async submit(auth: AuthContext, id: number, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         const a = await lockOwnDraft(tx, auth, id);
         const s = toShape(a);
         assertSendable(s);

@@ -4,6 +4,7 @@
 // HR can still provision an account with an initial password; registration by
 // invitation (spec §3.2) is in invitations.ts.
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
 import { assertUnchanged } from '../../lib/concurrency.js';
@@ -65,11 +66,11 @@ export function createAccountService(db: Db, passwords: PasswordService) {
     return { items: users.map(({ mfaFactor, telegramLinkedAt, ...u }) => ({ ...u, mfaEnabled: Boolean(mfaFactor?.confirmedAt), telegramLinked: Boolean(telegramLinkedAt) })), total: users.length };
   }
 
-  async function create(auth: AuthContext, body: z.infer<typeof CreateAccountBody>, requestId?: string) {
-    const scope = await unitScope(db, auth, ADMIN_ROLES);
-    await assertEmployeeInScope(db, scope, body.employeeId);
+  async function create(auth: AuthContext, body: z.infer<typeof CreateAccountBody>, requestId?: string, transaction?: Transaction) {
+    const scope = await unitScope(transaction ?? db, auth, ADMIN_ROLES);
+    await assertEmployeeInScope(transaction ?? db, scope, body.employeeId);
     const passwordHash = await passwords.hash(body.password);
-    return db.$transaction(async (tx) => {
+    return inTransaction(db, transaction, async (tx) => {
       const user = await tx.user.create({
         data: { email: body.email, displayName: body.displayName, passwordHash, employeeId: body.employeeId ?? null },
         select: { id: true },

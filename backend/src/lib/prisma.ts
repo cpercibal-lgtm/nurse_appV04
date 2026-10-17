@@ -28,5 +28,36 @@ export function withUtcSession(databaseUrl: string): string {
 }
 
 export function createPrisma(databaseUrl: string): PrismaClient {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString: withUtcSession(databaseUrl) }) });
+  return new PrismaClient({ adapter: new SerialTransactionPrismaPg({ connectionString: withUtcSession(databaseUrl) }) });
+}
+
+// Prisma can issue parallel relation queries within one operation, even when
+// application calls are awaited. A transaction has one pg connection: queue at
+// the adapter boundary rather than relying on pg's deprecated implicit queue.
+// Ordinary pool queries and separate transactions remain independent.
+class SerialTransactionPrismaPg extends PrismaPg {
+  override async connect() {
+    const adapter = await super.connect();
+    const startTransaction = adapter.startTransaction.bind(adapter);
+    adapter.startTransaction = async (...args) => {
+      const tx = await startTransaction(...args);
+      let tail: Promise<unknown> = Promise.resolve();
+      const enqueue = <T>(work: () => Promise<T>): Promise<T> => {
+        const result = tail.then(work);
+        // A failed statement must not prevent rollback/savepoint recovery.
+        tail = result.catch(() => undefined);
+        return result;
+      };
+      const query = tx.queryRaw.bind(tx);
+      const execute = tx.executeRaw.bind(tx);
+      const commit = tx.commit.bind(tx);
+      const rollback = tx.rollback.bind(tx);
+      tx.queryRaw = (sql) => enqueue(() => query(sql));
+      tx.executeRaw = (sql) => enqueue(() => execute(sql));
+      tx.commit = () => enqueue(commit);
+      tx.rollback = () => enqueue(rollback);
+      return tx;
+    };
+    return adapter;
+  }
 }

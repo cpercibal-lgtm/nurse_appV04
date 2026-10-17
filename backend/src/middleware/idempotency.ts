@@ -1,72 +1,67 @@
-// Idempotency-Key for creating operations marked [I] in docs/API.md.
-//
-// - The key is a client-generated UUID, unique per actor.
-// - Same key + same request → the stored response is replayed (no second write).
-// - Same key + different request → 422, never a silent replay of something else.
-// - A request still processing → 409 while its lease is live; an expired lease
-//   or a failed (5xx) attempt may be retaken.
-// Responses of [I] endpoints carry identifiers only, so stored bodies hold no
-// personal data (schema comment on IdempotencyKey.responseBody).
-
-import type { RequestHandler } from 'express';
-import { Prisma } from '../lib/prisma.js';
-import type { Db } from '../lib/prisma.js';
+// Business writes and replay data commit together. PostgreSQL owns the lock's
+// lifetime, so a slow request cannot lose ownership to an expired wall-clock lease.
+import type { Request, Response, RequestHandler } from 'express';
+import { Prisma, type Db } from '../lib/prisma.js';
 import { HttpError } from '../lib/http-errors.js';
 import { sha256hex } from '../lib/tokens.js';
 import { authOf } from './authorize.js';
+import { toHttpError } from './errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const LEASE_MS = 60_000;
 const RETENTION_MS = 24 * 3600_000;
+type Outcome = { code?: number; body: unknown };
+type Execute = (req: Request, res: Response, tx: Prisma.TransactionClient) => Promise<Outcome>;
 
-export function idempotent(db: Db, operation: string): RequestHandler {
-  return async (req, res, next) => {
+export function idempotent(db: Db, operation: string, execute: Execute, options?: { timeout?: number; maxWait?: number }): RequestHandler {
+  return async (req, res) => {
     const key = req.get('idempotency-key') ?? '';
-    if (!UUID.test(key)) return next(new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'An Idempotency-Key header (UUID) is required'));
-
+    if (!UUID.test(key)) throw new HttpError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'An Idempotency-Key header (UUID) is required');
     const actorUserId = authOf(res).user.id;
     const requestHash = sha256hex(`${req.method} ${req.originalUrl}\n${JSON.stringify(req.body ?? null)}`);
-    const now = new Date();
-    const lease = new Date(now.getTime() + LEASE_MS);
-
-    let row;
-    try {
-      row = await db.idempotencyKey.create({
-        data: { key, actorUserId, operation, requestPath: req.originalUrl, requestHash, status: 'PROCESSING', processingLeaseExpiresAt: lease, expiresAt: new Date(now.getTime() + RETENTION_MS) },
-      });
-    } catch (e) {
-      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
-      const existing = await db.idempotencyKey.findUniqueOrThrow({ where: { key_actorUserId: { key, actorUserId } } });
-      if (existing.requestHash !== requestHash) {
-        return next(new HttpError(422, 'IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request'));
+    const result = await db.$transaction(async (tx) => {
+      const lock = `idempotency:${actorUserId}:${key.toLowerCase()}`;
+      const [locked] = await tx.$queryRaw<Array<{ acquired: boolean }>>`SELECT pg_try_advisory_xact_lock(hashtextextended(${lock}, 0)) AS acquired`;
+      if (!locked?.acquired) throw new HttpError(409, 'IDEMPOTENCY_IN_PROGRESS', 'This request is already being processed');
+      const existing = await tx.idempotencyKey.findUnique({ where: { key_actorUserId: { key, actorUserId } } });
+      if (existing) {
+        if (existing.requestHash !== requestHash) throw new HttpError(422, 'IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request');
+        if (existing.status === 'COMPLETED' && existing.responseCode !== null) {
+          return { code: existing.responseCode, body: existing.responseBody, replayed: true };
+        }
+        // Only the previous implementation can leave an incomplete committed row.
+        // Its business transaction may have committed; never repeat an uncertain write.
+        throw new HttpError(409, 'IDEMPOTENCY_IN_PROGRESS', 'The previous outcome needs reconciliation before this request can be repeated');
       }
-      if (existing.status === 'COMPLETED' && existing.responseCode !== null) {
-        res.set('Idempotent-Replayed', 'true');
-        return res.status(existing.responseCode).json(existing.responseBody);
+      const row = existing ?? await tx.idempotencyKey.create({ data: {
+        key, actorUserId, operation, requestPath: req.originalUrl, requestHash,
+        status: 'PROCESSING', expiresAt: new Date(Date.now() + RETENTION_MS),
+      } });
+      await tx.$executeRawUnsafe('SAVEPOINT idempotent_operation');
+      let outcome: Outcome;
+      try {
+        outcome = await execute(req, res, tx);
+      } catch (error) {
+        const mapped = toHttpError(error);
+        if (mapped.status >= 500) throw error;
+        // A rejected operation must not commit partial writes. Preserve its 4xx
+        // replay response, including database constraint errors that abort SQL.
+        await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT idempotent_operation');
+        outcome = { code: mapped.status, body: mapped.toBody() };
+        res.locals.errorCode = mapped.code;
       }
-      if (existing.status === 'PROCESSING' && existing.processingLeaseExpiresAt && existing.processingLeaseExpiresAt > now) {
-        return next(new HttpError(409, 'IDEMPOTENCY_IN_PROGRESS', 'This request is already being processed'));
-      }
-      // Expired lease or failed attempt: take it over, guarded against a racing taker.
-      const taken = await db.idempotencyKey.updateMany({
-        where: { id: existing.id, status: existing.status, processingLeaseExpiresAt: existing.processingLeaseExpiresAt },
-        data: { status: 'PROCESSING', processingLeaseExpiresAt: lease },
-      });
-      if (taken.count !== 1) return next(new HttpError(409, 'IDEMPOTENCY_IN_PROGRESS', 'This request is already being processed'));
-      row = existing;
-    }
-
-    // Record the outcome when the handler answers.
-    const id = row.id;
-    const json = res.json.bind(res);
-    res.json = (body: unknown) => {
-      const code = res.statusCode;
-      const done = code < 500
-        ? { status: 'COMPLETED' as const, responseCode: code, responseBody: body as Prisma.InputJsonValue, responseHash: sha256hex(JSON.stringify(body)), completedAt: new Date(), processingLeaseExpiresAt: null }
-        : { status: 'FAILED' as const, processingLeaseExpiresAt: null };
-      db.idempotencyKey.update({ where: { id }, data: done }).then(() => json(body), (e: unknown) => next(e));
-      return res;
-    };
-    next();
+      await tx.$executeRawUnsafe('RELEASE SAVEPOINT idempotent_operation');
+      const { code = 200, body } = outcome;
+      if (code >= 500) throw new HttpError(code, 'INTERNAL_ERROR', 'Internal server error');
+      // Store precisely the JSON representation that will be sent (including Date serialization).
+      const serialized = JSON.stringify(body);
+      const responseBody = JSON.parse(serialized) as Prisma.InputJsonValue;
+      await tx.idempotencyKey.update({ where: { id: row.id }, data: {
+        status: 'COMPLETED', responseCode: code, responseBody, responseHash: sha256hex(serialized),
+        completedAt: new Date(), processingLeaseExpiresAt: null,
+      } });
+      return { code, body: responseBody, replayed: false };
+    }, options);
+    if (result.replayed) res.set('Idempotent-Replayed', 'true');
+    res.status(result.code).json(result.body);
   };
 }

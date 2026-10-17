@@ -4,11 +4,13 @@
 
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { createPrisma, type Db } from '../src/lib/prisma.js';
 
 const BACKEND = resolve(__dirname, '..');
+const PRISMA_CLI = createRequire(import.meta.url).resolve('prisma/build/index.js');
 
 function adminUrl(base: string) {
   const u = new URL(base);
@@ -18,8 +20,8 @@ function adminUrl(base: string) {
 
 /** `prisma migrate deploy` against `url` — and only `url`, whatever MIGRATION_DATABASE_URL a .env sets. */
 export function migrateDeploy(url: string) {
-  execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['prisma', 'migrate', 'deploy'], {
-    cwd: BACKEND, env: { ...process.env, DATABASE_URL: url, MIGRATION_DATABASE_URL: url }, stdio: 'pipe', shell: process.platform === 'win32',
+  execFileSync(process.execPath, [PRISMA_CLI, 'migrate', 'deploy'], {
+    cwd: BACKEND, env: { ...process.env, DATABASE_URL: url, MIGRATION_DATABASE_URL: url }, stdio: 'pipe',
   });
 }
 

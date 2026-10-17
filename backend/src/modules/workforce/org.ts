@@ -6,6 +6,7 @@
 // belong to a unit, so a unit-scoped HR Admin may change them for their units.
 // Every bed change is logged with actor, reason, before and after (W4).
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
 import { assertUnchanged } from '../../lib/concurrency.js';
@@ -250,8 +251,8 @@ export function createOrgService(db: Db) {
     },
 
     /** W5: per-row result; one log row per changed unit; all applied changes commit together. */
-    async bulkBeds(auth: AuthContext, body: z.infer<typeof BulkBedsBody>, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async bulkBeds(auth: AuthContext, body: z.infer<typeof BulkBedsBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         const scope = await hrScope(tx, auth);
         const results: BulkRowResult[] = [];
         const seen = new Set<string>();
@@ -274,10 +275,10 @@ export function createOrgService(db: Db) {
     },
 
     /** CSV import of units and beds. Dry run by default; never deletes or deactivates a unit. */
-    async importUnits(auth: AuthContext, body: z.infer<typeof ImportBody>, requestId?: string) {
-      await assertSystemWide(db, auth);
+    async importUnits(auth: AuthContext, body: z.infer<typeof ImportBody>, requestId?: string, transaction?: Transaction) {
+      await assertSystemWide(transaction ?? db, auth);
       const rows = parseUnitsCsv(body.csv);
-      return db.$transaction(async (tx) => {
+      return inTransaction(db, transaction, async (tx) => {
         // Sequential: inside a transaction (one pinned pg connection; no concurrent queries).
         const departments = await tx.department.findMany();
         const units = await tx.unit.findMany();

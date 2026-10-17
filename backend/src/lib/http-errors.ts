@@ -22,7 +22,6 @@ export class HttpError extends Error {
   }
 }
 
-export const badRequest = (code: string, message: string, details?: unknown) => new HttpError(400, code, message, details);
 export const unauthorized = (message = 'Authentication required') => new HttpError(401, 'UNAUTHENTICATED', message);
 export const forbidden = (code = 'FORBIDDEN', message = 'You do not have permission to do this') => new HttpError(403, code, message);
 export const notFound = (message = 'Record not found') => new HttpError(404, 'NOT_FOUND', message);

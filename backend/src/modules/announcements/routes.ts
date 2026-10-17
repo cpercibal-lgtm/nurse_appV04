@@ -33,9 +33,9 @@ export function createAnnouncementsRouter(db: Db, announcements: AnnouncementSer
   r.post('/announcements/:id/preview', authorize('announcements.write'), async (req, res) => { res.json(await announcements.preview(authOf(res), id(req))); });
 
   // Sending: publishes or opens a four-eyes request; then cancel.
-  r.post('/announcements/:id/submit', authorize('announcements.write'), idempotent(db, 'announcements.submit'), async (req, res) => {
-    res.json(await announcements.submit(authOf(res), id(req), rid(res)));
-  });
+  r.post('/announcements/:id/submit', authorize('announcements.write'), idempotent(db, 'announcements.submit', async (req, res, tx) => {
+    return { body: await announcements.submit(authOf(res), id(req), rid(res), tx) };
+  }, { timeout: 120_000 }));
   r.post('/announcements/:id/cancel', authorize('announcements.write'), async (req, res) => {
     res.json(await announcements.cancel(authOf(res), id(req), CancelBody.parse(req.body).reason, rid(res)));
   });

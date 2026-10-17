@@ -9,7 +9,6 @@ export type AnnouncementStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'PUBLISHED' | 'R
 export type AudienceType = 'HOSPITAL' | 'DEPARTMENT' | 'UNIT' | 'PEOPLE';
 export type AnnouncementPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export const KINDS: AnnouncementKind[] = ['MEMO', 'MEETING', 'SEMINAR'];
-export const AUDIENCES: AudienceType[] = ['HOSPITAL', 'DEPARTMENT', 'UNIT', 'PEOPLE'];
 
 export interface Announcement {
   id: number; kind: AnnouncementKind; status: AnnouncementStatus; priority: AnnouncementPriority | 'CRITICAL';

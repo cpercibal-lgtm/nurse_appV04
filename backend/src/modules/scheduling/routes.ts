@@ -43,9 +43,9 @@ export function createSchedulingRouter(db: Db, roster: SchedulingService, attend
   r.post('/roster/approvals/:id/decision', authorize('roster.approve'), async (req, res) => {
     res.json(await roster.decideApproval(authOf(res), IdParam.parse(req.params).id, DecideBody.parse(req.body), rid(res)));
   });
-  r.post('/roster/publish', authorize('roster.publish'), idempotent(db, 'roster.publish'), async (req, res) => {
-    res.json(await roster.publish(authOf(res), PublishBody.parse(req.body), rid(res)));
-  });
+  r.post('/roster/publish', authorize('roster.publish'), idempotent(db, 'roster.publish', async (req, res, tx) => {
+    return { body: await roster.publish(authOf(res), PublishBody.parse(req.body), rid(res), tx) };
+  }, { timeout: 120_000 }));
   r.get('/coverage', authorize('roster.read'), async (req, res) => { res.json(await roster.coverage(authOf(res), BoardQuery.parse(req.query))); });
   r.post('/shift-assignments', authorize('roster.write'), async (req, res) => {
     res.status(201).json(await roster.create(authOf(res), CreateBody.parse(req.body), rid(res)));
