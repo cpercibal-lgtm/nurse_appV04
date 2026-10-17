@@ -4,6 +4,7 @@
 // needs the granter to hold that department, a UNIT grant needs every unit
 // covered, and SYSTEM needs a system-wide granter (R6).
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import type { AppRole, ScopeType } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
@@ -182,23 +183,23 @@ export function createRoleAssignmentService(db: Db) {
     return updated.id;
   }
 
-  async function initiateApproval(auth: AuthContext, actionType: string, payload: ApprovalPayload, requestId?: string) {
-    return db.$transaction(async (tx) => {
+  async function initiateApproval(auth: AuthContext, actionType: string, payload: ApprovalPayload, requestId?: string, transaction?: Transaction) {
+    return inTransaction(db, transaction, async (tx) => {
       const req = await tx.approvalRequest.create({ data: { initiatorId: auth.user.id, actionType, payload } });
       await appendAudit(tx, { actorUserId: auth.user.id, action: 'APPROVAL_INITIATED', resource: 'approval_request', resourceId: req.id, changes: { actionType, payload }, requestId, priority: 'HIGH' });
       return req.id;
     });
   }
 
-  async function grant(auth: AuthContext, input: GrantInput, requestId?: string): Promise<GrantOutcome> {
+  async function grant(auth: AuthContext, input: GrantInput, requestId?: string, transaction?: Transaction): Promise<GrantOutcome> {
     // Break-glass bypasses four-eyes (spec §3.6); everyone else needs a second admin for R10 actions.
     if (needsFourEyes(input.role, input.scopeType) && !auth.breakGlass) {
       // Validate now so an impossible request never reaches the approval queue.
-      await validateGrant(db, auth, input);
-      const requestIdOut = await initiateApproval(auth, `GRANT:${input.userId}:${input.role}:${input.scopeType}`, { kind: 'GRANT', grant: input }, requestId);
+      await validateGrant(transaction ?? db, auth, input);
+      const requestIdOut = await initiateApproval(auth, `GRANT:${input.userId}:${input.role}:${input.scopeType}`, { kind: 'GRANT', grant: input }, requestId, transaction);
       return { status: 'PENDING_APPROVAL', requestId: requestIdOut };
     }
-    const id = await db.$transaction((tx) => grantNow(tx, auth, input, null, requestId));
+    const id = await inTransaction(db, transaction, (tx) => grantNow(tx, auth, input, null, requestId));
     return { status: 'GRANTED', id };
   }
 

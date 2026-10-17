@@ -38,13 +38,13 @@ export function createContractsRouter(db: Db, contracts: ContractService, maxUpl
   r.get('/contracts/me', async (_req, res) => { res.json(await contracts.listOwn(authOf(res))); });
   r.get('/contracts/creatable', authorize('contracts.manage'), async (req, res) => { res.json(await contracts.creatable(authOf(res), PickerQuery.parse(req.query))); });
   r.get('/contracts/renewable', authorize('contracts.manage'), async (req, res) => { res.json(await contracts.renewable(authOf(res), PickerQuery.parse(req.query))); });
-  r.post('/contracts', authorize('contracts.manage'), idempotent(db, 'contracts.create'), async (req, res) => {
-    res.status(201).json(await contracts.create(authOf(res), CreateBody.parse(req.body), rid(res)));
-  });
+  r.post('/contracts', authorize('contracts.manage'), idempotent(db, 'contracts.create', async (req, res, tx) => {
+    return { code: 201, body: await contracts.create(authOf(res), CreateBody.parse(req.body), rid(res), tx) };
+  }));
   r.get('/contracts/:id', async (req, res) => { res.json(await contracts.get(authOf(res), IdParam.parse(req.params).id)); });
-  r.post('/contracts/:id/renew', authorize('contracts.manage'), idempotent(db, 'contracts.renew'), async (req, res) => {
-    res.status(201).json(await contracts.renew(authOf(res), IdParam.parse(req.params).id, RenewBody.parse(req.body ?? {}), rid(res)));
-  });
+  r.post('/contracts/:id/renew', authorize('contracts.manage'), idempotent(db, 'contracts.renew', async (req, res, tx) => {
+    return { code: 201, body: await contracts.renew(authOf(res), IdParam.parse(req.params).id, RenewBody.parse(req.body ?? {}), rid(res), tx) };
+  }));
   // Draft only (owner request 2026-10-15); If-Match = the contract's updatedAt.
   r.patch('/contracts/:id/dates', authorize('contracts.manage'), async (req, res) => {
     res.json(await contracts.updateDates(authOf(res), IdParam.parse(req.params).id, DatesBody.parse(req.body), rid(res), ifMatch(req)));

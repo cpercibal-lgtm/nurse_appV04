@@ -42,6 +42,7 @@
 // renewal does. The status follows the new period (Approved ↔ Active) and eligibility is
 // re-evaluated. Suspending or terminating the contract withdraws an open request.
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import type { Contract, ContractStatus } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
@@ -301,8 +302,8 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
       return { items, total };
     },
 
-    async create(auth: AuthContext, body: z.infer<typeof CreateBody>, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async create(auth: AuthContext, body: z.infer<typeof CreateBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         const emp = await assertEmployee(tx, auth, body.employeeId);
         // C6/C10: a second, concurrent contract is never created this way — renew instead.
         if (await tx.contract.findFirst({ where: { employeeId: emp.id, status: { in: [...COVERING] } }, select: { id: true } })) {
@@ -317,8 +318,8 @@ export function createContractService(db: Db, documents: DocumentAccess, scanner
     },
 
     /** C8 prefill from the prior contract; the dates stay editable. The approval overlap check (C4) still applies. */
-    async renew(auth: AuthContext, priorId: number, body: z.infer<typeof RenewBody>, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async renew(auth: AuthContext, priorId: number, body: z.infer<typeof RenewBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         const prior = await tx.contract.findUnique({ where: { id: priorId } });
         if (!prior) throw notFound('Contract not found');
         const emp = await assertEmployee(tx, auth, prior.employeeId);

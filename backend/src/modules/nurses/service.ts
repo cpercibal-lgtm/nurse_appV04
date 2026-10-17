@@ -9,6 +9,7 @@
 // D-36); an employee sees their own profile and may update their own phone
 // numbers (D-35).
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import type { Employee } from '../../generated/prisma/client.js';
 import { appendAudit } from '../../lib/audit.js';
@@ -363,8 +364,8 @@ export function createNurseService(db: Db) {
     },
 
     /** E10 + D-3: employee, Draft contract, audit and eligibility state in one transaction. Returns identifiers only ([I]). */
-    async onboard(auth: AuthContext, input: z.infer<typeof OnboardBody>, requestId?: string) {
-      return db.$transaction((tx) => onboardInTx(tx, auth, input, requestId));
+    async onboard(auth: AuthContext, input: z.infer<typeof OnboardBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, (tx) => onboardInTx(tx, auth, input, requestId));
     },
 
     /** `expected`: the version the caller loaded (If-Match); a newer one is refused (STALE_RECORD). */
@@ -427,8 +428,8 @@ export function createNurseService(db: Db) {
      * eligibility refresh, which returns future published shifts that no longer pass to Draft and tells the
      * supervisors (spec 6.2, D-32). Both the current and the new unit must be in the caller's scope.
      */
-    async assign(auth: AuthContext, id: number, body: z.infer<typeof AssignmentBody>, requestId?: string) {
-      return db.$transaction((tx) => assignWithin(tx, auth, id, body, requestId));
+    async assign(auth: AuthContext, id: number, body: z.infer<typeof AssignmentBody>, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, (tx) => assignWithin(tx, auth, id, body, requestId));
     },
 
     /** What `assign` would do, without doing it: the same steps inside a transaction that is always rolled back. */

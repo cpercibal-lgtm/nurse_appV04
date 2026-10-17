@@ -12,6 +12,7 @@
 // Responses hold row numbers, job numbers and codes only, never names, e-mails or
 // phones: the idempotency store keeps the commit response.
 
+import { inTransaction, type Transaction } from '../../lib/transaction.js';
 import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
 import { dbDate } from '../../lib/dates.js';
@@ -230,8 +231,8 @@ export function createStaffImportService(db: Db, nurses: NurseService) {
     },
 
     /** All or nothing, under one lock: re-checks every row, then onboards each CREATE row with onboardInTx. */
-    async commit(auth: AuthContext, body: ImportBodyInput, requestId?: string) {
-      return db.$transaction(async (tx) => {
+    async commit(auth: AuthContext, body: ImportBodyInput, requestId?: string, transaction?: Transaction) {
+      return inTransaction(db, transaction, async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('employees:import'))`;
         const { rows, inputs, totals, canImport } = await evaluate(tx, auth, body);
         if (!canImport) {

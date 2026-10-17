@@ -40,12 +40,12 @@ export function createWorkforceRouter(db: Db, org: OrgService) {
   // ── Units and beds (W2–W5). Literal paths before /units/:id. ──
   r.get('/units', authorize('workforce.read'), async (req, res) => { res.json(await org.listUnits(UnitsQuery.parse(req.query))); });
   r.get('/units/summary', authorize('workforce.read'), async (_req, res) => { res.json(await org.summary()); });
-  r.put('/units/bed-capacity/bulk', authorize('workforce.write'), idempotent(db, 'units.beds.bulk'), async (req, res) => {
-    res.json(await org.bulkBeds(authOf(res), BulkBedsBody.parse(req.body), rid(res)));
-  });
-  r.post('/units/import', authorize('workforce.write'), idempotent(db, 'units.import'), async (req, res) => {
-    res.json(await org.importUnits(authOf(res), ImportBody.parse(req.body), rid(res)));
-  });
+  r.put('/units/bed-capacity/bulk', authorize('workforce.write'), idempotent(db, 'units.beds.bulk', async (req, res, tx) => {
+    return { body: await org.bulkBeds(authOf(res), BulkBedsBody.parse(req.body), rid(res), tx) };
+  }, { timeout: 60_000 }));
+  r.post('/units/import', authorize('workforce.write'), idempotent(db, 'units.import', async (req, res, tx) => {
+    return { body: await org.importUnits(authOf(res), ImportBody.parse(req.body), rid(res), tx) };
+  }, { timeout: 60_000 }));
   r.post('/units', authorize('workforce.write'), async (req, res) => {
     res.status(201).json(await org.createUnit(authOf(res), UnitCreateBody.parse(req.body), rid(res)));
   });
