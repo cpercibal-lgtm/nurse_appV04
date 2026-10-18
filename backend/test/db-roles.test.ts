@@ -62,10 +62,11 @@ async function provision(dbUrl: string) {
 
 describeRoles(`database roles (spec §10.7)${allowed ? '' : ' — skipped: the test login cannot create roles'}`, () => {
   const drops: Array<() => Promise<void>> = [];
+  // DROP DATABASE waits for a checkpoint: seconds each late in a full run, when the server has many dirty buffers.
   afterAll(async () => {
     for (const d of drops.reverse()) await d();
     for (const r of [...ROLES].reverse()) await run(TEST_URL!, `DROP ROLE IF EXISTS ${roleName(r)}`);
-  });
+  }, 60_000);
 
   describe('fresh installation: roles first, migrations as the migration role', () => {
     let base: string;
