@@ -135,6 +135,20 @@ describe('search', () => {
     expect(searchGuidelines('correct contract date', 0)).toEqual([]);
   });
 
+  it.each([2, 3, 50])('preserves the date correction result ranking with limit %s', (limit) => {
+    const all = searchGuidelines('correct contract date', Number.MAX_SAFE_INTEGER);
+    const hits = searchGuidelines('correct contract date', limit);
+    expect(all.length).toBeGreaterThan(2);
+    expect(hits).toEqual(all.slice(0, limit));
+    expect(hits[0]!.task?.id).toBe('request-contract-date-change');
+    expect(new Set(hits.map((h) => `${h.section.id}/${h.task?.id ?? ''}`)).size).toBe(hits.length);
+    expect(hits.map((h) => h.score)).toEqual(hits.map((h) => h.score).sort((a, b) => b - a));
+  });
+
+  it.each(['   \t\n', '?!...', 'How do I?', 'a I x'])('does not suggest a date correction for a query with no searchable terms: %j', (query) => {
+    expect(searchGuidelines(query)).toEqual([]);
+  });
+
   it('finds nothing for nonsense and for an empty query', () => {
     expect(searchGuidelines('')).toEqual([]);
     expect(searchGuidelines('zzqx')).toEqual([]);

@@ -140,4 +140,23 @@ describe('translations', () => {
     expect(strings.dateChangeOwnHint).toContain(expected.ownApprover);
     expect(strings.dateChangeOwnHint).toContain(expected.withdraw);
   });
+
+  it.each([
+    ['English', en, 'at least 5 characters'],
+    ['Arabic', ar, '5 أحرف على الأقل'],
+  ] as const)('%s explains the minimum rejection note length', (_, entries, minimum) => {
+    expect(Object.fromEntries(entries).dateChangeNoteHint).toContain(minimum);
+  });
+
+  it.each([
+    ['dateChangePending', ['end', 'start']],
+    ['dateChangeAsked', ['at', 'name']],
+    ['contractNowStatus', ['eligibility', 'status']],
+  ] as const)('preserves the interpolation fields in %s for both review languages', (key, expected) => {
+    for (const entries of [en, ar]) {
+      const value = Object.fromEntries(entries)[key]!;
+      const placeholders = [...value.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]!).sort();
+      expect(placeholders).toEqual(expected);
+    }
+  });
 });
