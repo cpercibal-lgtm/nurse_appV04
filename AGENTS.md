@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Codex (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex and other coding agents when working with code in this repository.
 
 AIGH Nursing Workforce Management System, V04: an npm-workspaces monorepo with `backend/` (Express 5, TypeScript, zod 4, Prisma 7 on PostgreSQL 15) and `frontend/` (React 19, Vite 8, antd 6, React Query, i18next English/Arabic). Node ≥ 22. Start with [docs/README.md](docs/README.md) (the documentation index) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
