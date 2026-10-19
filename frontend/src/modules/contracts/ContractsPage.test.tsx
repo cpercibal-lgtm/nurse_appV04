@@ -212,13 +212,16 @@ describe('opening the contract copy from a date-change review', () => {
     expect(state.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])('cancels the review without deciding the request (requester: %s)', (mine) => {
+  it.each([
+    [false, false], [true, false], [false, true], [true, true],
+  ])('cancels the review without deciding the request (requester: %s, copy inspected first: %s)', (mine, inspected) => {
     state.rows[1] = contract(22, mine ? state.userId : 8);
-    const page = play(openReview(22), openCopy, closeCopy, (p) => {
+    const page = play(openReview(22), ...(inspected ? [openCopy, closeCopy] : []), (p) => {
       button(review(p).props.footer, i18n.t('cancel')).props.onClick();
     });
 
     expect(elements(page).filter((e) => e.type === Modal && e.props.open)).toEqual([]);
+    // Cancel closes only the review; after an inspected copy the page is fully closed again.
     expect(one(page, Drawer).props.open).toBe(false);
     expect(useContractDocs).toHaveBeenLastCalledWith(null);
     expect(state.mutateAsync).not.toHaveBeenCalled();
