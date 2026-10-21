@@ -15,6 +15,7 @@
 | [API.md](API.md) | Every endpoint, with permission, scope and source |
 | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) | Data domains and relationships, database-enforced rules, the audit chain, migrations, **how data enters the database** (bootstrap, baseline import, fixtures) |
 | [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md) | The database-first migration: old vs new architecture, steps, data mapping, import process, rollback, validation |
+| [STAGING.md](STAGING.md) | Staging server settings, manual deployment and SCFHS acceptance checklist |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Configuration, processes and jobs, release steps, backups, **known gaps before production**, monitoring |
 | [STAFF_IMPORT_DESIGN.md](STAFF_IMPORT_DESIGN.md) | **Proposed, not built**: importing staff from the spreadsheet template (v3), API, screen, limits, tests and open points |
 | [IT_HANDOVER.md](IT_HANDOVER.md) | **For hospital IT**: the server steps for the current release (settings, release, checks, role accounts, what to tell users) |

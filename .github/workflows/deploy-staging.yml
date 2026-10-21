@@ -1,0 +1,72 @@
+name: Deploy (staging)
+
+# Manual release of the selected main commit to a separate, synthetic-data VPS.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  SHA: ${{ github.sha }}
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+      - name: Validate staging settings before building or connecting
+        env:
+          STAGING_VPS_HOST: ${{ vars.STAGING_VPS_HOST }}
+          STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
+          STAGING_VPS_SSH_KEY: ${{ secrets.STAGING_VPS_SSH_KEY }}
+          STAGING_VPS_KNOWN_HOSTS: ${{ secrets.STAGING_VPS_KNOWN_HOSTS }}
+        run: bash ops/vps/check-staging-config.sh
+      - uses: docker/setup-buildx-action@v4
+      - name: Build the release images once (the images that are tested and then shipped)
+        run: |
+          set -euo pipefail
+          docker buildx build --load -f backend/Dockerfile --target runtime -t "nurseapp/api:$SHA" .
+          docker buildx build --load -f backend/Dockerfile --target migrate -t "nurseapp/migrate:$SHA" .
+          docker buildx build --load -f frontend/Dockerfile -t "nurseapp/web:$SHA" .
+      # The same tests CI runs, on the images built just above. Nothing below runs if they fail.
+      - uses: ./.github/actions/test-release-images
+        with:
+          tag: ${{ env.SHA }}
+      - name: Bundle images and release scripts (the manifest names the images' hash; the VPS checks it)
+        run: |
+          set -euo pipefail
+          mkdir -p bundle/ops
+          cp -r ops/vps ops/db ops/backup bundle/ops/
+          docker save "nurseapp/api:$SHA" "nurseapp/migrate:$SHA" "nurseapp/web:$SHA" | gzip -1 > bundle/images.tar.gz
+          ops/vps/make-image-manifest.sh "$SHA" bundle/images.tar.gz > bundle/ops/RELEASE_IMAGES
+          cat bundle/ops/RELEASE_IMAGES
+          tar -cf bundle.tar -C bundle ops images.tar.gz
+          ls -lh bundle.tar
+      - name: Release on the staging VPS (blue/green; waits until the new colour is live)
+        env:
+          SSH_KEY: ${{ secrets.STAGING_VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ vars.STAGING_VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts   # pinned host key: no trust-on-first-use
+          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 "deploy@$VPS_HOST" release "$SHA" < bundle.tar
+      - name: Public staging health check
+        env:
+          APP_URL: ${{ vars.STAGING_APP_URL }}
+        run: curl -fsS --retry 10 --retry-delay 6 --retry-all-errors "${APP_URL%/}/api/v1/health"
+      - name: Manual acceptance checklist
+        run: |
+          echo 'Release completed. Follow docs/STAGING.md: SCFHS observations, evidence access, audit and unchanged eligibility.' >> "$GITHUB_STEP_SUMMARY"
