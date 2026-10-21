@@ -167,3 +167,9 @@ For a server that already runs an earlier version, the roster approval work (pul
 - [ ] Apply migration `20261102090000_scfhs_website_checks` with `prisma migrate deploy` and rebuild the API and frontend. No backfill: old gateway history keeps its source.
 - [ ] Reapply database grants and run the database verification script as for every release.
 - [ ] In staging, record a website observation with a clean evidence file and confirm its history source, actor, audit entry and unchanged credential status and eligibility. Confirm an out-of-scope account cannot record it or open its evidence.
+
+### Staging deployment workflow
+
+- [ ] Provision a separate synthetic-data VPS and configure the GitHub `staging` environment using [STAGING.md](STAGING.md).
+- [ ] Set its staging-specific variables and secrets, restrict deployments to `main`, and run **Deploy (staging)** manually.
+- [ ] Complete the manual SCFHS acceptance checklist and record results before promoting the release.

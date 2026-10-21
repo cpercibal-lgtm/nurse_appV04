@@ -171,6 +171,9 @@ Until then, **Nursing Administration → Badge simulator** (System Admin, elevat
 
 ## 4. Release procedure
 
+For a separate synthetic-data staging VPS, use the manually triggered **Deploy (staging)** workflow and [staging checklist](STAGING.md). It uses its own GitHub environment, variables, secrets and deployment concurrency group.
+
+
 In production the **Deploy (VPS)** workflow does these steps with container images after a reviewer approves, then switches blue/green with no dropped requests ([ops/vps/README.md §6](../ops/vps/README.md#6-releases-github-actions-bluegreen)). By hand, on any server:
 
 ```bash
