@@ -19,6 +19,7 @@
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Configuration, processes and jobs, release steps, backups, **known gaps before production**, monitoring |
 | [STAFF_IMPORT_DESIGN.md](STAFF_IMPORT_DESIGN.md) | **Proposed, not built**: importing staff from the spreadsheet template (v3), API, screen, limits, tests and open points |
 | [IT_HANDOVER.md](IT_HANDOVER.md) | **For hospital IT**: the server steps for the current release (settings, release, checks, role accounts, what to tell users) |
+| [HOSPITAL_REQUESTS_EMAIL.md](HOSPITAL_REQUESTS_EMAIL.md) | **To send to the hospital**: the go-live requests as a ready-to-send e-mail, in English and [Arabic](HOSPITAL_REQUESTS_EMAIL.ar.md) |
 | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | **Tick-box checklist for the server**: new installation, every later release, and what the roster approval release needs |
 | [MIGRATION.md](MIGRATION.md) | Moving from V03: data, user-visible changes, V03 programme items |
 | [SEED_DATA_INVENTORY.md](SEED_DATA_INVENTORY.md) | The complete original seed (organisation, positions, credential catalogue, demo data) as it was before hospital data moved out of TypeScript |
