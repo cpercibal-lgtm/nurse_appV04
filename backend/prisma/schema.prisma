@@ -822,6 +822,7 @@ model DocumentVersion {
   credential    Credential?    @relation(fields: [credentialId], references: [id])
   evidenceOf    Credential?    @relation("latestEvidence")
   downloadLinks DownloadLink[]
+  scfhsEvidence ScfhsCheck[]
 
   @@unique([contractId, version])
   @@unique([credentialId, version])
@@ -1659,6 +1660,10 @@ model ScfhsCheck {
   discrepancies     String[]
   action            String
   actorUserId       Int?      @map("actor_user_id")
+  manualCheckedAt   DateTime? @map("manual_checked_at") @db.Timestamptz
+  manualNotes       String?   @map("manual_notes")
+  evidenceDocumentId Int?     @map("evidence_document_id")
+  evidenceDocument DocumentVersion? @relation(fields: [evidenceDocumentId], references: [id], onDelete: Restrict)
 
   credential Credential @relation(fields: [credentialId], references: [id])
   employee   Employee   @relation(fields: [employeeId], references: [id])

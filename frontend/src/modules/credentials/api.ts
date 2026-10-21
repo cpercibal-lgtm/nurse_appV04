@@ -119,8 +119,9 @@ export function useCredentialAction() {
 // ── SCFHS licence checks (spec §5.4, D-64) ──
 export type ScfhsStatus = 'VERIFIED' | 'EXPIRED' | 'SUSPENDED' | 'REVOKED' | 'NOT_FOUND' | 'ERROR';
 export interface ScfhsCheck {
-  id: string; requestType: 'MANUAL' | 'ON_SUBMIT' | 'SCHEDULED'; driver: 'mock' | 'live'; requestedAt: string; responseStatus: ScfhsStatus;
+  id: string; requestType: 'MANUAL' | 'ON_SUBMIT' | 'SCHEDULED' | 'WEBSITE'; driver: 'mock' | 'live' | 'manual'; requestedAt: string; responseStatus: ScfhsStatus;
   scfhsExpiryDate: string | null; scfhsSpecialty: string | null; regNumberHint: string; errorMessage: string | null;
+  manualCheckedAt: string | null; manualNotes: string | null; evidenceDocumentId: number | null; actorUserId: number | null;
   matched: boolean | null; discrepancies: string[]; action: 'NONE' | 'HR_NOTIFIED' | 'SUSPENDED';
 }
 export const useScfhsChecks = (credentialId: number | null) => useQuery({
@@ -133,5 +134,16 @@ export function useScfhsCheckNow() {
   return useMutation({
     mutationFn: (id: number) => http.post<{ status: ScfhsStatus; matched: boolean | null; action: ScfhsCheck['action']; discrepancies: string[] }>(`/credentials/${id}/scfhs-check`, {}),
     onSuccess: async () => { await Promise.all([invalidateAll(qc), qc.invalidateQueries({ queryKey: ['scfhsChecks'] })]); },
+  });
+}
+
+export interface WebsiteCheckInput {
+  status: ScfhsStatus; checkedAt: string; notes: string; evidenceDocumentId: number;
+}
+export function useRecordWebsiteCheck() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: WebsiteCheckInput }) => http.post<ScfhsCheck>(`/credentials/${id}/scfhs-website-checks`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scfhsChecks'] }),
   });
 }

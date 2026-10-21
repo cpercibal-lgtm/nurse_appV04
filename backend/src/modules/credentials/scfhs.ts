@@ -19,16 +19,25 @@
 //                                   MAX_CONSECUTIVE_ERRORS in a row (circuit breaker).
 // A notice is sent once per credential and SCFHS answer (event key).
 
+import { z } from 'zod';
 import { appendAudit } from '../../lib/audit.js';
 import { dbDate } from '../../lib/dates.js';
 import { describeError, logger } from '../../lib/logger.js';
 import type { Db, DbClient } from '../../lib/prisma.js';
 import { maskReg, normalizeReg, ScfhsUnavailableError, type ScfhsGateway, type ScfhsLookup } from '../../lib/scfhs.js';
-import { notFound } from '../../lib/http-errors.js';
+import { HttpError, notFound } from '../../lib/http-errors.js';
 import { refreshEligibility, recipientsForUnit } from '../eligibility/state.service.js';
 import type { AuthContext } from '../users/access.js';
 import { viewerOf } from './access.js';
 import type { Protection } from '../pdpl/protection.js';
+
+/** D-74: a human observation from the official website, never a gateway lookup. */
+export const WebsiteCheckBody = z.strictObject({
+  status: z.enum(['VERIFIED', 'EXPIRED', 'SUSPENDED', 'REVOKED', 'NOT_FOUND', 'ERROR']),
+  checkedAt: z.string().datetime({ offset: true }),
+  notes: z.string().trim().min(10).max(1000),
+  evidenceDocumentId: z.number().int().positive(),
+});
 
 export type ScfhsRequestType = 'MANUAL' | 'ON_SUBMIT' | 'SCHEDULED';
 export type ScfhsAction = 'NONE' | 'HR_NOTIFIED' | 'SUSPENDED';
@@ -158,6 +167,33 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
     });
   }
 
+  /** Record only. No gateway, notification, credential update or eligibility refresh. */
+  async function recordWebsiteCheck(auth: AuthContext, credentialId: number, input: z.infer<typeof WebsiteCheckBody>, requestId?: string) {
+    const body = WebsiteCheckBody.parse(input);
+    const checkedAt = new Date(body.checkedAt);
+    if (checkedAt > new Date()) throw new HttpError(422, 'SCFHS_CHECK_IN_FUTURE', 'The website check time cannot be in the future');
+    return db.$transaction(async (tx) => {
+      const c = await tx.credential.findUnique({ where: { id: credentialId }, include: { template: { select: { scfhsEnabled: true } } } });
+      if (!c) throw notFound('Credential not found');
+      await viewerOf(tx, auth, c.employeeId, ['HR']);
+      if (!c.template.scfhsEnabled) throw new HttpError(422, 'SCFHS_NOT_ENABLED', 'This credential type is not checked with SCFHS');
+      const evidence = await tx.documentVersion.findFirst({
+        where: { id: body.evidenceDocumentId, credentialId, scanStatus: 'CLEAN', erasedAt: null },
+        select: { id: true },
+      });
+      if (!evidence) throw new HttpError(422, 'SCFHS_EVIDENCE_INVALID', 'Select a clean, available evidence file belonging to this credential');
+      const log = await tx.scfhsCheck.create({ data: {
+        credentialId, employeeId: c.employeeId, regNumberHint: '…', requestType: 'WEBSITE', driver: 'manual',
+        responseStatus: body.status, action: 'NONE', discrepancies: [], matched: null, actorUserId: auth.user.id,
+        manualCheckedAt: checkedAt, manualNotes: body.notes, evidenceDocumentId: evidence.id,
+        errorMessage: body.status === 'ERROR' ? 'The website check could not verify the licence' : null,
+      } });
+      await appendAudit(tx, { actorUserId: auth.user.id, action: 'SCFHS_WEBSITE_CHECK_RECORDED', resource: 'credential', resourceId: credentialId,
+        changes: { employeeId: c.employeeId, logId: log.id.toString(), status: body.status, checkedAt: checkedAt.toISOString(), evidenceDocumentId: evidence.id }, requestId });
+      return { ...log, id: log.id.toString() };
+    });
+  }
+
   /** The nightly run over every current SCFHS-checked credential. */
   async function syncAll(now = new Date()) {
     const due = await db.credential.findMany({
@@ -196,7 +232,7 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
     await viewerOf(db, auth, c.employeeId, ['HR']);
   }
 
-  return { check, syncAll, history, assertHr, driver: gateway.driver };
+  return { check, recordWebsiteCheck, syncAll, history, assertHr, driver: gateway.driver };
 }
 
 export type ScfhsService = ReturnType<typeof createScfhsService>;
