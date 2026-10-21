@@ -107,7 +107,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               )}
               <Tooltip title={t('notifications')}>
                 <Link to="/notifications" aria-label={t('notifications')}>
-                  <Badge count={unread.data ?? 0} size="small" overflowCount={99}><Button type="text" icon={<BellOutlined />} /></Badge>
+                  <span aria-hidden="true"><Badge count={unread.data ?? 0} size="small" overflowCount={99}><BellOutlined style={{ fontSize: 16, padding: 8 }} /></Badge></span>
                 </Link>
               </Tooltip>
               <Tooltip title={theme === 'dark' ? t('lightMode') : t('darkMode')}>
