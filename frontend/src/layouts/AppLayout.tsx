@@ -41,6 +41,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const roles = useAuth((s) => s.roles);
   const logout = useAuth((s) => s.logout);
   const unread = useUnreadCount();
+  const unreadCount = unread.data ?? 0;
+  const notificationsLabel = unreadCount > 0
+    ? `${t('notifications')} ${unreadCount > 99 ? '99+' : unreadCount}`
+    : t('notifications');
   const { language, setLanguage, theme, setTheme } = usePreferences();
   const isRtl = language === 'ar';
   const sidebarWidth = collapsed ? 64 : 244;
@@ -106,8 +110,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Link to="/admin"><Tag color="orange">{t('elevatedUntil', { time: new Date(pam.expiresAt).toLocaleTimeString() })}</Tag></Link>
               )}
               <Tooltip title={t('notifications')}>
-                <Link to="/notifications" aria-label={t('notifications')}>
-                  <Badge count={unread.data ?? 0} size="small" overflowCount={99}><Button type="text" icon={<BellOutlined />} /></Badge>
+                <Link to="/notifications" aria-label={notificationsLabel}>
+                  <span aria-hidden="true"><Badge count={unreadCount} size="small" overflowCount={99}><BellOutlined style={{ fontSize: 16, padding: 8 }} /></Badge></span>
                 </Link>
               </Tooltip>
               <Tooltip title={theme === 'dark' ? t('lightMode') : t('darkMode')}>

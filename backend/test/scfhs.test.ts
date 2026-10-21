@@ -124,7 +124,8 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     expect(await db.eligibilityState.findUnique({ where: { employeeId: c.emp.id } })).toEqual(eligibilityBefore);
     expect(await db.notification.count({ where: { recipientId: hrUserId, eventKey: { startsWith: `scfhs:${c.id}:REVOKED` } } })).toBe(1);
     // Checked again: still no suspension and no second notice.
-    expect((await hr.post(`/credentials/${c.id}/scfhs-check`, {})).body.action).toBe('NONE');
+    expect((await hr.post(`/credentials/${c.id}/scfhs-check`, {})).body.action).toBe('HR_NOTIFIED');
+    expect(await db.notification.count({ where: { recipientId: hrUserId, eventKey: { startsWith: `scfhs:${c.id}:REVOKED` } } })).toBe(1);
 
     const manual = await template({ autoSuspend: false });
     const reg2 = regNo();
