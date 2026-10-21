@@ -86,8 +86,9 @@ export function createCredentialsRouter(catalog: CatalogService, records: Record
     const { id } = IdParam.parse(req.params);
     await scfhs.assertHr(auth, id);
     const result = await scfhs.check(id, 'MANUAL', auth.user.id, rid(res));
-    if (!result.checked) throw new HttpError(422, `SCFHS_${result.skipped}`, result.skipped === 'NOT_ENABLED'
-      ? 'This credential type is not checked with SCFHS' : result.skipped === 'ERASED' ? 'The registration number was erased (data-subject request)' : 'No SCFHS registration number is recorded on this credential');
+    if (!result.checked) throw new HttpError(422, `SCFHS_${result.skipped}`, result.skipped === 'OFF'
+      ? 'Checks with SCFHS are off on this server (SCFHS_DRIVER)' : result.skipped === 'NOT_ENABLED'
+        ? 'This credential type is not checked with SCFHS' : result.skipped === 'ERASED' ? 'The registration number was erased (data-subject request)' : 'No SCFHS registration number is recorded on this credential');
     res.json({ ...result, driver: scfhs.driver });
   });
   r.post('/credentials/:id/scfhs-website-checks', authorize('credentials.manage'), async (req, res) => {

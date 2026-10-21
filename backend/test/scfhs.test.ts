@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Db } from '../src/lib/prisma.js';
 import { fieldCryptoFromEnv } from '../src/lib/field-crypto.js';
-import { MockScfhsGateway, ScfhsUnavailableError, type ScfhsGateway } from '../src/lib/scfhs.js';
+import { createScfhsGateway, MockScfhsGateway, ScfhsUnavailableError, scfhsDriverOf, type ScfhsGateway } from '../src/lib/scfhs.js';
 import { fieldRows } from '../src/modules/credentials/fields.js';
 import type { FieldDef } from '../src/modules/credentials/catalog.js';
 import { createScfhsService, MAX_CONSECUTIVE_ERRORS } from '../src/modules/credentials/scfhs.js';
@@ -20,12 +20,26 @@ const DEFS: FieldDef[] = [
   { key: 'expiry_date', label: 'Expiry date', type: 'date', required: true, displayOrder: 3, isExpiryDate: true },
 ];
 
+describe('SCFHS_DRIVER default (D-75)', () => {
+  it('unset: off in production, the simulated registry elsewhere; an explicit choice wins', () => {
+    // The simulated registry answers "not found" for every real licence, so production does not use it unless chosen.
+    expect(scfhsDriverOf({ NODE_ENV: 'production' })).toBe('off');
+    expect(scfhsDriverOf({ NODE_ENV: 'production', SCFHS_DRIVER: 'mock' })).toBe('mock');
+    expect(scfhsDriverOf({ NODE_ENV: 'production', SCFHS_DRIVER: 'live' })).toBe('live');
+    expect(scfhsDriverOf({ NODE_ENV: 'development' })).toBe('mock');
+    expect(scfhsDriverOf({ NODE_ENV: 'test', SCFHS_DRIVER: 'off' })).toBe('off');
+    expect(createScfhsGateway({ NODE_ENV: 'production', SCFHS_API_URL: '', SCFHS_API_KEY: '' }, {} as never).driver).toBe('off');
+  });
+});
+
 describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
   let db: Db;
   let org: Awaited<ReturnType<typeof makeOrg>>;
   let hr: Awaited<ReturnType<typeof signIn>>;
   let sa: Awaited<ReturnType<typeof signIn>>;
   let hrUserId: number;
+  let hrEmail: string;
+  let saEmail: string;
   const app = () => testApp(db);
 
   async function template(opts: { enabled?: boolean; autoSuspend?: boolean } = {}) {
@@ -50,8 +64,10 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     org = await makeOrg(db);
     const hrUser = await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'SYSTEM' }] });
     hrUserId = hrUser.id;
-    hr = await signIn(app(), hrUser.email);
-    sa = await signIn(app(), (await makeUser(db, { roles: [{ role: 'SYSTEM_ADMIN', scopeType: 'SYSTEM' }], pam: true })).email);
+    hrEmail = hrUser.email;
+    hr = await signIn(app(), hrEmail);
+    saEmail = (await makeUser(db, { roles: [{ role: 'SYSTEM_ADMIN', scopeType: 'SYSTEM' }], pam: true })).email;
+    sa = await signIn(app(), saEmail);
   });
   afterAll(async () => { await db.$disconnect(); });
 
@@ -215,6 +231,39 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     expect(await db.scfhsCheck.count({ where: { credentialId: checked.id, requestType: 'SCHEDULED', responseStatus: 'VERIFIED' } })).toBe(1);
     expect(await db.scfhsCheck.count({ where: { credentialId: ignored.id } })).toBe(0);
     expect((await hr.post(`/credentials/${ignored.id}/scfhs-check`, {})).body.error.code).toBe('SCFHS_NOT_ENABLED');
+  });
+
+  it('SCFHS_DRIVER=off (D-75): nothing is checked, logged or notified; on demand says so; website observations still work', async () => {
+    const offApp = testApp(db, { SCFHS_DRIVER: 'off' });
+    const hrOff = await signIn(offApp, hrEmail);
+    const tpl = await template({ autoSuspend: true });
+    const { emp } = await makeNurse(db, org.unitA.id);
+    const res = await hrOff.post('/credentials', { employeeId: emp.id, templateId: tpl, trackingData: { scfhs_number: regNo(), issue_date: '2025-01-01', expiry_date: '2030-01-01' } });
+    expect(res.status).toBe(201);
+    expect(res.body.scfhs).toEqual({ checked: false, skipped: 'OFF' });
+    const now = await hrOff.post(`/credentials/${res.body.id}/scfhs-check`, {});
+    expect(now.status).toBe(422);
+    expect(now.body.error.code).toBe('SCFHS_OFF');
+    expect((await hrOff.get(`/credentials/${res.body.id}/scfhs-checks`)).body).toEqual({ driver: 'off', items: [] });
+    expect((await (await signIn(offApp, saEmail)).get('/dev-console/scfhs-registry')).body.driver).toBe('off');
+    expect(await db.notification.count({ where: { employeeId: emp.id, eventKey: { startsWith: 'scfhs:' } } })).toBe(0);
+
+    // The nightly run makes no lookup and counts every due licence as skipped.
+    const protection = createProtection(fieldCryptoFromEnv(testEnv()));
+    const lookups: string[] = [];
+    const offGateway: ScfhsGateway = { driver: 'off', lookup: async (reg) => { lookups.push(reg); throw new Error('must not be called'); } };
+    const summary = await createScfhsService(db, offGateway, protection).syncAll();
+    expect(summary).toMatchObject({ driver: 'off', checked: 0, errors: 0, notified: 0 });
+    expect(summary.skipped).toBe(summary.due);
+    expect(lookups).toEqual([]);
+    expect(await db.scfhsCheck.count({ where: { credentialId: res.body.id } })).toBe(0);
+
+    // HR checks the licence by hand on the SCFHS website and records it (D-74).
+    const uploaded = await hrOff.upload(`/credentials/${res.body.id}/documents`, FILES.pdf, 'application/pdf', 'website-check.pdf');
+    expect(uploaded.status).toBe(201);
+    const observed = await hrOff.post(`/credentials/${res.body.id}/scfhs-website-checks`, { status: 'VERIFIED', checkedAt: new Date(Date.now() - 60_000).toISOString(), notes: 'Checked by hand on the SCFHS website.', evidenceDocumentId: uploaded.body.id });
+    expect(observed.status).toBe(201);
+    expect((await hrOff.get(`/credentials/${res.body.id}/scfhs-checks`)).body).toMatchObject({ driver: 'off', items: [expect.objectContaining({ driver: 'manual' })] });
   });
 
   it('scope, and the credential-type rules', async () => {

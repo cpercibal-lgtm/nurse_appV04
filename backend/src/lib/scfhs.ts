@@ -2,10 +2,13 @@
 //
 // The live SCFHS verification service needs an agreement with the Saudi
 // Commission for Health Specialties (decision gate U3), which does not exist
-// yet. Until then SCFHS_DRIVER=mock: lookups are answered from
+// yet. Until then, outside production (and on a demonstration server that sets
+// SCFHS_DRIVER=mock) lookups are answered from
 // mock_scfhs_registry, a simulated registry a System Admin edits in the Dev
 // Console (Nursing Administration → SCFHS registry) to demonstrate every
 // outcome — valid, expired, suspended, revoked, not found, and an outage.
+// In production SCFHS_DRIVER defaults to off (D-75): nothing is checked, and HR
+// records website observations by hand (D-74).
 // Callers depend only on ScfhsGateway; createScfhsGateway picks the driver.
 //
 // lookup() answers what SCFHS says, or throws ScfhsUnavailableError when the
@@ -15,7 +18,12 @@ import crypto from 'node:crypto';
 import type { Env } from '../config/env.js';
 import type { DbClient } from './prisma.js';
 
-export type ScfhsDriver = Env['SCFHS_DRIVER'];
+export type ScfhsDriver = NonNullable<Env['SCFHS_DRIVER']>;
+
+/** SCFHS_DRIVER, or when unset: off in production — the simulated registry would answer "not found"
+ *  for every real licence and flood HR with notices — and mock elsewhere (D-75; like BADGE_SIMULATOR, D-65). */
+export const scfhsDriverOf = (env: Pick<Env, 'SCFHS_DRIVER' | 'NODE_ENV'>): ScfhsDriver =>
+  env.SCFHS_DRIVER ?? (env.NODE_ENV === 'production' ? 'off' : 'mock');
 export const SCFHS_STATUSES = ['VERIFIED', 'EXPIRED', 'SUSPENDED', 'REVOKED', 'NOT_FOUND'] as const;
 export type ScfhsStatus = (typeof SCFHS_STATUSES)[number];
 
@@ -79,6 +87,17 @@ export class LiveScfhsGateway implements ScfhsGateway {
   }
 }
 
-export function createScfhsGateway(env: Pick<Env, 'SCFHS_DRIVER' | 'SCFHS_API_URL' | 'SCFHS_API_KEY'>, db: DbClient): ScfhsGateway {
-  return env.SCFHS_DRIVER === 'live' ? new LiveScfhsGateway({ url: env.SCFHS_API_URL, apiKey: env.SCFHS_API_KEY }) : new MockScfhsGateway(db);
+/** SCFHS_DRIVER=off: no licence is checked. The service skips before calling lookup. */
+export class OffScfhsGateway implements ScfhsGateway {
+  readonly driver = 'off' as const;
+
+  async lookup(_registrationNumber: string): Promise<ScfhsLookup> {
+    throw new ScfhsUnavailableError('SCFHS checks are off (SCFHS_DRIVER=off)');
+  }
+}
+
+export function createScfhsGateway(env: Pick<Env, 'SCFHS_DRIVER' | 'NODE_ENV' | 'SCFHS_API_URL' | 'SCFHS_API_KEY'>, db: DbClient): ScfhsGateway {
+  const driver = scfhsDriverOf(env);
+  if (driver === 'live') return new LiveScfhsGateway({ url: env.SCFHS_API_URL, apiKey: env.SCFHS_API_KEY });
+  return driver === 'off' ? new OffScfhsGateway() : new MockScfhsGateway(db);
 }

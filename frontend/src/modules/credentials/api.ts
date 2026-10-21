@@ -126,7 +126,7 @@ export interface ScfhsCheck {
 }
 export const useScfhsChecks = (credentialId: number | null) => useQuery({
   queryKey: ['scfhsChecks', credentialId],
-  queryFn: () => http.get<{ items: ScfhsCheck[]; driver: 'mock' | 'live' }>(`/credentials/${credentialId}/scfhs-checks`),
+  queryFn: () => http.get<{ items: ScfhsCheck[]; driver: 'mock' | 'live' | 'off' }>(`/credentials/${credentialId}/scfhs-checks`),
   enabled: credentialId !== null,
 });
 export function useScfhsCheckNow() {

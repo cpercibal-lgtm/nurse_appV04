@@ -4,7 +4,7 @@ Staging is a separate VPS containing synthetic data only. Never copy production 
 
 ## Set up once
 
-1. Prepare a separate VPS and DNS using [the VPS guide](../ops/vps/README.md), including host setup, database roles, ClamAV, settings and a restricted deploy account. Use distinct database passwords, encryption keys and deploy keys. Configure its hostname and HTTPS for this staging server. The normal runtime configuration and region checks still apply.
+1. Prepare a separate VPS and DNS using [the VPS guide](../ops/vps/README.md), including host setup, database roles, ClamAV, settings and a restricted deploy account. Use distinct database passwords, encryption keys and deploy keys. Configure its hostname and HTTPS for this staging server. The normal runtime configuration and region checks still apply. Set `SCFHS_DRIVER=mock` in its `/etc/nurseapp/app.env`: staging holds synthetic data only, and the acceptance checks below run a simulated lookup, while production leaves it unset, so lookups are off there (D-75).
 2. In GitHub Settings → Environments, create **staging**, restrict deployment branches to **main**, and set any required reviewers. Keep production settings in its own environment.
 3. Add the following **environment-scoped** settings under staging. Every value must identify the staging server; do not reuse production credentials. Verify the SSH host key against the provider console before saving it.
 

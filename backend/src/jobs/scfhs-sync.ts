@@ -1,6 +1,6 @@
 // Nightly SCFHS licence check (spec §5.4, D-64). Daily at 05:00 Riyadh, before
 // the 06:00 expiry scan: every current credential of an SCFHS-checked type is
-// checked with SCFHS (the simulated registry while SCFHS_DRIVER=mock), and the
+// checked with SCFHS (the simulated registry while SCFHS_DRIVER=mock; none while off, D-75), and the
 // answers acted on as in modules/credentials/scfhs.ts. Stops after
 // MAX_CONSECUTIVE_ERRORS failures in a row (SCFHS unreachable).
 

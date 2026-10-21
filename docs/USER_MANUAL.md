@@ -1140,7 +1140,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 ### 7.6 D. Check a licence with SCFHS
 
-**Status:** Implemented — Manual website observations are separate from simulated registry checks. Live API checks still require the SCFHS agreement.  
+**Status:** Implemented — Manual website observations are separate from simulated registry checks. Until the SCFHS agreement, a server with real staff data has SCFHS lookups off, so the website check is the only check; a demonstration server answers from the simulated registry. Live API checks still require the SCFHS agreement.  
 **Roles:** HR Admin, System Admin
 
 **Purpose.** Compare the recorded licence with what the Saudi Commission for Health Specialties reports.
@@ -1153,7 +1153,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 2. Check the licence on the official SCFHS website. Select the observed result and the actual check time, then enter notes without registration numbers or other personal identifiers.
 3. Select a clean evidence document from this credential; Upload evidence opens the existing evidence controls if a file is needed.
 4. Click Record website check. The history shows its manual source, observation time, recorded time, recorder user ID, notes and evidence.
-5. Run simulated check is a separate action; it queries the demonstration registry, not the official website.
+5. Run simulated check is a separate action; it queries the demonstration registry, not the official website. When SCFHS lookups are off on the server, the drawer says so and the button is disabled.
 
 **System result.** A website observation and audit entry are saved together. Saving changes no credential status, evidence approval or eligibility and calls no registry. Simulated results never auto-suspend a credential. Only a live API result can auto-suspend when configured.
 
@@ -2297,7 +2297,7 @@ Accounts, roles, approvals, hospital set-up, data protection and system tools. H
 
 > **Important:** Nobody manages their own account, grants or revokes their own role, or decides their own request. The break-glass account is managed outside the application.
 
-> **Note:** Telegram inbox, SCFHS registry and Badge simulator are demonstration tools: they hold synthetic data only and stand in for systems the hospital has not connected yet. On the live server the SCFHS registry and the Telegram inbox are in use; the Badge simulator is switched off.
+> **Note:** Telegram inbox, SCFHS registry and Badge simulator are demonstration tools: they hold synthetic data only and stand in for systems the hospital has not connected yet. On the live server the Telegram inbox is in use, SCFHS lookups are off so the SCFHS registry is not used, and the Badge simulator is switched off. A demonstration or staging server can turn the SCFHS registry on.
 
 ![Granting a role](generated/flows/role-grant.svg)
 

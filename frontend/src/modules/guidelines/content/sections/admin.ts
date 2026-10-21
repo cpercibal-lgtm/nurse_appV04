@@ -33,7 +33,7 @@ export const ADMIN: GuideSection[] = [
     ],
     callouts: [
       { kind: 'warning', text: 'Nobody manages their own account, grants or revokes their own role, or decides their own request. The break-glass account is managed outside the application.' },
-      { kind: 'info', text: 'Telegram inbox, SCFHS registry and Badge simulator are demonstration tools: they hold synthetic data only and stand in for systems the hospital has not connected yet. On the live server the SCFHS registry and the Telegram inbox are in use; the Badge simulator is switched off.' },
+      { kind: 'info', text: 'Telegram inbox, SCFHS registry and Badge simulator are demonstration tools: they hold synthetic data only and stand in for systems the hospital has not connected yet. On the live server the Telegram inbox is in use, SCFHS lookups are off so the SCFHS registry is not used, and the Badge simulator is switched off. A demonstration or staging server can turn the SCFHS registry on.' },
     ],
     tasks: [
       {
