@@ -1,6 +1,6 @@
 // SCFHS licence verification (spec §5.4, D-64) against the simulated registry:
 // checks on submission, on demand and nightly; what each SCFHS answer leads to
-// (nothing, an HR notice, an automatic suspension); outages and the circuit
+// (nothing, an HR notice; simulated answers never suspend credentials); outages and the circuit
 // breaker; the registration number never stored in the log; scope and rules.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -105,7 +105,7 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     expect(await db.auditEntry.count({ where: { action: 'SCFHS_CHECKED', resourceId: String(c.id) } })).toBe(3);
   });
 
-  it('SUSPENDED or REVOKED: suspends at once when the type says so (eligibility re-checked, HIGH audit), otherwise tells HR', async () => {
+  it('mock SUSPENDED or REVOKED never suspends a real credential or refreshes eligibility, even with auto-suspend enabled', async () => {
     const auto = await template({ autoSuspend: true });
     const reg = regNo();
     await setRegistry(reg, { status: 'VERIFIED', expiryDate: '2030-01-01' });
@@ -113,16 +113,17 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     await hr.post(`/credentials/${c.id}/verify`, {});
     expect((await db.credential.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('Valid');
 
+    const eligibilityBefore = await db.eligibilityState.findUnique({ where: { employeeId: c.emp.id } });
     await setRegistry(reg, { status: 'REVOKED', expiryDate: '2030-01-01' });
     const r = await hr.post(`/credentials/${c.id}/scfhs-check`, {});
-    expect(r.body).toMatchObject({ status: 'REVOKED', action: 'SUSPENDED' });
+    expect(r.body).toMatchObject({ status: 'REVOKED', action: 'HR_NOTIFIED', driver: 'mock' });
     const after = await db.credential.findUniqueOrThrow({ where: { id: c.id } });
-    expect(after.status).toBe('Suspended'); // revoking stays an HR decision
-    expect(after.statusReason).toMatch(/^SCFHS reports the licence REVOKED/);
-    expect(await db.auditEntry.findFirstOrThrow({ where: { action: 'CREDENTIAL_SCFHS_SUSPENDED', resourceId: String(c.id) } })).toMatchObject({ priority: 'HIGH' });
-    expect((await db.eligibilityState.findUniqueOrThrow({ where: { employeeId: c.emp.id } })).updatedByEvent).toBe('CREDENTIAL_SUSPENDED');
+    expect(after.status).toBe('Valid');
+    expect(after.statusReason).toBeNull();
+    expect(await db.auditEntry.count({ where: { action: 'CREDENTIAL_SCFHS_SUSPENDED', resourceId: String(c.id) } })).toBe(0);
+    expect(await db.eligibilityState.findUnique({ where: { employeeId: c.emp.id } })).toEqual(eligibilityBefore);
     expect(await db.notification.count({ where: { recipientId: hrUserId, eventKey: { startsWith: `scfhs:${c.id}:REVOKED` } } })).toBe(1);
-    // Checked again: already suspended — no second suspension, no second notice.
+    // Checked again: still no suspension and no second notice.
     expect((await hr.post(`/credentials/${c.id}/scfhs-check`, {})).body.action).toBe('NONE');
 
     const manual = await template({ autoSuspend: false });
