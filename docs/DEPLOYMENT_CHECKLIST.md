@@ -174,6 +174,16 @@ For a server that already runs an earlier version, the roster approval work (pul
 - [ ] Set its staging-specific variables and secrets, restrict deployments to `main`, and run **Deploy (staging)** manually.
 - [ ] Complete the manual SCFHS acceptance checklist and record results before promoting the release.
 
+# This release: new Caddy, ClamAV and nginx images
+
+Caddy moves from 2.8 to 2.11 and ClamAV from 1.4 to 1.5; the web image is built on a newer `nginx:1.30-alpine`. CI's release tests run the web image but not Caddy or ClamAV, so check those on staging first. Nothing is run by hand: `deploy.sh release` runs `deploy.sh edge`, which pulls the new pins from `ops/vps/docker-compose.edge.yml` and recreates both containers.
+
+1. - [ ] **Deploy to staging** (**Deploy (staging)**, [STAGING.md](STAGING.md)) and run the checks in step 3 there.
+2. - [ ] **Deploy** to production through the workflow (Part B), at a quiet time: HTTPS stops for a few seconds while Caddy is recreated, and uploads answer 503 `SCANNER_UNAVAILABLE` until ClamAV has loaded its signatures (they are kept in `/srv/nurseapp/clamav`).
+3. - [ ] `curl -fsS https://nurse.<hospital-domain>/api/v1/health` answers `ok`, the certificate is still valid, and an upload succeeds (it was scanned).
+
+**Rollback note:** `deploy.sh rollback` swaps the application only, not Caddy or ClamAV. To go back, put the previous pins (`caddy:2.8@sha256:226d1f05…`, `clamav/clamav:1.4@sha256:57deb108…`, in Git before commit `84b8730`) into `/opt/nurseapp/vps/docker-compose.edge.yml` and run `sudo /opt/nurseapp/vps/deploy.sh edge`; the next release puts the new pins back.
+
 # This release: SCFHS lookups off by default in production (D-75)
 
 1. - [ ] **Before deploying**, on a server with synthetic data that should keep the *simulated* SCFHS registry (staging, or a demonstration server): add `SCFHS_DRIVER=mock` to `/etc/nurseapp/app.env`. Without it, production now looks up no licence with SCFHS. A server with real staff data needs nothing: off is the safe setting until the SCFHS agreement (U3).
