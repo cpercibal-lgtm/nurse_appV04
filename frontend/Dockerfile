@@ -17,7 +17,7 @@ COPY frontend frontend
 # The build includes the gzipped bundle budget gate.
 RUN NODE_ENV=production npm run build -w frontend
 
-FROM nginx:1.30-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 AS runtime
+FROM nginx:1.30-alpine@sha256:970364228b1e4f932abc22d321932816782cca8a20b85a77552a7cfe9acfb3b5 AS runtime
 # Unprivileged: nginx listens on 8080 and runs as the nginx user.
 RUN sed -i 's/^user .*;//' /etc/nginx/nginx.conf \
  && sed -i 's#^pid .*;#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
