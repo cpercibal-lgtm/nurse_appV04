@@ -128,7 +128,8 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
           scfhsLicenseStatus: answer.licenseStatus, responseHash: answer.responseHash, matched, discrepancies, action,
         },
       });
-      if (adverse && c.template.scfhsAutoSuspend && SUSPENDABLE.includes(c.status)) {
+      // Mock responses are demonstration data and must never affect real credential state.
+      if (gateway.driver === 'live' && adverse && c.template.scfhsAutoSuspend && SUSPENDABLE.includes(c.status)) {
         const reason = `SCFHS reports the licence ${answer.status} (check ${log.id})`;
         await tx.credential.update({ where: { id: c.id }, data: { status: 'Suspended', statusReason: reason, ...(c.graceCycleId && !c.graceCycleId.endsWith(':closed') ? { graceCycleId: `${c.graceCycleId}:closed` } : {}) } });
         await appendAudit(tx, {
