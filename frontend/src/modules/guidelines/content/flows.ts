@@ -152,18 +152,13 @@ export const FLOWS: Flow[] = [
   },
   {
     id: 'scfhs-check',
-    title: 'SCFHS licence check',
-    caption: 'For credential types set to "Check with SCFHS": on submission, nightly at 05:00, and on demand. SCFHS never overwrites the record.',
+    title: 'SCFHS website observation',
+    caption: 'Manual evidence recording is separate from simulated/live gateway checks and credential decisions.',
     nodes: [
-      { kind: 'start', label: 'Credentials → SCFHS → Check with SCFHS now', role: 'HR_ADMIN' },
-      { kind: 'state', label: 'SCFHS answers: Valid, Expired, Suspended, Revoked, Not found or Unreachable', role: 'SYSTEM' },
-      {
-        kind: 'decision', label: 'Compared with the record', branches: [
-          { label: 'Matches', nodes: [{ kind: 'end', label: 'Nothing to do' }] },
-          { label: 'Differs / not found', nodes: [{ kind: 'state', label: 'HR notified (or auto-suspended if the type says so)', role: 'SYSTEM' }, { kind: 'end', label: 'HR checks the evidence and corrects the record' }] },
-          { label: 'Unreachable', nodes: [{ kind: 'stop', label: 'Logged; try again later' }] },
-        ],
-      },
+      { kind: 'start', label: 'Credentials → SCFHS', role: 'HR_ADMIN' },
+      { kind: 'step', label: 'Check the official website; record result, time, notes and clean evidence', role: 'HR_ADMIN' },
+      { kind: 'state', label: 'Observation and audit saved together; no registry lookup', role: 'SYSTEM' },
+      { kind: 'end', label: 'Credential status and eligibility unchanged. Any credential decision is separate' },
     ],
   },
   {

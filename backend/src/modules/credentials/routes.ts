@@ -9,7 +9,7 @@ import {
 } from './catalog.js';
 import { ApproveRenewalBody, DecisionBody, ListQuery, RecordBody, RenewalBody, SelfRecordBody, VerifyBody, type RecordService } from './records.js';
 import { fileHeaders, LinkBody } from '../documents/access.js';
-import type { ScfhsService } from './scfhs.js';
+import { WebsiteCheckBody, type ScfhsService } from './scfhs.js';
 
 const IdParam = z.object({ id: z.coerce.number().int().positive() });
 const DocParam = z.object({ id: z.coerce.number().int().positive(), docId: z.coerce.number().int().positive() });
@@ -89,6 +89,9 @@ export function createCredentialsRouter(catalog: CatalogService, records: Record
     if (!result.checked) throw new HttpError(422, `SCFHS_${result.skipped}`, result.skipped === 'NOT_ENABLED'
       ? 'This credential type is not checked with SCFHS' : result.skipped === 'ERASED' ? 'The registration number was erased (data-subject request)' : 'No SCFHS registration number is recorded on this credential');
     res.json({ ...result, driver: scfhs.driver });
+  });
+  r.post('/credentials/:id/scfhs-website-checks', authorize('credentials.manage'), async (req, res) => {
+    res.status(201).json(await scfhs.recordWebsiteCheck(authOf(res), IdParam.parse(req.params).id, WebsiteCheckBody.parse(req.body), rid(res)));
   });
   r.get('/credentials/:id/scfhs-checks', authorize('credentials.manage'), async (req, res) => {
     const auth = authOf(res);

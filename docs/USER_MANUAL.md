@@ -1140,7 +1140,7 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 ### 7.6 D. Check a licence with SCFHS
 
-**Status:** Implemented — Answers come from a simulated registry until the hospital has access to the SCFHS verification service; the screen says so.  
+**Status:** Implemented — Manual website observations are separate from simulated registry checks. Live API checks still require the SCFHS agreement.  
 **Roles:** HR Admin, System Admin
 
 **Purpose.** Compare the recorded licence with what the Saudi Commission for Health Specialties reports.
@@ -1150,14 +1150,16 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 **Steps.**
 
 1. On the credential row click SCFHS (shown only for SCFHS-checked types).
-2. Click Check with SCFHS now.
-3. Read the answer and the history: when, trigger (on submission, nightly, on demand), SCFHS answer, details, action taken.
+2. Check the licence on the official SCFHS website. Select the observed result and the actual check time, then enter notes without registration numbers or other personal identifiers.
+3. Select a clean evidence document from this credential; Upload evidence opens the existing evidence controls if a file is needed.
+4. Click Record website check. The history shows its manual source, observation time, recorded time, recorder user ID, notes and evidence.
+5. Run simulated check is a separate action; it queries the demonstration registry, not the official website.
 
-**System result.** Matches: nothing to do. Differs or not found: HR is notified. Suspended / revoked by SCFHS: HR is notified, and if the type is set to "Suspend on adverse SCFHS status" the credential is suspended at once. Unreachable: logged — try later. SCFHS never overwrites the record.
+**System result.** A website observation and audit entry are saved together. Saving changes no credential status, evidence approval or eligibility and calls no registry. Simulated results never auto-suspend a credential. Only a live API result can auto-suspend when configured.
 
 **Approval.** None.
 
-**Next step.** If it differs, check the evidence and correct the record (or suspend it). Revoking is always an HR decision.
+**Next step.** Review the evidence. Verify, suspend or revoke through the separate credential actions if needed. Correct a mistaken website observation by recording a new one; old entries cannot be changed or deleted.
 
 **Common problems.**
 
@@ -1165,9 +1167,9 @@ Licences, certificates and documents (SCFHS licence, BLS, ACLS, Iqama …) with 
 
 **Related.** [Eligibility](#8-eligibility) · [Nursing Administration](#15-nursing-administration)
 
-![SCFHS licence check](generated/flows/scfhs-check.svg)
+![SCFHS website observation](generated/flows/scfhs-check.svg)
 
-*For credential types set to "Check with SCFHS": on submission, nightly at 05:00, and on demand. SCFHS never overwrites the record.*
+*Manual evidence recording is separate from simulated/live gateway checks and credential decisions.*
 
 ### 7.7 E. Renew a credential
 

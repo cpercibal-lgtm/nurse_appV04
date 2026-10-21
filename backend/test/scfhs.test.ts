@@ -11,7 +11,7 @@ import { fieldRows } from '../src/modules/credentials/fields.js';
 import type { FieldDef } from '../src/modules/credentials/catalog.js';
 import { createScfhsService, MAX_CONSECUTIVE_ERRORS } from '../src/modules/credentials/scfhs.js';
 import { createProtection } from '../src/modules/pdpl/protection.js';
-import { makeNurse, makeOrg, makeUser, openDb, signIn, TEST_URL, testApp, testEnv, uniq } from './helpers.js';
+import { FILES, makeNurse, makeOrg, makeUser, openDb, signIn, TEST_URL, testApp, testEnv, uniq } from './helpers.js';
 
 const describeDb = TEST_URL ? describe : describe.skip;
 const DEFS: FieldDef[] = [
@@ -133,6 +133,56 @@ describeDb('SCFHS licence verification (spec §5.4, D-64)', () => {
     const c2 = await record(manual, reg2);
     expect(c2.scfhs).toMatchObject({ status: 'SUSPENDED', action: 'HR_NOTIFIED' });
     expect((await db.credential.findUniqueOrThrow({ where: { id: c2.id } })).status).toBe('PendingVerification');
+  });
+
+  it('website observations are separate, evidence-bound and append-only, without changing credential state or eligibility', async () => {
+    const tpl = await template({ autoSuspend: true });
+    const c = await record(tpl, regNo());
+    const uploaded = await hr.upload(`/credentials/${c.id}/documents`, FILES.pdf, 'application/pdf', 'website-check.pdf');
+    expect(uploaded.status).toBe(201);
+    const before = await db.credential.findUniqueOrThrow({ where: { id: c.id } });
+    const eligibility = await db.eligibilityState.findUnique({ where: { employeeId: c.emp.id } });
+    const notices = await db.notification.count({ where: { employeeId: c.emp.id } });
+    const body = { status: 'REVOKED', checkedAt: new Date(Date.now() - 60_000).toISOString(), notes: 'Checked the official website; result observed as revoked.', evidenceDocumentId: uploaded.body.id };
+    const result = await hr.post(`/credentials/${c.id}/scfhs-website-checks`, body);
+    expect(result.status).toBe(201);
+    expect(result.body).toMatchObject({ driver: 'manual', requestType: 'WEBSITE', responseStatus: 'REVOKED', action: 'NONE', actorUserId: hrUserId, manualNotes: body.notes, manualCheckedAt: body.checkedAt });
+    expect(await db.credential.findUniqueOrThrow({ where: { id: c.id } })).toEqual(before);
+    expect(await db.eligibilityState.findUnique({ where: { employeeId: c.emp.id } })).toEqual(eligibility);
+    expect(await db.notification.count({ where: { employeeId: c.emp.id } })).toBe(notices);
+    const history = await hr.get(`/credentials/${c.id}/scfhs-checks`);
+    expect(history.body.items[0]).toMatchObject({ id: result.body.id, driver: 'manual', evidenceDocumentId: uploaded.body.id });
+    expect(history.body.items[1].driver).toBe('mock');
+    const audit = await db.auditEntry.findFirstOrThrow({ where: { action: 'SCFHS_WEBSITE_CHECK_RECORDED', resourceId: String(c.id) } });
+    expect(audit.actorUserId).toBe(hrUserId);
+    expect(audit.changes).toMatchObject({ logId: result.body.id, evidenceDocumentId: uploaded.body.id, status: 'REVOKED' });
+    await expect(db.scfhsCheck.update({ where: { id: BigInt(result.body.id) }, data: { manualNotes: 'Changing an old observation' } })).rejects.toThrow(/append-only/);
+    await expect(db.scfhsCheck.delete({ where: { id: BigInt(result.body.id) } })).rejects.toThrow(/append-only/);
+    expect((await hr.post(`/credentials/${c.id}/scfhs-website-checks`, { ...body, action: 'SUSPENDED' })).status).toBe(400);
+    expect((await hr.post(`/credentials/${c.id}/scfhs-website-checks`, { ...body, checkedAt: '2999-01-01T00:00:00.000Z' })).body.error.code).toBe('SCFHS_CHECK_IN_FUTURE');
+    const other = await record(tpl, regNo());
+    expect((await hr.post(`/credentials/${other.id}/scfhs-website-checks`, body)).body.error.code).toBe('SCFHS_EVIDENCE_INVALID');
+    await db.documentVersion.update({ where: { id: uploaded.body.id }, data: { erasedAt: new Date() } });
+    expect((await hr.post(`/credentials/${c.id}/scfhs-website-checks`, body)).body.error.code).toBe('SCFHS_EVIDENCE_INVALID');
+  });
+
+  it('website checks and evidence respect HR scope, employee/supervisor restrictions and administrator elevation', async () => {
+    const tpl = await template();
+    const c = await record(tpl, regNo(), '2030-01-01', org.unitC.id);
+    const upload = await hr.upload(`/credentials/${c.id}/documents`, FILES.pdf, 'application/pdf');
+    const body = { status: 'VERIFIED', checkedAt: new Date(Date.now() - 60_000).toISOString(), notes: 'Website check completed with matching licence.', evidenceDocumentId: upload.body.id };
+    const deptHr = await signIn(app(), (await makeUser(db, { roles: [{ role: 'HR_ADMIN', scopeType: 'DEPARTMENT', scopeIds: [org.dept.id] }] })).email);
+    const employee = await signIn(app(), (await makeUser(db, { employeeId: c.emp.id })).email);
+    const supervisor = await signIn(app(), (await makeUser(db, { roles: [{ role: 'SUPERVISOR', scopeType: 'SYSTEM' }] })).email);
+    const dormant = await signIn(app(), (await makeUser(db, { roles: [{ role: 'SYSTEM_ADMIN', scopeType: 'SYSTEM' }] })).email);
+    for (const client of [deptHr, employee, supervisor, dormant]) {
+      expect((await client.post(`/credentials/${c.id}/scfhs-website-checks`, body)).status).toBe(403);
+      expect((await client.get(`/credentials/${c.id}/scfhs-checks`)).status).toBe(403);
+    }
+    expect((await deptHr.get(`/credentials/${c.id}/documents/${upload.body.id}`)).status).toBe(403);
+    expect((await supervisor.get(`/credentials/${c.id}/documents/${upload.body.id}`)).status).toBe(403);
+    expect((await sa.post(`/credentials/${c.id}/scfhs-website-checks`, body)).status).toBe(201);
+    expect((await hr.get(`/credentials/${c.id}/documents/${upload.body.id}`)).status).toBe(200);
   });
 
   it('SCFHS unreachable: the attempt is logged as ERROR; the nightly run stops after repeated failures', async () => {

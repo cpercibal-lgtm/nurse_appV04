@@ -161,3 +161,9 @@ For a server that already runs an earlier version, the roster approval work (pul
 2. - [ ] **Tell HR:** *Edit dates* on an Approved or Active contract corrects a typing error in its dates; it sends the new dates for approval. A different HR administrator opens *Review date change*, clicks *Open contract copy*, and approves only when the dates match the uploaded contract copy exactly.
 
 **Rollback note:** safe for the schema; requests waiting in `contract_date_changes` are not shown by the previous version and are never applied.
+
+### Manual SCFHS website checks (D-74)
+
+- [ ] Apply migration `20261102090000_scfhs_website_checks` with `prisma migrate deploy` and rebuild the API and frontend. No backfill: old gateway history keeps its source.
+- [ ] Reapply database grants and run the database verification script as for every release.
+- [ ] In staging, record a website observation with a clean evidence file and confirm its history source, actor, audit entry and unchanged credential status and eligibility. Confirm an out-of-scope account cannot record it or open its evidence.

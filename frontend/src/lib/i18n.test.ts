@@ -39,7 +39,8 @@ const FAMILIES: Record<string, string[]> = {
   logicDecision_: ['APPROVED', 'REJECTED'],
   logicStatus_: ['ACTIVE', 'SHADOW', 'RETIRED'],
   scfhsStatus_: ['VERIFIED', 'EXPIRED', 'SUSPENDED', 'REVOKED', 'NOT_FOUND', 'ERROR'], // SCFHS answers (spec §5.4, D-64)
-  scfhsTrigger_: ['MANUAL', 'ON_SUBMIT', 'SCHEDULED'],
+  scfhsTrigger_: ['MANUAL', 'ON_SUBMIT', 'SCHEDULED', 'WEBSITE'],
+  scfhsSource_: ['manual', 'mock', 'live'],
   scfhsAction_: ['HR_NOTIFIED', 'SUSPENDED'],
   scfhsResult_: ['NONE', 'HR_NOTIFIED', 'SUSPENDED', 'KNOWN', 'ERROR'],
   pdpl_: ['IQAMA', 'PASSPORT', 'SCFHS_REG', 'NATIONAL_ID', 'IDENTITY_SCAN'], // D-54 sensitive data categories
