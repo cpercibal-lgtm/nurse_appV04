@@ -21,7 +21,7 @@ export function ScfhsRegistryTab() {
   const change = useScfhsRegistryChange();
   const [editing, setEditing] = useState<RegistryEntry | 'new' | null>(null);
   const [form] = Form.useForm<Values>();
-  const mock = registry.data?.driver !== 'live';
+  const driver = registry.data?.driver ?? 'mock';
 
   function open(e: RegistryEntry | 'new') {
     form.resetFields();
@@ -44,7 +44,7 @@ export function ScfhsRegistryTab() {
 
   return (
     <>
-      <Alert type={mock ? 'info' : 'warning'} showIcon style={{ marginBottom: 12 }} title={mock ? t('scfhsRegistryMock') : t('scfhsRegistryLive')} />
+      <Alert type={driver === 'mock' ? 'info' : 'warning'} showIcon style={{ marginBottom: 12 }} title={t(driver === 'mock' ? 'scfhsRegistryMock' : driver === 'off' ? 'scfhsRegistryOff' : 'scfhsRegistryLive')} />
       <Flex justify="end" style={{ marginBottom: 12 }}>
         <Button type="primary" onClick={() => open('new')}>{t('scfhsRegistryAdd')}</Button>
       </Flex>

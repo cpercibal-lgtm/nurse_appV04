@@ -251,7 +251,7 @@ Taken from the full list at the top of [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHEC
 
 - **A native Arabic speaker** reads the roster approval screens and notices.
 - **Credential rules (U2):** the Director of Nursing supplies the real requirements; until then the rules in the system are placeholders.
-- **SCFHS agreement (U3):** licence checks use a simulated registry until it is signed (`SCFHS_DRIVER=mock`).
+- **SCFHS agreement (U3):** until it is signed, production looks up no licence with SCFHS (`SCFHS_DRIVER` unset = `off`, D-75) and HR records website checks by hand (D-74).
 - **Badge system and Telegram:** set up, or accepted as not connected for go-live.
 - **Hospital questions still unanswered:** the 72 unnamed beds, 281 vs 286, ICU Extension, the Assistant Nurse licence, C1, C2 and C5 ([HOSPITAL_OPEN_QUESTIONS.md](HOSPITAL_OPEN_QUESTIONS.md)). The KPI figures use the "for now" values until HR changes them.
 

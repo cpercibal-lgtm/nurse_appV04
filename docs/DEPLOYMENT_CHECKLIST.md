@@ -16,7 +16,7 @@ These are decisions, not tasks. Production should not open until each is settled
 
 - [ ] **U1, hosting.** A VPS in a data centre *in the Kingdom*, with a contract that says so, and an S3-compatible backup bucket also in the Kingdom. A Hostinger server may hold synthetic data only.
 - [ ] **U2, credential policy and position rules.** The Director of Nursing supplies the real credential requirements and grace windows. Until then the rules in the system are placeholders.
-- [ ] **U3, SCFHS agreement.** Licence checks answer from a *simulated* registry (`SCFHS_DRIVER=mock`) until it is signed. Decide whether go-live accepts that.
+- [ ] **U3, SCFHS agreement.** Until it is signed, production looks up no licence with SCFHS (`SCFHS_DRIVER` unset = `off`, D-75) and HR records website checks by hand (D-74). Decide whether go-live accepts that.
 - [ ] **Badge system** is not connected; attendance gaps show only simulated events. Accept or delay.
 - [ ] **Telegram bot** is not set up; alerts stay in the Dev Console inbox (`NOTIFICATION_DRIVER=mock`). Accept or set it up (A12).
 - [ ] **Hospital questions** ([HOSPITAL_OPEN_QUESTIONS.md](HOSPITAL_OPEN_QUESTIONS.md)): the 72 unnamed beds, 281 vs 286, ICU Extension, Assistant Nurse licence, C1, C2, C5 are unanswered. The KPI figures use the "for now" values until HR changes them in Workforce.
@@ -183,3 +183,11 @@ Caddy moves from 2.8 to 2.11 and ClamAV from 1.4 to 1.5; the web image is built 
 3. - [ ] `curl -fsS https://nurse.<hospital-domain>/api/v1/health` answers `ok`, the certificate is still valid, and an upload succeeds (it was scanned).
 
 **Rollback note:** `deploy.sh rollback` swaps the application only, not Caddy or ClamAV. To go back, put the previous pins (`caddy:2.8@sha256:226d1f05…`, `clamav/clamav:1.4@sha256:57deb108…`, in Git before commit `84b8730`) into `/opt/nurseapp/vps/docker-compose.edge.yml` and run `sudo /opt/nurseapp/vps/deploy.sh edge`; the next release puts the new pins back.
+
+# This release: SCFHS lookups off by default in production (D-75)
+
+1. - [ ] **Before deploying**, on a server with synthetic data that should keep the *simulated* SCFHS registry (staging, or a demonstration server): add `SCFHS_DRIVER=mock` to `/etc/nurseapp/app.env`. Without it, production now looks up no licence with SCFHS. A server with real staff data needs nothing: off is the safe setting until the SCFHS agreement (U3).
+2. - [ ] **After deploying**, the API log at start-up shows `SCFHS checks are off` or `SCFHS is simulated`, as intended.
+3. - [ ] **Tell HR:** on a server with real staff data, *Check with SCFHS now* is disabled and new licences are not looked up. Check each licence on the official SCFHS website and record what you saw in the SCFHS drawer (D-74).
+
+**Rollback note:** no schema change. If `app.env` sets `SCFHS_DRIVER=off`, remove that line before rolling back: the previous version accepts only `mock` or `live` and refuses to start. With the variable unset, the previous version answers from the simulated registry again, so HR gets a notice for each real licence.

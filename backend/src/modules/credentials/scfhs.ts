@@ -48,8 +48,8 @@ const SUSPENDABLE = ['PendingVerification', 'Valid', 'ExpiringSoon', 'Expired'];
 
 export interface ScfhsCheckResult {
   checked: boolean;
-  /** Why no check was made (the type is not SCFHS-checked, no number recorded, the number erased). */
-  skipped?: 'NOT_ENABLED' | 'NO_NUMBER' | 'ERASED';
+  /** Why no check was made (checks are off, the type is not SCFHS-checked, no number recorded, the number erased). */
+  skipped?: 'OFF' | 'NOT_ENABLED' | 'NO_NUMBER' | 'ERASED';
   status?: ScfhsLookup['status'] | 'ERROR';
   matched?: boolean | null;
   discrepancies?: string[];
@@ -82,6 +82,7 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
 
   /** Checks one credential with SCFHS and acts on the answer. Never throws for an SCFHS failure. */
   async function check(credentialId: number, requestType: ScfhsRequestType, actorUserId: number | null, requestId?: string): Promise<ScfhsCheckResult> {
+    if (gateway.driver === 'off') return { checked: false, skipped: 'OFF' };
     const c = await db.credential.findUnique({
       where: { id: credentialId },
       include: {
@@ -201,6 +202,7 @@ export function createScfhsService(db: Db, gateway: ScfhsGateway, protection: Pr
       select: { id: true }, orderBy: { id: 'asc' },
     });
     const summary = { due: due.length, checked: 0, verified: 0, discrepancies: 0, suspended: 0, notified: 0, errors: 0, skipped: 0, stoppedAfterErrors: false, driver: gateway.driver, at: now.toISOString() };
+    if (gateway.driver === 'off') return { ...summary, skipped: due.length };
     let consecutive = 0;
     for (const { id } of due) {
       const r = await check(id, 'SCHEDULED', null);

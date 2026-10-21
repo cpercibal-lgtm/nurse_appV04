@@ -39,8 +39,9 @@ export function ScfhsDrawer({ credential, onClose }: { credential: { id: number;
     <Drawer open={credential !== null} onClose={onClose} title={credential ? `${t('scfhsChecks')} — ${credential.title}` : ''} size="large" destroyOnHidden>
       {credential && <WebsiteCheckForm key={credential.id} credentialId={credential.id} />}
       {checks.data?.driver === 'mock' && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={t('scfhsMockNotice')} />}
+      {checks.data?.driver === 'off' && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={t('scfhsOffNotice')} />}
       <Space style={{ marginBottom: 12 }}>
-        <Button disabled={!checks.data} loading={checkNow.isPending} onClick={run}>{t(checks.data?.driver === 'mock' ? 'scfhsRunSimulation' : 'scfhsCheckNow')}</Button>
+        <Button disabled={!checks.data || checks.data.driver === 'off'} loading={checkNow.isPending} onClick={run}>{t(checks.data?.driver === 'mock' ? 'scfhsRunSimulation' : 'scfhsCheckNow')}</Button>
       </Space>
       <Table<ScfhsCheck>
         rowKey="id" size="small" loading={checks.isLoading} dataSource={checks.data?.items} pagination={false} scroll={{ x: 1300 }}

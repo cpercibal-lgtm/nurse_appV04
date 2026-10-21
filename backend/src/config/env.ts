@@ -144,8 +144,10 @@ const EnvSchema = z.object({
     .pipe(z.array(z.string().regex(/^-?[1-9]\d{0,19}$/, 'a Telegram chat id, e.g. 123456789'))),
   // ── SCFHS licence verification (spec §5.4, D-64) ──────────────────────────
   /** mock: answers come from the simulated SCFHS registry (Dev Console) — until the hospital has access to
-   *  the SCFHS verification service. live: the SCFHS API (not built yet: needs the SCFHS agreement, U3). */
-  SCFHS_DRIVER: z.enum(['mock', 'live']).default('mock'),
+   *  the SCFHS verification service. live: the SCFHS API (not built yet: needs the SCFHS agreement, U3).
+   *  off: no licence is checked. Unset: off in production (the simulated registry answers "not found" for
+   *  every real licence), mock elsewhere — see scfhsDriverOf in lib/scfhs.ts. */
+  SCFHS_DRIVER: z.enum(['mock', 'live', 'off']).optional(),
   /** The SCFHS verification endpoint and API key; required when SCFHS_DRIVER=live. */
   SCFHS_API_URL: z.string().default(''),
   SCFHS_API_KEY: z.string().default(''),

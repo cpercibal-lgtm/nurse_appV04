@@ -327,7 +327,7 @@ export type RegistryStatus = 'VERIFIED' | 'EXPIRED' | 'SUSPENDED' | 'REVOKED' | 
 export interface RegistryEntry { registrationNumber: string; status: RegistryStatus; expiryDate: string | null; specialty: string | null; note: string | null; updatedAt: string }
 export const useScfhsRegistry = () => useQuery({
   queryKey: ['scfhsRegistry'],
-  queryFn: () => http.get<{ driver: 'mock' | 'live'; items: RegistryEntry[] }>('/dev-console/scfhs-registry'),
+  queryFn: () => http.get<{ driver: 'mock' | 'live' | 'off'; items: RegistryEntry[] }>('/dev-console/scfhs-registry'),
 });
 export function useScfhsRegistryChange() {
   const qc = useQueryClient();
