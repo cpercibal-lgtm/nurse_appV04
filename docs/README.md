@@ -28,6 +28,12 @@
 | [V04_ARCHITECTURE_PLAN.md](V04_ARCHITECTURE_PLAN.md) | The plan, the **owner decision record** (§9a, D-1 … D-50) and implementation notes per commit |
 | [reference/AIGH_Nursing_Workforce_Management_System_v2_8_7.md](reference/AIGH_Nursing_Workforce_Management_System_v2_8_7.md) | The original specification, verbatim (never edited) |
 
+## Kits for other projects
+
+| Document | Contents |
+| :--- | :--- |
+| [kits/RBAC_MODULE.md](kits/RBAC_MODULE.md) | The roles, scopes and permission model of [RBAC.md](RBAC.md) as a portable, generic module for a new project: rules, schema, backend and frontend code, tests and an instruction section for a coding assistant |
+
 ## Rule register
 
 | Document | Contents |
