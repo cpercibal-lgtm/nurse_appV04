@@ -212,6 +212,24 @@ describe('opening the contract copy from a date-change review', () => {
     expect(state.mutateAsync).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [false, false], [true, false], [false, true], [true, true],
+  ])('cancels the review without deciding the request (requester: %s, copy inspected first: %s)', (mine, inspected) => {
+    state.rows[1] = contract(22, mine ? state.userId : 8);
+    const page = play(openReview(22), ...(inspected ? [openCopy, closeCopy] : []), (p) => {
+      button(review(p).props.footer, i18n.t('cancel')).props.onClick();
+    });
+
+    expect(elements(page).filter((e) => e.type === Modal && e.props.open)).toEqual([]);
+    // Cancel closes only the review; after an inspected copy the page is fully closed again.
+    expect(one(page, Drawer).props.open).toBe(false);
+    expect(useContractDocs).toHaveBeenLastCalledWith(null);
+    expect(state.mutateAsync).not.toHaveBeenCalled();
+    expect(state.message.success).not.toHaveBeenCalled();
+    expect(state.message.info).not.toHaveBeenCalled();
+    expect(state.message.error).not.toHaveBeenCalled();
+  });
+
   it.each(['HR_ADMIN', 'SYSTEM_ADMIN'])('allows %s to review a pending change', (role) => {
     state.roles = [role];
     const page = play(openReview(22), openCopy);
@@ -245,6 +263,7 @@ describe('opening the contract copy from a date-change review', () => {
 describe.each(['en', 'ar'])('date-change decisions after inspecting the copy (%s)', (language) => {
   it.each([
     ['approve', false, '   ', undefined],
+    ['approve', false, '  OK  ', 'OK'],
     ['reject', false, '  Dates differ from the signed copy  ', 'Dates differ from the signed copy'],
     ['withdraw', true, '', undefined],
   ] as const)('submits %s for the reviewed contract with a trimmed optional note', async (decision, mine, note, expectedNote) => {
@@ -269,13 +288,34 @@ describe.each(['en', 'ar'])('date-change decisions after inspecting the copy (%s
     expect(state.message.error).not.toHaveBeenCalled();
   });
 
-  it('reports a refused decision without a success or status notification', async () => {
+  it.each(['Approved', 'Active'] as const)('reports the returned %s status when eligibility is unavailable', async (contractStatus) => {
     await i18n.changeLanguage(language);
-    state.mutateAsync.mockRejectedValueOnce(new Error('The request was already decided'));
+    state.mutateAsync.mockResolvedValueOnce({ contractStatus, eligibility: null });
     const page = play(openReview(22), openCopy, closeCopy);
     button(review(page).props.footer, i18n.t('approve')).props.onClick();
 
+    await vi.waitFor(() => expect(state.message.info).toHaveBeenCalledExactlyOnceWith(i18n.t('contractNowStatus', {
+      status: i18n.t(`contract_${contractStatus}`), eligibility: '—',
+    })));
     expect(state.mutateAsync).toHaveBeenCalledExactlyOnceWith({ kind: 'dateDecision', id: 22, decision: 'approve', note: undefined });
+    expect(state.message.success).toHaveBeenCalledExactlyOnceWith(i18n.t('dateChangeDone_approve'));
+    expect(state.message.error).not.toHaveBeenCalled();
+  });
+
+  it.each(['approve', 'reject', 'withdraw'] as const)('reports a refused %s without a success or status notification', async (decision) => {
+    await i18n.changeLanguage(language);
+    const mine = decision === 'withdraw';
+    state.rows[1] = contract(22, mine ? state.userId : 8);
+    const note = decision === 'reject' ? 'Dates differ from the copy' : undefined;
+    state.mutateAsync.mockRejectedValueOnce(new Error('The request was already decided'));
+    const page = play(openReview(22), ...(note ? [(p: Element) => {
+      one(review(p).props.children, Input.TextArea).props.onChange({ target: { value: note } });
+    }] : []), openCopy, closeCopy);
+    const decisionButton = button(review(page).props.footer, i18n.t(decision));
+    expect(decisionButton.props.disabled).not.toBe(true);
+    decisionButton.props.onClick();
+
+    expect(state.mutateAsync).toHaveBeenCalledExactlyOnceWith({ kind: 'dateDecision', id: 22, decision, note });
     await vi.waitFor(() => expect(state.message.error).toHaveBeenCalledExactlyOnceWith('The request was already decided'));
     expect(state.message.success).not.toHaveBeenCalled();
     expect(state.message.info).not.toHaveBeenCalled();
