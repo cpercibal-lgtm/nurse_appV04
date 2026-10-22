@@ -62,7 +62,6 @@ For each position, please list:
   - the Assistant Nurse licence;
   - questions C1, C2 and C5.
 - **Arabic review:** a native Arabic speaker to read the roster approval screens and notices.
-- **Shared internet address (IT):** do all staff reach the internet through one shared hospital address? If so, what is it? The system pauses sign-in after 20 failed attempts from one address within 15 minutes, so we may need to raise that limit for the hospital's address.
 
 The full list, with space for answers, is in the project document *Hospital open questions*, section E. I'm happy to walk through any of it.
 
