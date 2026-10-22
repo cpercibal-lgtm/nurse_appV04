@@ -17,7 +17,7 @@
 | [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md) | The database-first migration: old vs new architecture, steps, data mapping, import process, rollback, validation |
 | [STAGING.md](STAGING.md) | Staging server settings, manual deployment and SCFHS acceptance checklist |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Configuration, processes and jobs, release steps, backups, **known gaps before production**, monitoring |
-| [STAFF_IMPORT_DESIGN.md](STAFF_IMPORT_DESIGN.md) | **Proposed, not built**: importing staff from the spreadsheet template (v3), API, screen, limits, tests and open points |
+| [STAFF_IMPORT_DESIGN.md](STAFF_IMPORT_DESIGN.md) | Staff import from the spreadsheet template (v3), **built** (D-72): file, API, screen, limits, tests and the owner's decisions |
 | [IT_HANDOVER.md](IT_HANDOVER.md) | **For hospital IT**: the server steps for the current release (settings, release, checks, role accounts, what to tell users) |
 | [HOSPITAL_REQUESTS_EMAIL.md](HOSPITAL_REQUESTS_EMAIL.md) | **To send to the hospital**: the go-live requests as a ready-to-send e-mail, in English and [Arabic](HOSPITAL_REQUESTS_EMAIL.ar.md) |
 | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | **Tick-box checklist for the server**: new installation, every later release, and what the roster approval release needs |
